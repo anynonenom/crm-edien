@@ -1,0 +1,230 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --vert-fonce: #122620;
+  --sarcelle:   #0c5752;
+  --creme:      #f5f1e8;
+  --or:         #d7bb93;
+  --blanc:      #ffffff;
+  --gris:       #6b6b6b;
+  --success:    #2d5a47;
+  --warning:    #a67c37;
+  --danger:     #8b3a3a;
+  --warn:       #a67c37;
+  --muted:      #6b6b6b;
+  --border:     rgba(215,187,147,0.4);
+  --border2:    rgba(215,187,147,0.2);
+  --teal:       #0c5752;
+  --teal2:      #0c5752;
+  --teal-dim:   rgba(12,87,82,0.08);
+  --teal-glow:  rgba(12,87,82,0.25);
+  --cyan:       #0c5752;
+  --white:      #f5f1e8;
+  --panel:      #ffffff;
+  --panel2:     #f5f1e8;
+  --bg:         #f0ede6;
+  --bg2:        #f5f1e8;
+}
+
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    font-family: 'Montserrat', sans-serif;
+    background: #f0ede6;
+    color: var(--vert-fonce);
+    font-feature-settings: 'kern' 1, 'liga' 1;
+  }
+
+  #root {
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--or); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--sarcelle); }
+}
+
+@layer components {
+
+  /* ── Auth panel (login card) ── */
+  .panel {
+    background: var(--blanc);
+    border: 1px solid var(--or);
+    box-shadow: 0 24px 64px rgba(18,38,32,0.15);
+    position: relative;
+  }
+  .panel::after {
+    content: '';
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 32px; height: 32px;
+    border-bottom: 2px solid var(--sarcelle);
+    border-right: 2px solid var(--sarcelle);
+  }
+
+  /* ── Card (white panel with corner accent) ── */
+  .eiden-card {
+    background: var(--blanc);
+    border: 1px solid rgba(215,187,147,0.4);
+    position: relative;
+  }
+  .eiden-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 16px; height: 16px;
+    border-bottom: 1.5px solid var(--sarcelle);
+    border-right: 1.5px solid var(--sarcelle);
+  }
+
+  /* ── Inputs ── */
+  .flash-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--or);
+    background: var(--blanc);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.85rem;
+    color: var(--vert-fonce);
+    outline: none;
+    transition: border-color 0.2s;
+    border-radius: 0;
+  }
+  .flash-input:focus { border-color: var(--sarcelle); }
+  .flash-input::placeholder { color: var(--gris); }
+
+  .field-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--or);
+    background: var(--blanc);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.85rem;
+    color: var(--vert-fonce);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field-input:focus { border-color: var(--sarcelle); }
+  .field-input::placeholder { color: var(--gris); }
+
+  select.field-input {
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230c5752' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2rem;
+  }
+  select option { background-color: #ffffff; color: var(--vert-fonce); }
+
+  /* ── Buttons ── */
+  .flash-button {
+    width: 100%;
+    padding: 11px;
+    background: var(--vert-fonce);
+    color: var(--blanc);
+    border: 1px solid var(--vert-fonce);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+    display: block;
+    text-align: center;
+  }
+  .flash-button:hover { background: var(--sarcelle); border-color: var(--sarcelle); }
+  .flash-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-primary {
+    padding: 8px 18px;
+    background: var(--vert-fonce);
+    color: var(--blanc);
+    border: 1px solid var(--vert-fonce);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-primary:hover { background: var(--sarcelle); border-color: var(--sarcelle); }
+
+  .btn-mini {
+    padding: 5px 12px;
+    border: 1px solid var(--or);
+    background: var(--blanc);
+    color: var(--sarcelle);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .btn-mini:hover { background: var(--sarcelle); color: var(--blanc); border-color: var(--sarcelle); }
+  .btn-mini.danger { border-color: var(--danger); color: var(--danger); }
+  .btn-mini.danger:hover { background: var(--danger); color: var(--blanc); border-color: var(--danger); }
+
+  /* ── Sidebar nav item ── */
+  .nav-item-eiden {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 20px;
+    cursor: pointer;
+    color: rgba(245,241,232,0.55);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    transition: all 0.2s;
+    border-left: 2px solid transparent;
+    background: transparent;
+    border-top: none;
+    border-right: none;
+    border-bottom: none;
+    text-align: left;
+    font-family: 'Montserrat', sans-serif;
+  }
+  .nav-item-eiden:hover,
+  .nav-item-eiden.active {
+    color: var(--or);
+    background: rgba(215,187,147,0.08);
+    border-left-color: var(--or);
+  }
+
+  /* ── Font hud (kept as alias to Montserrat bold) ── */
+  .font-hud {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+  }
+}
