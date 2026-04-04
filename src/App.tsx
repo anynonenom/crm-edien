@@ -52,6 +52,20 @@ interface ChatMessage { id: number; user: string; text: string; created_at: stri
 interface AiMessage { role: "user" | "assistant"; content: string; }
 interface ZoomMeeting { id: number; topic: string; start_time: string; duration: number; join_url: string; }
 
+// ─── Permissions ──────────────────────────────────────────────────────────────
+const PERMISSIONS: Record<string, { tabs: string[]; canCreate: boolean; canDelete: boolean; canViewAnalytics: boolean }> = {
+  "Admin":               { tabs: ["dashboard","pipeline","contacts","tasks","analytics","codex","communications","admin"], canCreate: true,  canDelete: true,  canViewAnalytics: true  },
+  "Operational Manager": { tabs: ["dashboard","pipeline","contacts","tasks","analytics","codex","communications"],         canCreate: true,  canDelete: true,  canViewAnalytics: true  },
+  "Solution Architect":  { tabs: ["dashboard","pipeline","contacts","tasks","analytics","codex","communications"],         canCreate: true,  canDelete: false, canViewAnalytics: true  },
+  "Brand Manager":       { tabs: ["dashboard","pipeline","contacts","tasks","codex","communications"],                     canCreate: true,  canDelete: false, canViewAnalytics: false },
+  "Marketing Strategy":  { tabs: ["dashboard","pipeline","contacts","tasks","analytics","codex","communications"],         canCreate: false, canDelete: false, canViewAnalytics: true  },
+  "Sales":               { tabs: ["dashboard","pipeline","contacts","tasks","codex","communications"],                     canCreate: true,  canDelete: false, canViewAnalytics: false },
+  "Commercial":          { tabs: ["dashboard","pipeline","contacts","tasks","codex","communications"],                     canCreate: true,  canDelete: false, canViewAnalytics: false },
+  "Web Developer":       { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false },
+  "Content Creator":     { tabs: ["dashboard","contacts","tasks","codex","communications"],                                canCreate: false, canDelete: false, canViewAnalytics: false },
+};
+const getPerms = (role?: string | null) => PERMISSIONS[role ?? ""] ?? { tabs: ["dashboard","tasks","codex","communications"], canCreate: false, canDelete: false, canViewAnalytics: false };
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const isOverdue = (dueDate: string, status: string) => {
   if (status === "Completed") return false;
@@ -158,6 +172,7 @@ export default function App() {
   const filteredDeals = deals.filter(d => d.workspace_id === currentWorkspace?.id);
   const filteredTasks = tasks.filter(t => t.workspace_id === currentWorkspace?.id);
   const filteredContacts = contacts.filter(c => c.workspace_id === currentWorkspace?.id);
+  const perms = getPerms(currentUser?.role);
 
   // ─── Fetch all data ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -687,7 +702,6 @@ export default function App() {
                     <Field label="Your Role">
                       <select className="flash-input" value={regRole} onChange={e => { setRegRole(e.target.value); setRegError(null); }}>
                         <option value="">Select your role...</option>
-                        <option value="Admin">Admin</option>
                         <option value="Operational Manager">Operational Manager</option>
                         <option value="Brand Manager">Brand Manager</option>
                         <option value="Web Developer">Web Developer</option>
@@ -778,14 +792,14 @@ export default function App() {
         {/* Nav */}
         <nav className="flex-1 py-4 flex flex-col gap-0.5">
           <NavItem active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} icon={<ActivityIcon size={15} />} label="Dashboard" />
-          <NavItem active={activeTab === "pipeline"} onClick={() => setActiveTab("pipeline")} icon={<TrendingUp size={15} />} label="Pipeline" />
-          <NavItem active={activeTab === "contacts"} onClick={() => setActiveTab("contacts")} icon={<Users size={15} />} label="Contacts" />
+          {perms.tabs.includes("pipeline") && <NavItem active={activeTab === "pipeline"} onClick={() => setActiveTab("pipeline")} icon={<TrendingUp size={15} />} label="Pipeline" />}
+          {perms.tabs.includes("contacts") && <NavItem active={activeTab === "contacts"} onClick={() => setActiveTab("contacts")} icon={<Users size={15} />} label="Contacts" />}
           <NavItem active={activeTab === "tasks"} onClick={() => setActiveTab("tasks")} icon={<CheckCircle2 size={15} />} label="Tasks" badge={overdueTasks.length > 0 ? overdueTasks.length : undefined} />
-          <NavItem active={activeTab === "analytics"} onClick={() => setActiveTab("analytics")} icon={<BarChart2 size={15} />} label="Analytics" />
-          <NavItem active={activeTab === "codex"} onClick={() => setActiveTab("codex")} icon={<BookOpen size={15} />} label="Codex" />
+          {perms.tabs.includes("analytics") && <NavItem active={activeTab === "analytics"} onClick={() => setActiveTab("analytics")} icon={<BarChart2 size={15} />} label="Analytics" />}
+          {perms.tabs.includes("codex") && <NavItem active={activeTab === "codex"} onClick={() => setActiveTab("codex")} icon={<BookOpen size={15} />} label="Codex" />}
           <div className="mx-5 my-2" style={{ height: 1, background: "rgba(215,187,147,0.1)" }} />
           <NavItem active={activeTab === "communications"} onClick={() => setActiveTab("communications")} icon={<MessageSquare size={15} />} label="Team Chat" />
-          {currentUser?.role === "Admin" && (
+          {perms.tabs.includes("admin") && (
             <>
               <div className="mx-5 my-2" style={{ height: 1, background: "rgba(215,187,147,0.1)" }} />
               <NavItem active={activeTab === "admin"} onClick={() => setActiveTab("admin")} icon={<Shield size={15} />} label="Admin Panel" />
@@ -843,8 +857,8 @@ export default function App() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            {activeTab === "pipeline" && <button onClick={() => setShowNewDealModal(true)} className="btn-primary">+ New Deal</button>}
-            {activeTab === "contacts" && <button onClick={() => setShowNewContactModal(true)} className="btn-primary">+ New Contact</button>}
+            {activeTab === "pipeline" && perms.canCreate && <button onClick={() => setShowNewDealModal(true)} className="btn-primary">+ New Deal</button>}
+            {activeTab === "contacts" && perms.canCreate && <button onClick={() => setShowNewContactModal(true)} className="btn-primary">+ New Contact</button>}
             {activeTab === "tasks" && <button onClick={() => { setSelectedDealForTask(null); setShowNewTaskModal(true); }} className="btn-primary">+ New Task</button>}
             <button onClick={fetchData} className="text-[var(--gris)] hover:text-[var(--sarcelle)] transition-colors" title="Refresh">
               <RefreshCw size={14} />
@@ -1052,7 +1066,7 @@ export default function App() {
                                 <button onClick={() => updateDealStage(deal.id, "Won")} className="btn-mini" style={{ fontSize: "0.6rem", padding: "3px 8px", borderColor: "var(--success)", color: "var(--success)" }}>Won</button>
                               )}
                               <button onClick={() => { setSelectedDealForTask(deal); setShowNewTaskModal(true); }} className="btn-mini" style={{ fontSize: "0.6rem", padding: "3px 8px" }}>+Task</button>
-                              <button onClick={() => deleteDeal(deal.id)} className="btn-mini danger" style={{ fontSize: "0.6rem", padding: "3px 8px" }}><Trash2 size={10} /></button>
+                              {perms.canDelete && <button onClick={() => deleteDeal(deal.id)} className="btn-mini danger" style={{ fontSize: "0.6rem", padding: "3px 8px" }}><Trash2 size={10} /></button>}
                             </div>
                           </div>
                         ))}
@@ -1191,7 +1205,7 @@ export default function App() {
                               <td className="py-3 px-4">
                                 <div className="flex gap-2">
                                   <button onClick={() => { setEditTask({ ...task }); setShowEditTaskModal(true); }} style={{ color: "var(--sarcelle)" }} className="hover:opacity-70 transition-opacity"><Edit3 size={13} /></button>
-                                  <button onClick={() => deleteTask(task.id)} style={{ color: "var(--gris)" }} className="hover:text-[var(--danger)] transition-colors"><Trash2 size={13} /></button>
+                                  {perms.canDelete && <button onClick={() => deleteTask(task.id)} style={{ color: "var(--gris)" }} className="hover:text-[var(--danger)] transition-colors"><Trash2 size={13} /></button>}
                                 </div>
                               </td>
                             </tr>
