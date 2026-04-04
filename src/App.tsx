@@ -85,9 +85,10 @@ const stageColor = (s: string) =>
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
+  const savedSession = (() => { try { const s = localStorage.getItem("eiden_session"); return s ? JSON.parse(s) : null; } catch { return null; } })();
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(!!savedSession);
+  const [currentUser, setCurrentUser] = useState<User | null>(savedSession?.user ?? null);
+  const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(savedSession?.workspace ?? null);
   const [view, setView] = useState<"login" | "register" | "recovery">("login");
   const [activeTab, setActiveTab] = useState<"dashboard" | "pipeline" | "contacts" | "tasks" | "analytics" | "codex" | "communications" | "admin">("dashboard");
   const [showTfa, setShowTfa] = useState(false);
@@ -424,6 +425,7 @@ export default function App() {
             setCurrentWorkspace(ws);
             setIsLoggedIn(true);
             setShowTfa(false);
+            localStorage.setItem("eiden_session", JSON.stringify({ user, workspace: ws }));
             // Welcome message
             setAiMessages([{
               role: "assistant",
@@ -846,7 +848,7 @@ export default function App() {
             <button onClick={() => setShowProfileModal(true)} className="btn-mini flex-1 justify-center" style={{ background: "transparent", borderColor: "rgba(215,187,147,0.3)", color: "rgba(245,241,232,0.6)" }}>
               <Settings size={11} /> Profile
             </button>
-            <button onClick={() => setIsLoggedIn(false)} className="btn-mini flex-1 justify-center danger" style={{ background: "transparent", borderColor: "rgba(139,58,58,0.5)", color: "#c87070" }}>
+            <button onClick={() => { setIsLoggedIn(false); setCurrentUser(null); setCurrentWorkspace(null); localStorage.removeItem("eiden_session"); }} className="btn-mini flex-1 justify-center danger" style={{ background: "transparent", borderColor: "rgba(139,58,58,0.5)", color: "#c87070" }}>
               <LogOut size={11} /> Logout
             </button>
           </div>
