@@ -263,7 +263,7 @@ export default function App() {
         (payload) => {
           const row = payload.new as any;
           const msg = { id: row.id, user: row.user_name, text: row.message, created_at: row.created_at };
-          setChatMessages(prev => [...prev, msg]);
+          setChatMessages(prev => prev.some(m => m.id === row.id) ? prev : [...prev.filter(m => !(m.user === row.user_name && m.text === row.message && typeof m.id === "number" && m.id > 1e12)), msg]);
           // Only notify if message is from someone else and not on chat tab
           setActiveTab(tab => {
             if (tab !== "communications" && row.user_name !== currentUser?.name) {
@@ -577,9 +577,11 @@ export default function App() {
   // ─── Team Chat ───────────────────────────────────────────────────────────────
   const sendChatMessage = async () => {
     if (!chatInput.trim() || !currentUser || !currentWorkspace) return;
-    const payload = { workspace_id: currentWorkspace.id, user_id: currentUser.id, user_name: currentUser.name, text: chatInput.trim() };
-    await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const text = chatInput.trim();
+    const payload = { workspace_id: currentWorkspace.id, user_id: currentUser.id, user_name: currentUser.name, text };
     setChatInput("");
+    setChatMessages(prev => [...prev, { id: Date.now(), user: currentUser.name, text, created_at: new Date().toISOString() }]);
+    await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   };
 
   const saveMeetingLink = async () => {
