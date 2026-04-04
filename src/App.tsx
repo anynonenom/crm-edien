@@ -155,9 +155,9 @@ export default function App() {
   const [showRecoveryDone, setShowRecoveryDone] = useState(false);
 
   // ─── Filtered data by workspace ─────────────────────────────────────────────
-  const filteredDeals = currentUser?.role === "Admin" ? deals : deals.filter(d => d.workspace_id === currentUser?.workspace_id);
-  const filteredTasks = currentUser?.role === "Admin" ? tasks : tasks.filter(t => t.workspace_id === currentUser?.workspace_id);
-  const filteredContacts = currentUser?.role === "Admin" ? contacts : contacts.filter(c => c.workspace_id === currentUser?.workspace_id);
+  const filteredDeals = currentUser?.role === "Admin" ? deals : deals.filter(d => d.workspace_id === currentWorkspace?.id);
+  const filteredTasks = currentUser?.role === "Admin" ? tasks : tasks.filter(t => t.workspace_id === currentWorkspace?.id);
+  const filteredContacts = currentUser?.role === "Admin" ? contacts : contacts.filter(c => c.workspace_id === currentWorkspace?.id);
 
   // ─── Fetch all data ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -534,7 +534,7 @@ export default function App() {
       body: JSON.stringify({
         name: fd.get("name"), company: fd.get("company"),
         email: fd.get("email"), phone: fd.get("phone"),
-        source: fd.get("source"), workspace_id: currentWorkspace?.id
+        status: "Lead", source: fd.get("source"), workspace_id: currentWorkspace?.id
       })
     });
     setShowNewContactModal(false);
