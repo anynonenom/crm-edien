@@ -90,6 +90,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(savedSession?.user ?? null);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(savedSession?.workspace ?? null);
   const [view, setView] = useState<"login" | "register" | "recovery">("login");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "pipeline" | "contacts" | "tasks" | "analytics" | "codex" | "communications" | "admin">("dashboard");
   const [showTfa, setShowTfa] = useState(false);
   const [tfaProgress, setTfaProgress] = useState(0);
@@ -655,9 +656,9 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="panel p-0 overflow-hidden w-full max-w-[420px]">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="panel p-0 overflow-hidden w-full max-w-[420px] mx-4 sm:mx-0">
           {/* Header */}
-          <div className="px-8 pt-8 pb-6" style={{ borderBottom: "2px solid var(--or)" }}>
+          <div className="px-5 sm:px-8 pt-6 sm:pt-8 pb-5 sm:pb-6" style={{ borderBottom: "2px solid var(--or)" }}>
             <div className="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-[var(--sarcelle)] mb-3">Eiden Group</div>
             <div className="text-[1.6rem] font-light tracking-[0.1em] uppercase text-[var(--vert-fonce)] leading-tight">
               {view === "login" ? "Sign In" : view === "register" ? "Register" : "Recovery"}
@@ -667,7 +668,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="px-8 py-7">
+          <div className="px-5 sm:px-8 py-5 sm:py-7">
             {view === "login" && (
               <div className="space-y-4">
                 <Field label="Username or Email">
@@ -801,30 +802,37 @@ export default function App() {
   return (
     <div className="h-screen w-full flex overflow-hidden" style={{ background: "#f0ede6" }}>
 
+      {/* ── Mobile sidebar overlay ── */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden" style={{ background: "rgba(0,0,0,0.5)" }} onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* ── Sidebar ── */}
-      <div className="shrink-0 flex flex-col" style={{ width: 220, background: "var(--vert-fonce)", minHeight: "100vh", borderRight: "none" }}>
+      <div className={`fixed lg:static inset-y-0 left-0 z-50 shrink-0 flex flex-col transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        style={{ width: 220, background: "var(--vert-fonce)", minHeight: "100vh" }}>
         {/* Brand */}
-        <div className="flex items-center gap-3 px-5 py-0" style={{ height: 64, borderBottom: "1px solid rgba(215,187,147,0.15)" }}>
-          <div className="w-8 h-8 flex items-center justify-center shrink-0" style={{ border: "1.5px solid var(--or)", color: "var(--or)", fontSize: "0.75rem", fontWeight: 700 }}>
-            E
+        <div className="flex items-center justify-between gap-3 px-5 py-0" style={{ height: 64, borderBottom: "1px solid rgba(215,187,147,0.15)" }}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 flex items-center justify-center shrink-0" style={{ border: "1.5px solid var(--or)", color: "var(--or)", fontSize: "0.75rem", fontWeight: 700 }}>E</div>
+            <div className="text-[0.9rem] font-bold tracking-[0.15em] uppercase" style={{ color: "var(--or)" }}>Eiden CRM</div>
           </div>
-          <div className="text-[0.9rem] font-bold tracking-[0.15em] uppercase" style={{ color: "var(--or)" }}>Eiden CRM</div>
+          <button className="lg:hidden p-1" style={{ color: "rgba(245,241,232,0.5)" }} onClick={() => setSidebarOpen(false)}>✕</button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 py-4 flex flex-col gap-0.5">
-          <NavItem active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} icon={<ActivityIcon size={15} />} label="Dashboard" />
-          {perms.tabs.includes("pipeline") && <NavItem active={activeTab === "pipeline"} onClick={() => setActiveTab("pipeline")} icon={<TrendingUp size={15} />} label="Pipeline" />}
-          {perms.tabs.includes("contacts") && <NavItem active={activeTab === "contacts"} onClick={() => setActiveTab("contacts")} icon={<Users size={15} />} label="Contacts" />}
-          <NavItem active={activeTab === "tasks"} onClick={() => setActiveTab("tasks")} icon={<CheckCircle2 size={15} />} label="Tasks" badge={overdueTasks.length > 0 ? overdueTasks.length : undefined} />
-          {perms.tabs.includes("analytics") && <NavItem active={activeTab === "analytics"} onClick={() => setActiveTab("analytics")} icon={<BarChart2 size={15} />} label="Analytics" />}
-          {perms.tabs.includes("codex") && <NavItem active={activeTab === "codex"} onClick={() => setActiveTab("codex")} icon={<BookOpen size={15} />} label="Codex" />}
+        <nav className="flex-1 py-4 flex flex-col gap-0.5 overflow-y-auto">
+          <NavItem active={activeTab === "dashboard"} onClick={() => { setActiveTab("dashboard"); setSidebarOpen(false); }} icon={<ActivityIcon size={15} />} label="Dashboard" />
+          {perms.tabs.includes("pipeline") && <NavItem active={activeTab === "pipeline"} onClick={() => { setActiveTab("pipeline"); setSidebarOpen(false); }} icon={<TrendingUp size={15} />} label="Pipeline" />}
+          {perms.tabs.includes("contacts") && <NavItem active={activeTab === "contacts"} onClick={() => { setActiveTab("contacts"); setSidebarOpen(false); }} icon={<Users size={15} />} label="Contacts" />}
+          <NavItem active={activeTab === "tasks"} onClick={() => { setActiveTab("tasks"); setSidebarOpen(false); }} icon={<CheckCircle2 size={15} />} label="Tasks" badge={overdueTasks.length > 0 ? overdueTasks.length : undefined} />
+          {perms.tabs.includes("analytics") && <NavItem active={activeTab === "analytics"} onClick={() => { setActiveTab("analytics"); setSidebarOpen(false); }} icon={<BarChart2 size={15} />} label="Analytics" />}
+          {perms.tabs.includes("codex") && <NavItem active={activeTab === "codex"} onClick={() => { setActiveTab("codex"); setSidebarOpen(false); }} icon={<BookOpen size={15} />} label="Codex" />}
           <div className="mx-5 my-2" style={{ height: 1, background: "rgba(215,187,147,0.1)" }} />
-          <NavItem active={activeTab === "communications"} onClick={() => { setActiveTab("communications"); setChatUnread(0); }} icon={<MessageSquare size={15} />} label="Team Chat" badge={chatUnread > 0 ? chatUnread : undefined} />
+          <NavItem active={activeTab === "communications"} onClick={() => { setActiveTab("communications"); setChatUnread(0); setSidebarOpen(false); }} icon={<MessageSquare size={15} />} label="Team Chat" badge={chatUnread > 0 ? chatUnread : undefined} />
           {perms.tabs.includes("admin") && (
             <>
               <div className="mx-5 my-2" style={{ height: 1, background: "rgba(215,187,147,0.1)" }} />
-              <NavItem active={activeTab === "admin"} onClick={() => setActiveTab("admin")} icon={<Shield size={15} />} label="Admin Panel" />
+              <NavItem active={activeTab === "admin"} onClick={() => { setActiveTab("admin"); setSidebarOpen(false); }} icon={<Shield size={15} />} label="Admin Panel" />
             </>
           )}
         </nav>
@@ -856,46 +864,52 @@ export default function App() {
       </div>
 
       {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top bar */}
-        <div className="shrink-0 flex items-center justify-between px-7" style={{ height: 64, background: "var(--blanc)", borderBottom: "1px solid rgba(215,187,147,0.3)", boxShadow: "0 2px 12px rgba(18,38,32,0.06)" }}>
-          <div className="flex items-center gap-4">
-            <h1 className="text-[1rem] font-semibold tracking-[0.08em] uppercase text-[var(--vert-fonce)]">
+        <div className="shrink-0 flex items-center justify-between px-4 lg:px-7" style={{ height: 64, background: "var(--blanc)", borderBottom: "1px solid rgba(215,187,147,0.3)", boxShadow: "0 2px 12px rgba(18,38,32,0.06)" }}>
+          <div className="flex items-center gap-3">
+            {/* Hamburger */}
+            <button className="lg:hidden flex flex-col gap-1 p-1 mr-1" onClick={() => setSidebarOpen(true)} style={{ color: "var(--vert-fonce)" }}>
+              <span className="block w-5 h-0.5 bg-current" />
+              <span className="block w-5 h-0.5 bg-current" />
+              <span className="block w-5 h-0.5 bg-current" />
+            </button>
+            <h1 className="text-[0.85rem] sm:text-[1rem] font-semibold tracking-[0.08em] uppercase text-[var(--vert-fonce)] truncate max-w-[140px] sm:max-w-none">
               {activeTab === "dashboard" ? "Dashboard"
-               : activeTab === "pipeline" ? "Sales Pipeline"
+               : activeTab === "pipeline" ? "Pipeline"
                : activeTab === "contacts" ? "Contacts"
                : activeTab === "tasks" ? "Tasks"
                : activeTab === "analytics" ? "Analytics"
-               : activeTab === "codex" ? "Eiden Codex"
-               : activeTab === "admin" ? "Admin Panel"
-               : "Team Communications"}
+               : activeTab === "codex" ? "Codex"
+               : activeTab === "admin" ? "Admin"
+               : "Team Chat"}
             </h1>
-            <div className="w-px h-6 opacity-40" style={{ background: "var(--or)" }} />
-            <span className="text-[0.72rem] text-[var(--gris)]">{currentWorkspace?.name}</span>
+            <div className="hidden sm:block w-px h-6 opacity-40" style={{ background: "var(--or)" }} />
+            <span className="hidden sm:block text-[0.72rem] text-[var(--gris)] truncate max-w-[120px]">{currentWorkspace?.name}</span>
             {overdueTasks.length > 0 && (
-              <span className="flex items-center gap-1.5 text-[0.68rem] font-semibold" style={{ color: "var(--danger)" }}>
+              <span className="hidden md:flex items-center gap-1.5 text-[0.68rem] font-semibold" style={{ color: "var(--danger)" }}>
                 <AlertTriangle size={12} /> {overdueTasks.length} overdue
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            {activeTab === "pipeline" && perms.canCreate && <button onClick={() => setShowNewDealModal(true)} className="btn-primary">+ New Deal</button>}
-            {activeTab === "contacts" && perms.canCreate && <button onClick={() => setShowNewContactModal(true)} className="btn-primary">+ New Contact</button>}
-            {activeTab === "tasks" && <button onClick={() => { setSelectedDealForTask(null); setShowNewTaskModal(true); }} className="btn-primary">+ New Task</button>}
-            <button onClick={fetchData} className="text-[var(--gris)] hover:text-[var(--sarcelle)] transition-colors" title="Refresh">
+          <div className="flex items-center gap-2">
+            {activeTab === "pipeline" && perms.canCreate && <button onClick={() => setShowNewDealModal(true)} className="btn-primary text-[0.72rem] px-3 py-1.5">+ Deal</button>}
+            {activeTab === "contacts" && perms.canCreate && <button onClick={() => setShowNewContactModal(true)} className="btn-primary text-[0.72rem] px-3 py-1.5">+ Contact</button>}
+            {activeTab === "tasks" && <button onClick={() => { setSelectedDealForTask(null); setShowNewTaskModal(true); }} className="btn-primary text-[0.72rem] px-3 py-1.5">+ Task</button>}
+            <button onClick={fetchData} className="text-[var(--gris)] hover:text-[var(--sarcelle)] transition-colors p-1" title="Refresh">
               <RefreshCw size={14} />
             </button>
           </div>
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 overflow-hidden px-7 py-6">
+        <div className="flex-1 overflow-hidden px-3 sm:px-5 lg:px-7 py-4 lg:py-6">
           <AnimatePresence mode="wait">
             {/* ── Dashboard ─────────────────────────────────────── */}
             {activeTab === "dashboard" && (
               <motion.div key="dashboard" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
                 {/* Stats row */}
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 shrink-0">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 lg:gap-3 shrink-0">
                   <StatCard icon={<TrendingUp size={16} />} label="Pipeline Value" value={`$${(stats?.pipelineValue || 0).toLocaleString()}`} color="teal" />
                   <StatCard icon={<Target size={16} />} label="Active Deals" value={String(stats?.activeDeals ?? "—")} color="teal" />
                   <StatCard icon={<Zap size={16} />} label="Win Rate" value={stats?.winRate ?? "—"} color="success" />
@@ -904,7 +918,7 @@ export default function App() {
                 </div>
 
                 {/* AI + Activity row */}
-                <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 min-h-0">
+                <div className="flex-1 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-3 lg:gap-4 min-h-0">
                   {/* AI Chat Panel */}
                   <div className="eiden-card flex flex-col overflow-hidden">
                     <div className="shrink-0 px-4 py-3 flex items-center justify-between" style={{ background: "var(--vert-fonce)", borderBottom: "1px solid rgba(215,187,147,0.2)" }}>
@@ -1054,12 +1068,12 @@ export default function App() {
 
             {/* ── Pipeline ──────────────────────────────────────── */}
             {activeTab === "pipeline" && (
-              <motion.div key="pipeline" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex gap-4 overflow-x-auto pb-2">
+              <motion.div key="pipeline" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex gap-3 lg:gap-4 overflow-x-auto pb-2">
                 {["Lead", "Proposal", "Negotiation", "Won", "Lost"].map(stage => {
                   const stageDeals = filteredDeals.filter(d => d.stage === stage);
                   const accentColor = stage === "Won" ? "var(--success)" : stage === "Lost" ? "var(--danger)" : "var(--sarcelle)";
                   return (
-                    <div key={stage} className="w-[270px] shrink-0 flex flex-col"
+                    <div key={stage} className="w-[240px] sm:w-[270px] shrink-0 flex flex-col"
                       onDragOver={e => e.preventDefault()}
                       onDrop={async e => { const id = Number(e.dataTransfer.getData("dealId")); if (id) await updateDealStage(id, stage); }}>
                       {/* Column header */}
@@ -1111,8 +1125,8 @@ export default function App() {
                   <div className="shrink-0 px-5 py-3" style={{ borderBottom: "1px solid rgba(215,187,147,0.3)", background: "rgba(215,187,147,0.05)" }}>
                     <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)]">Contacts — {filteredContacts.length} records</span>
                   </div>
-                  <div className="flex-1 overflow-y-auto">
-                    <table className="w-full text-left">
+                  <div className="flex-1 overflow-auto">
+                    <table className="w-full text-left min-w-[600px]">
                       <thead className="sticky top-0" style={{ background: "rgba(215,187,147,0.08)" }}>
                         <tr style={{ borderBottom: "1px solid rgba(215,187,147,0.3)" }}>
                           {["Name","Company","Email","Phone","Status","Source","LTV"].map(h => (
@@ -1184,8 +1198,8 @@ export default function App() {
                   <div className="shrink-0 px-5 py-3" style={{ borderBottom: "1px solid rgba(215,187,147,0.3)", background: "rgba(215,187,147,0.05)" }}>
                     <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)]">All Tasks — {filteredTasks.length} total</span>
                   </div>
-                  <div className="flex-1 overflow-y-auto">
-                    <table className="w-full text-left">
+                  <div className="flex-1 overflow-auto">
+                    <table className="w-full text-left min-w-[700px]">
                       <thead className="sticky top-0" style={{ background: "rgba(215,187,147,0.08)" }}>
                         <tr style={{ borderBottom: "1px solid rgba(215,187,147,0.3)" }}>
                           {["Task","Assignee","Deal","Due Date","Priority","Status","Actions"].map(h => (
@@ -1969,15 +1983,15 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(18,38,32,0.55)", backdropFilter: "blur(4px)" }}>
       <motion.div initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }}
-        className="bg-[var(--blanc)] w-full max-w-md relative shadow-2xl"
+        className="bg-[var(--blanc)] w-full max-w-md mx-3 sm:mx-0 relative shadow-2xl"
         style={{ border: "1px solid var(--or)", maxHeight: "90vh", overflowY: "auto" }}>
         {/* Corner accent */}
         <div className="absolute bottom-0 right-0 w-8 h-8 pointer-events-none" style={{ borderBottom: "2px solid var(--sarcelle)", borderRight: "2px solid var(--sarcelle)" }} />
-        <div className="flex items-center justify-between px-8 pt-7 pb-5" style={{ borderBottom: "2px solid var(--or)" }}>
+        <div className="flex items-center justify-between px-5 sm:px-8 pt-5 sm:pt-7 pb-4 sm:pb-5" style={{ borderBottom: "2px solid var(--or)" }}>
           <h2 className="font-hud text-[1.1rem] font-light tracking-[0.12em] uppercase text-[var(--vert-fonce)]">{title}</h2>
           <button onClick={onClose} className="text-[var(--gris)] hover:text-[var(--danger)] transition-colors text-xl leading-none">×</button>
         </div>
-        <div className="px-8 py-6">{children}</div>
+        <div className="px-5 sm:px-8 py-5 sm:py-6">{children}</div>
       </motion.div>
     </div>
   );
