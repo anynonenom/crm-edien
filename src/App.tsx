@@ -406,7 +406,7 @@ export default function App() {
 
   const handleRegister = async () => {
     setRegError(null);
-    if (!regName || !regEmail || !regUsername || !regPassword || !regCompany) {
+    if (!regName || !regEmail || !regUsername || !regPassword || !regCompany || !regRole) {
       setRegError("All fields are required");
       return;
     }
@@ -416,7 +416,7 @@ export default function App() {
       const res = await fetch("/api/users/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: regName, email: regEmail, username: regUsername, password: regPassword, company_name: regCompany })
+        body: JSON.stringify({ name: regName, email: regEmail, username: regUsername, password: regPassword, company_name: regCompany, role: regRole })
       });
       if (res.ok) {
         setRegStep(2);
@@ -681,19 +681,34 @@ export default function App() {
                       <input type="text" placeholder="Your company name" className="flash-input" value={regCompany}
                         onChange={e => { setRegCompany(e.target.value); setRegError(null); }} />
                       <p className="text-[0.65rem] mt-1" style={{ color: "var(--gris)" }}>
-                        New company → you become Admin. Existing company → you join as a member.
+                        New company → you become Admin. Existing company → you join with your role.
                       </p>
                     </Field>
+                    <Field label="Your Role">
+                      <select className="flash-input" value={regRole} onChange={e => { setRegRole(e.target.value); setRegError(null); }}>
+                        <option value="">Select your role...</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Operational Manager">Operational Manager</option>
+                        <option value="Brand Manager">Brand Manager</option>
+                        <option value="Web Developer">Web Developer</option>
+                        <option value="Content Creator">Content Creator</option>
+                        <option value="Solution Architect">Solution Architect</option>
+                        <option value="Marketing Strategy">Marketing Strategy</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Commercial">Commercial</option>
+                      </select>
+                    </Field>
                     {regError && <div className="p-3 text-[0.72rem]" style={{ border: "1px solid var(--danger)", color: "var(--danger)" }}>{regError}</div>}
-                    <button onClick={() => { if (regName && regEmail && regCompany) { setRegError(null); setRegStep(1); } else setRegError("Fill in all fields"); }} className="flash-button">
+                    <button onClick={() => { if (regName && regEmail && regCompany && regRole) { setRegError(null); setRegStep(1); } else setRegError("Fill in all fields"); }} className="flash-button">
                       Continue →
                     </button>
                   </div>
                 )}
                 {regStep === 1 && (
                   <div className="space-y-4">
-                    <div className="p-2.5 text-[0.72rem]" style={{ border: "1px solid var(--or)", background: "rgba(215,187,147,0.08)" }}>
-                      <span className="text-[var(--gris)]">Company: </span><span className="font-bold text-[var(--sarcelle)]">{regCompany}</span>
+                    <div className="p-2.5 text-[0.72rem] space-y-1" style={{ border: "1px solid var(--or)", background: "rgba(215,187,147,0.08)" }}>
+                      <div><span className="text-[var(--gris)]">Company: </span><span className="font-bold text-[var(--sarcelle)]">{regCompany}</span></div>
+                      <div><span className="text-[var(--gris)]">Role: </span><span className="font-bold text-[var(--sarcelle)]">{regRole}</span></div>
                     </div>
                     <Field label="Username">
                       <input type="text" placeholder="unique_username" className="flash-input" value={regUsername}
