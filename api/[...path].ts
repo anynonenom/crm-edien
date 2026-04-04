@@ -6,9 +6,12 @@ import { getZoomAccessToken } from "./_lib/zoom";
 import { logActivity } from "./_lib/helpers";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const segments = Array.isArray(req.query.path)
-    ? req.query.path
-    : [req.query.path].filter(Boolean) as string[];
+  const rawPath = req.query.path;
+  const segments: string[] = Array.isArray(rawPath)
+    ? rawPath
+    : typeof rawPath === "string"
+    ? rawPath.split("/").filter(Boolean)
+    : [];
   const [r0, r1, r2] = segments;
   const { method } = req;
 
