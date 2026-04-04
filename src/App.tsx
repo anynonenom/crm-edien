@@ -122,6 +122,9 @@ export default function App() {
   // Team chat
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
+  const [chatUnread, setChatUnread] = useState(0);
+  const [chatToast, setChatToast] = useState<{ user: string; text: string } | null>(null);
+  const chatToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [meetingLink, setMeetingLink] = useState("");
   const [isMeetingSaving, setIsMeetingSaving] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -239,14 +242,19 @@ export default function App() {
     }
   }, []);
 
-  // Team chat — load history + subscribe via Supabase Realtime
+  // Team chat — load history when tab opens + clear unread
   useEffect(() => {
     if (!isLoggedIn || activeTab !== "communications" || !currentWorkspace?.id) return;
     fetch(`/api/chat?workspace_id=${currentWorkspace.id}`)
       .then(r => r.json())
       .then(d => setChatMessages(d || []))
       .catch(() => {});
+    setChatUnread(0);
+  }, [isLoggedIn, activeTab, currentWorkspace?.id]);
 
+  // Team chat — background realtime subscription (always on when logged in)
+  useEffect(() => {
+    if (!isLoggedIn || !currentWorkspace?.id) return;
     const channel = supabase
       .channel(`chat:${currentWorkspace.id}`)
       .on(
@@ -254,13 +262,23 @@ export default function App() {
         { event: "INSERT", schema: "public", table: "chat_messages", filter: `workspace_id=eq.${currentWorkspace.id}` },
         (payload) => {
           const row = payload.new as any;
-          setChatMessages(prev => [...prev, { id: row.id, user: row.user_name, text: row.message, created_at: row.created_at }]);
+          const msg = { id: row.id, user: row.user_name, text: row.message, created_at: row.created_at };
+          setChatMessages(prev => [...prev, msg]);
+          // Only notify if message is from someone else and not on chat tab
+          setActiveTab(tab => {
+            if (tab !== "communications" && row.user_name !== currentUser?.name) {
+              setChatUnread(n => n + 1);
+              setChatToast({ user: row.user_name, text: row.message });
+              if (chatToastTimer.current) clearTimeout(chatToastTimer.current);
+              chatToastTimer.current = setTimeout(() => setChatToast(null), 4000);
+            }
+            return tab;
+          });
         }
       )
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
-  }, [isLoggedIn, activeTab, currentWorkspace?.id]);
+  }, [isLoggedIn, currentWorkspace?.id, currentUser?.name]);
 
   // Scroll AI chat to bottom
   useEffect(() => {
@@ -798,7 +816,7 @@ export default function App() {
           {perms.tabs.includes("analytics") && <NavItem active={activeTab === "analytics"} onClick={() => setActiveTab("analytics")} icon={<BarChart2 size={15} />} label="Analytics" />}
           {perms.tabs.includes("codex") && <NavItem active={activeTab === "codex"} onClick={() => setActiveTab("codex")} icon={<BookOpen size={15} />} label="Codex" />}
           <div className="mx-5 my-2" style={{ height: 1, background: "rgba(215,187,147,0.1)" }} />
-          <NavItem active={activeTab === "communications"} onClick={() => setActiveTab("communications")} icon={<MessageSquare size={15} />} label="Team Chat" />
+          <NavItem active={activeTab === "communications"} onClick={() => { setActiveTab("communications"); setChatUnread(0); }} icon={<MessageSquare size={15} />} label="Team Chat" badge={chatUnread > 0 ? chatUnread : undefined} />
           {perms.tabs.includes("admin") && (
             <>
               <div className="mx-5 my-2" style={{ height: 1, background: "rgba(215,187,147,0.1)" }} />
@@ -1898,6 +1916,30 @@ export default function App() {
               <button onClick={() => setShowProfileModal(false)} className="flash-button" style={{ marginBottom: 0 }}>Close</button>
             </div>
           </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* Chat notification toast */}
+      <AnimatePresence>
+        {chatToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: 40, x: "-50%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            onClick={() => { setActiveTab("communications"); setChatUnread(0); setChatToast(null); }}
+            className="fixed bottom-6 left-1/2 cursor-pointer z-[9999] flex items-center gap-3 px-4 py-3"
+            style={{ background: "var(--vert-fonce)", border: "1px solid var(--or)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 260, maxWidth: 360 }}
+          >
+            <div className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-[0.75rem] font-bold" style={{ background: "var(--sarcelle)", color: "var(--blanc)" }}>
+              {chatToast.user[0]?.toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[0.65rem] font-bold uppercase tracking-wide" style={{ color: "var(--or)" }}>{chatToast.user}</div>
+              <div className="text-[0.78rem] truncate" style={{ color: "var(--blanc)" }}>{chatToast.text}</div>
+            </div>
+            <MessageSquare size={14} style={{ color: "var(--sarcelle)", flexShrink: 0 }} />
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
