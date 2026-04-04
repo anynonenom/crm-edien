@@ -136,14 +136,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ id: user.id, name: user.name, role: user.role, workspace_id: user.workspace_id });
       }
       if (r1 === "register" && method === "POST") {
-        const { name, email, username, password, company_name } = req.body;
-        if (!name || !email || !username || !password || !company_name) return res.status(400).json({ error: "Missing required fields" });
+        const { name, email, username, password, company_name, role: requestedRole } = req.body;
+        if (!name || !email || !username || !password || !company_name || !requestedRole) return res.status(400).json({ error: "Missing required fields" });
         const { data: exists } = await supabase.from("users").select("id").or(`username.eq.${username},email.eq.${email}`).maybeSingle();
         if (exists) return res.status(409).json({ error: "Username or email already taken" });
         const { data: existingWs } = await supabase.from("workspaces").select("id, name").ilike("name", company_name).maybeSingle();
         let workspace_id: number, role: string;
         if (existingWs) {
-          workspace_id = existingWs.id; role = "Commercial";
+          workspace_id = existingWs.id;
+          role = requestedRole === "Admin" ? requestedRole : requestedRole;
         } else {
           const { data: newWs } = await supabase.from("workspaces").insert({ name: company_name }).select().single();
           workspace_id = newWs!.id; role = "Admin";
