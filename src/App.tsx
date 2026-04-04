@@ -155,9 +155,9 @@ export default function App() {
   const [showRecoveryDone, setShowRecoveryDone] = useState(false);
 
   // ─── Filtered data by workspace ─────────────────────────────────────────────
-  const filteredDeals = currentUser?.role === "Admin" ? deals : deals.filter(d => d.workspace_id === currentWorkspace?.id);
-  const filteredTasks = currentUser?.role === "Admin" ? tasks : tasks.filter(t => t.workspace_id === currentWorkspace?.id);
-  const filteredContacts = currentUser?.role === "Admin" ? contacts : contacts.filter(c => c.workspace_id === currentWorkspace?.id);
+  const filteredDeals = deals.filter(d => d.workspace_id === currentWorkspace?.id);
+  const filteredTasks = tasks.filter(t => t.workspace_id === currentWorkspace?.id);
+  const filteredContacts = contacts.filter(c => c.workspace_id === currentWorkspace?.id);
 
   // ─── Fetch all data ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
