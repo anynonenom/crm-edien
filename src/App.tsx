@@ -907,7 +907,7 @@ export default function App() {
           <AnimatePresence mode="wait">
             {/* ── Dashboard ─────────────────────────────────────── */}
             {activeTab === "dashboard" && (
-              <motion.div key="dashboard" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
+              <motion.div key="dashboard" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-3 lg:gap-4 overflow-y-auto lg:overflow-hidden">
                 {/* Stats row */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 lg:gap-3 shrink-0">
                   <StatCard icon={<TrendingUp size={16} />} label="Pipeline Value" value={`$${(stats?.pipelineValue || 0).toLocaleString()}`} color="teal" />
@@ -918,23 +918,23 @@ export default function App() {
                 </div>
 
                 {/* AI + Activity row */}
-                <div className="flex-1 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-3 lg:gap-4 min-h-0">
+                <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px] gap-3 lg:gap-4 min-h-0">
                   {/* AI Chat Panel */}
-                  <div className="eiden-card flex flex-col overflow-hidden">
-                    <div className="shrink-0 px-4 py-3 flex items-center justify-between" style={{ background: "var(--vert-fonce)", borderBottom: "1px solid rgba(215,187,147,0.2)" }}>
+                  <div className="eiden-card flex flex-col overflow-hidden" style={{ minHeight: 340 }}>
+                    <div className="shrink-0 px-3 sm:px-4 py-3 flex flex-wrap items-center justify-between gap-2" style={{ background: "var(--vert-fonce)", borderBottom: "1px solid rgba(215,187,147,0.2)" }}>
                       <div className="flex items-center gap-2">
                         <Bot size={14} style={{ color: "var(--or)" }} />
                         <span className="text-[0.75rem] font-bold tracking-[0.1em] uppercase" style={{ color: "var(--or)" }}>Eiden AI</span>
                         <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--success)" }} />
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => sendAiMessage("Give me a morning briefing on the pipeline and top priorities")} className="btn-mini" style={{ fontSize: "0.6rem" }}>Morning Brief</button>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button onClick={() => sendAiMessage("Give me a morning briefing on the pipeline and top priorities")} className="btn-mini" style={{ fontSize: "0.6rem" }}>Brief</button>
                         <button onClick={() => sendAiMessage("Which tasks are overdue and what should I prioritize?")} className="btn-mini" style={{ fontSize: "0.6rem" }}>Urgent?</button>
                         <button onClick={() => setAiMessages([])} className="btn-mini" style={{ fontSize: "0.6rem" }}>Clear</button>
                       </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                    <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-3 space-y-3">
                       {aiMessages.length === 0 && (
                         <div className="text-center py-8 space-y-3">
                           <Bot size={32} className="mx-auto opacity-20" style={{ color: "var(--sarcelle)" }} />
@@ -999,10 +999,10 @@ export default function App() {
                   </div>
 
                   {/* Right column */}
-                  <div className="flex flex-col gap-4 min-h-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-4 lg:flex lg:flex-col lg:min-h-0">
                     {/* Overdue tasks */}
                     {overdueTasks.length > 0 && (
-                      <div className="shrink-0 p-4" style={{ border: "1px solid var(--danger)", background: "rgba(139,58,58,0.04)", borderLeft: "3px solid var(--danger)" }}>
+                      <div className="sm:col-span-2 lg:col-span-1 shrink-0 p-3 sm:p-4" style={{ border: "1px solid var(--danger)", background: "rgba(139,58,58,0.04)", borderLeft: "3px solid var(--danger)" }}>
                         <div className="flex items-center gap-2 mb-2">
                           <AlertTriangle size={12} style={{ color: "var(--danger)" }} />
                           <span className="text-[0.65rem] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--danger)" }}>Overdue Tasks</span>
@@ -1024,11 +1024,11 @@ export default function App() {
                     )}
 
                     {/* Recent activity */}
-                    <div className="flex-1 eiden-card overflow-hidden flex flex-col min-h-0">
-                      <div className="shrink-0 px-4 py-2.5" style={{ borderBottom: "1px solid rgba(215,187,147,0.3)" }}>
+                    <div className="eiden-card overflow-hidden flex flex-col lg:flex-1 lg:min-h-0">
+                      <div className="shrink-0 px-3 sm:px-4 py-2.5" style={{ borderBottom: "1px solid rgba(215,187,147,0.3)" }}>
                         <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)]">Recent Activity</span>
                       </div>
-                      <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                      <div className="overflow-y-auto p-3 space-y-1 max-h-52 sm:max-h-64 lg:max-h-none lg:flex-1">
                         {activities.slice(0, 15).map(a => (
                           <div key={a.id} className="flex gap-2 p-2 text-[0.72rem]" style={{ borderLeft: "2px solid rgba(215,187,147,0.3)" }}>
                             <span className="text-[var(--gris)] shrink-0 w-10">{a.time}</span>
@@ -1042,14 +1042,14 @@ export default function App() {
                     </div>
 
                     {/* Pipeline snapshot */}
-                    <div className="shrink-0 eiden-card p-4">
+                    <div className="shrink-0 eiden-card p-3 sm:p-4">
                       <div className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)] mb-3">Pipeline Snapshot</div>
                       {["Lead", "Proposal", "Negotiation", "Won"].map(stage => {
                         const count = filteredDeals.filter(d => d.stage === stage).length;
                         const total = filteredDeals.length || 1;
                         const barColor = stage === "Won" ? "var(--success)" : stage === "Lost" ? "var(--danger)" : "var(--sarcelle)";
                         return (
-                          <div key={stage} className="mb-3">
+                          <div key={stage} className="mb-2.5">
                             <div className="flex justify-between text-[0.68rem] mb-1">
                               <span className="font-semibold" style={{ color: barColor }}>{stage}</span>
                               <span className="text-[var(--gris)]">{count}</span>
