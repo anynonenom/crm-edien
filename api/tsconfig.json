@@ -8,8 +8,7 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true,
-    "outDir": "../.vercel/output/functions"
+    "resolveJsonModule": true
   },
   "include": ["./**/*.ts"]
 }
