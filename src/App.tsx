@@ -1632,8 +1632,7 @@ export default function App() {
                 <div className="shrink-0 flex gap-0" style={{ borderBottom: "2px solid rgba(18,38,32,0.08)" }}>
                   {(["workspaces", "users", "ai"] as const).map(s => (
                     <button key={s} onClick={() => setAdminSection(s)}
-                      style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "2px", padding: "10px 20px", background: "none", border: "none", cursor: "pointer", transition: "all 0.2s" }}
-                      style={{ borderBottom: adminSection === s ? "1.5px solid var(--deep-forest)" : "2px solid transparent", color: adminSection === s ? "var(--deep-forest)" : "var(--gris)", marginBottom: -2, background: "none", cursor: "pointer" }}>
+                      style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "2px", padding: "10px 20px", background: "none", cursor: "pointer", transition: "all 0.2s", borderBottom: adminSection === s ? "1.5px solid var(--deep-forest)" : "1.5px solid transparent", borderTop: "none", borderLeft: "none", borderRight: "none", color: adminSection === s ? "var(--deep-forest)" : "rgba(18,38,32,0.4)", marginBottom: -1 }}>
                       {s === "workspaces" ? "Workspaces" : s === "users" ? "Users" : "AI Settings"}
                     </button>
                   ))}
