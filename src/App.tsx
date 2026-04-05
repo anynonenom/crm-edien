@@ -113,6 +113,12 @@ export default function App() {
   const [showNewContactModal, setShowNewContactModal] = useState(false);
   const [showKnowledgeModal, setShowKnowledgeModal] = useState(false);
   const [selectedKnowledge, setSelectedKnowledge] = useState<KnowledgeItem | null>(null);
+  const [showNewKnowledgeModal, setShowNewKnowledgeModal] = useState(false);
+  const [showEditKnowledgeModal, setShowEditKnowledgeModal] = useState(false);
+  const [editKnowledge, setEditKnowledge] = useState<KnowledgeItem | null>(null);
+  const [kbTitle, setKbTitle] = useState("");
+  const [kbContent, setKbContent] = useState("");
+  const [kbCategory, setKbCategory] = useState("Services");
   const [showDealEditModal, setShowDealEditModal] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [selectedDealForTask, setSelectedDealForTask] = useState<Deal | null>(null);
@@ -577,6 +583,35 @@ export default function App() {
     fetchData();
   };
 
+  // ─── Knowledge Base (Admin CRUD) ─────────────────────────────────────────────
+  const handleCreateKnowledge = async () => {
+    if (!kbTitle.trim() || !kbContent.trim() || !kbCategory) return;
+    await fetch("/api/knowledge", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: kbTitle.trim(), content: kbContent.trim(), category: kbCategory })
+    });
+    setShowNewKnowledgeModal(false);
+    setKbTitle(""); setKbContent(""); setKbCategory("Services");
+    fetchData();
+  };
+
+  const handleUpdateKnowledge = async () => {
+    if (!editKnowledge) return;
+    await fetch(`/api/knowledge/${editKnowledge.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: editKnowledge.title, content: editKnowledge.content, category: editKnowledge.category })
+    });
+    setShowEditKnowledgeModal(false);
+    setEditKnowledge(null);
+    fetchData();
+  };
+
+  const handleDeleteKnowledge = async (id: number) => {
+    if (!confirm("Delete this knowledge entry?")) return;
+    await fetch(`/api/knowledge/${id}`, { method: "DELETE" });
+    fetchData();
+  };
+
   // ─── Team Chat ───────────────────────────────────────────────────────────────
   const sendChatMessage = async () => {
     if (!chatInput.trim() || !currentUser || !currentWorkspace) return;
@@ -967,6 +1002,7 @@ export default function App() {
             {activeTab === "pipeline" && perms.canCreate && <button onClick={() => setShowNewDealModal(true)} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Deal</button>}
             {activeTab === "contacts" && perms.canCreate && <button onClick={() => setShowNewContactModal(true)} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Contact</button>}
             {activeTab === "tasks" && <button onClick={() => { setSelectedDealForTask(null); setShowNewTaskModal(true); }} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Task</button>}
+            {activeTab === "codex" && currentUser?.role === "Admin" && <button onClick={() => { setKbTitle(""); setKbContent(""); setKbCategory("Services"); setShowNewKnowledgeModal(true); }} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Entry</button>}
             <button onClick={fetchData} style={{ color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", padding: 4 }} title="Refresh"
               onMouseEnter={e => (e.currentTarget.style.color = "var(--deep-forest)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(18,38,32,0.35)")}>
               <RefreshCw size={14} />
@@ -1459,21 +1495,68 @@ export default function App() {
             {/* ── Codex ────────────────────────────────────────── */}
             {activeTab === "codex" && (
               <motion.div key="codex" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
-                  {knowledge.map(item => (
-                    <div key={item.id} className="eiden-card p-5 space-y-3 group cursor-pointer" onClick={() => { setSelectedKnowledge(item); setShowKnowledgeModal(true); }}>
-                      <div className="flex items-start justify-between gap-3">
-                        <h3 style={{ fontSize: "0.9rem", fontWeight: 700, lineHeight: 1.3, color: "var(--deep-forest)" }}>{item.title}</h3>
-                        <span className="shrink-0 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.06em]" style={{ border: "1px solid rgba(18,38,32,0.12)", color: "var(--deep-forest)", background: "rgba(18,38,32,0.04)" }}>{item.category}</span>
+                {/* Category groups */}
+                {["Company", "Services", "Methodology", "Results", "Sales", "Brand"].map(cat => {
+                  const items = knowledge.filter(k => k.category === cat);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={cat} className="mb-7">
+                      <div className="flex items-center gap-3 mb-3">
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "2px", color: "rgba(18,38,32,0.4)" }}>{cat}</span>
+                        <div className="flex-1" style={{ height: 1, background: "rgba(18,38,32,0.07)" }} />
                       </div>
-                      <p className="text-[0.75rem] leading-relaxed line-clamp-4" style={{ color: "var(--gris)" }}>{item.content}</p>
-                      <div className="flex justify-between items-center pt-3" style={{ borderTop: "1px dashed rgba(18,38,32,0.1)" }}>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.3)" }}>KB-{item.id.toString().padStart(3, "0")}</span>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: 500, color: "var(--deep-forest)", display: "flex", alignItems: "center", gap: 4 }}>Read →</span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {items.map(item => (
+                          <div key={item.id} className="eiden-card p-5 group" style={{ cursor: "pointer" }}>
+                            <div className="flex items-start justify-between gap-3 mb-3">
+                              <h3 onClick={() => { setSelectedKnowledge(item); setShowKnowledgeModal(true); }} style={{ fontSize: "0.88rem", fontWeight: 700, lineHeight: 1.3, color: "var(--deep-forest)", flex: 1 }}>{item.title}</h3>
+                              {currentUser?.role === "Admin" && (
+                                <div className="flex gap-1.5 shrink-0">
+                                  <button onClick={() => { setEditKnowledge({ ...item }); setShowEditKnowledgeModal(true); }} className="btn-mini" style={{ fontSize: "0.58rem", padding: "3px 7px" }}><Edit3 size={9} /></button>
+                                  <button onClick={() => handleDeleteKnowledge(item.id)} className="btn-mini danger" style={{ fontSize: "0.58rem", padding: "3px 7px" }}><Trash2 size={9} /></button>
+                                </div>
+                              )}
+                            </div>
+                            <p onClick={() => { setSelectedKnowledge(item); setShowKnowledgeModal(true); }} className="line-clamp-3" style={{ fontSize: "0.75rem", lineHeight: 1.65, color: "rgba(18,38,32,0.5)" }}>{item.content}</p>
+                            <div className="flex justify-between items-center mt-4 pt-3" style={{ borderTop: "1px solid rgba(18,38,32,0.06)" }}>
+                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(18,38,32,0.25)" }}>KB-{item.id.toString().padStart(3, "0")}</span>
+                              <span onClick={() => { setSelectedKnowledge(item); setShowKnowledgeModal(true); }} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", fontWeight: 500, color: "var(--deep-forest)" }}>Read →</span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
+                {/* Uncategorised */}
+                {knowledge.filter(k => !["Company","Services","Methodology","Results","Sales","Brand"].includes(k.category)).length > 0 && (
+                  <div className="mb-7">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "2px", color: "rgba(18,38,32,0.4)" }}>Other</span>
+                      <div className="flex-1" style={{ height: 1, background: "rgba(18,38,32,0.07)" }} />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {knowledge.filter(k => !["Company","Services","Methodology","Results","Sales","Brand"].includes(k.category)).map(item => (
+                        <div key={item.id} className="eiden-card p-5 group cursor-pointer">
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <h3 onClick={() => { setSelectedKnowledge(item); setShowKnowledgeModal(true); }} style={{ fontSize: "0.88rem", fontWeight: 700, lineHeight: 1.3, color: "var(--deep-forest)", flex: 1 }}>{item.title}</h3>
+                            {currentUser?.role === "Admin" && (
+                              <div className="flex gap-1.5 shrink-0">
+                                <button onClick={() => { setEditKnowledge({ ...item }); setShowEditKnowledgeModal(true); }} className="btn-mini" style={{ fontSize: "0.58rem", padding: "3px 7px" }}><Edit3 size={9} /></button>
+                                <button onClick={() => handleDeleteKnowledge(item.id)} className="btn-mini danger" style={{ fontSize: "0.58rem", padding: "3px 7px" }}><Trash2 size={9} /></button>
+                              </div>
+                            )}
+                          </div>
+                          <p onClick={() => { setSelectedKnowledge(item); setShowKnowledgeModal(true); }} className="line-clamp-3" style={{ fontSize: "0.75rem", lineHeight: 1.65, color: "rgba(18,38,32,0.5)" }}>{item.content}</p>
+                          <div className="flex justify-between items-center mt-4 pt-3" style={{ borderTop: "1px solid rgba(18,38,32,0.06)" }}>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(18,38,32,0.25)" }}>KB-{item.id.toString().padStart(3, "0")}</span>
+                            <span onClick={() => { setSelectedKnowledge(item); setShowKnowledgeModal(true); }} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", fontWeight: 500, color: "var(--deep-forest)" }}>Read →</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -1924,12 +2007,79 @@ export default function App() {
         {/* Knowledge detail */}
         {showKnowledgeModal && selectedKnowledge && (
           <Modal title={selectedKnowledge.title} onClose={() => { setShowKnowledgeModal(false); setSelectedKnowledge(null); }}>
-            <div className="space-y-4">
-              <span className="inline-block px-2 py-0.5 text-[0.6rem] font-bold uppercase" style={{ border: "1px solid rgba(18,38,32,0.12)", color: "var(--deep-forest)", background: "rgba(18,38,32,0.04)" }}>{selectedKnowledge.category}</span>
-              <div className="p-4 text-[0.8rem] leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto" style={{ background: "var(--silk-creme)", border: "1px solid rgba(18,38,32,0.1)", color: "var(--deep-forest)" }}>
+            <div className="space-y-5">
+              <span style={{ display: "inline-block", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "2px", color: "rgba(18,38,32,0.5)", padding: "3px 10px", border: "1px solid rgba(18,38,32,0.12)" }}>{selectedKnowledge.category}</span>
+              <div className="whitespace-pre-wrap max-h-[55vh] overflow-y-auto" style={{ fontSize: "0.82rem", lineHeight: 1.75, color: "var(--deep-forest)", padding: "16px", background: "rgba(18,38,32,0.025)", borderLeft: "2px solid rgba(18,38,32,0.15)" }}>
                 {selectedKnowledge.content}
               </div>
-              <button onClick={() => { setShowKnowledgeModal(false); setSelectedKnowledge(null); }} className="flash-button" style={{ marginBottom: 0 }}>Close</button>
+              {currentUser?.role === "Admin" && (
+                <div className="flex gap-2">
+                  <button onClick={() => { setShowKnowledgeModal(false); setEditKnowledge({ ...selectedKnowledge }); setShowEditKnowledgeModal(true); setSelectedKnowledge(null); }} className="btn-mini flex-1 justify-center"><Edit3 size={11} /> Edit</button>
+                  <button onClick={() => { handleDeleteKnowledge(selectedKnowledge.id); setShowKnowledgeModal(false); setSelectedKnowledge(null); }} className="btn-mini danger flex-1 justify-center"><Trash2 size={11} /> Delete</button>
+                </div>
+              )}
+              <button onClick={() => { setShowKnowledgeModal(false); setSelectedKnowledge(null); }} className="flash-button" style={{ marginBottom: 0 }}>
+                <span>CLOSE</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {/* New Knowledge Entry (Admin only) */}
+        {showNewKnowledgeModal && (
+          <Modal title="New Knowledge Entry" onClose={() => { setShowNewKnowledgeModal(false); setKbTitle(""); setKbContent(""); setKbCategory("Services"); }}>
+            <div className="space-y-6">
+              <Field label="Title">
+                <input type="text" placeholder="e.g. Partnership Policy" className="field-input" value={kbTitle} onChange={e => setKbTitle(e.target.value)} />
+              </Field>
+              <Field label="Category">
+                <select className="field-input" value={kbCategory} onChange={e => setKbCategory(e.target.value)}>
+                  <option value="Company">Company</option>
+                  <option value="Services">Services</option>
+                  <option value="Methodology">Methodology</option>
+                  <option value="Results">Results</option>
+                  <option value="Sales">Sales</option>
+                  <option value="Brand">Brand</option>
+                  <option value="Other">Other</option>
+                </select>
+              </Field>
+              <Field label="Content">
+                <textarea className="field-input resize-none" rows={8} placeholder="Full knowledge content…" value={kbContent} onChange={e => setKbContent(e.target.value)} />
+              </Field>
+              <button onClick={handleCreateKnowledge} disabled={!kbTitle.trim() || !kbContent.trim()} className="flash-button" style={{ marginBottom: 0 }}>
+                <span>PUBLISH ENTRY</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {/* Edit Knowledge Entry (Admin only) */}
+        {showEditKnowledgeModal && editKnowledge && (
+          <Modal title="Edit Knowledge Entry" onClose={() => { setShowEditKnowledgeModal(false); setEditKnowledge(null); }}>
+            <div className="space-y-6">
+              <Field label="Title">
+                <input type="text" className="field-input" value={editKnowledge.title} onChange={e => setEditKnowledge({ ...editKnowledge, title: e.target.value })} />
+              </Field>
+              <Field label="Category">
+                <select className="field-input" value={editKnowledge.category} onChange={e => setEditKnowledge({ ...editKnowledge, category: e.target.value })}>
+                  <option value="Company">Company</option>
+                  <option value="Services">Services</option>
+                  <option value="Methodology">Methodology</option>
+                  <option value="Results">Results</option>
+                  <option value="Sales">Sales</option>
+                  <option value="Brand">Brand</option>
+                  <option value="Other">Other</option>
+                </select>
+              </Field>
+              <Field label="Content">
+                <textarea className="field-input resize-none" rows={8} value={editKnowledge.content} onChange={e => setEditKnowledge({ ...editKnowledge, content: e.target.value })} />
+              </Field>
+              <button onClick={handleUpdateKnowledge} className="flash-button" style={{ marginBottom: 0 }}>
+                <span>SAVE CHANGES</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+              </button>
             </div>
           </Modal>
         )}

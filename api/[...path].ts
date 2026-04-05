@@ -256,6 +256,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await supabase.from("knowledge_base").update({ title, content, category, updated_at: new Date().toISOString() }).eq("id", r1);
         return res.json({ success: true });
       }
+      if (r1 && method === "DELETE") {
+        await supabase.from("knowledge_base").delete().eq("id", r1);
+        return res.json({ success: true });
+      }
     }
 
     // ─── Financials ───────────────────────────────────────────────────────────
