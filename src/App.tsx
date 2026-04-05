@@ -636,93 +636,144 @@ export default function App() {
   // ─── Login Screen ─────────────────────────────────────────────────────────────
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden" style={{ background: "#f0ede6" }}>
-        {/* Decorative background lines */}
-        <div className="absolute inset-0 pointer-events-none" style={{
-          backgroundImage: "linear-gradient(rgba(12,87,82,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(12,87,82,0.04) 1px, transparent 1px)",
-          backgroundSize: "40px 40px"
-        }} />
+      <div className="h-screen w-full flex overflow-hidden" style={{ background: "var(--silk-creme)" }}>
 
+        {/* Grain overlay */}
+        <svg className="grain-overlay">
+          <filter id="noiseFilter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+          </filter>
+          <rect width="100%" height="100%" filter="url(#noiseFilter)" />
+        </svg>
+
+        {/* TFA overlay */}
         <AnimatePresence>
           {showTfa && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6" style={{ background: "rgba(18,38,32,0.9)" }}>
-              <div className="w-12 h-12 border-2 border-[var(--or)] border-t-transparent rounded-full animate-spin" />
-              <div className="text-[0.72rem] font-bold tracking-[4px] uppercase text-[var(--or)]">Authenticating</div>
-              <div className="w-48 h-0.5 bg-[rgba(215,187,147,0.2)]">
-                <div className="h-full bg-[var(--or)] transition-all duration-100" style={{ width: `${tfaProgress}%` }} />
+              className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6" style={{ background: "var(--deep-forest)" }}>
+              <div className="w-10 h-10 border-2 border-[var(--silk-creme)] border-t-transparent rounded-full animate-spin" />
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", letterSpacing: "4px", textTransform: "uppercase", color: "var(--silk-creme)", opacity: 0.7 }}>Authenticating</div>
+              <div className="w-48 h-0.5" style={{ background: "rgba(244,235,208,0.15)" }}>
+                <div className="h-full transition-all duration-100" style={{ width: `${tfaProgress}%`, background: "var(--silk-creme)" }} />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="panel p-0 overflow-hidden w-full max-w-[420px] mx-4 sm:mx-0">
-          {/* Header */}
-          <div className="px-5 sm:px-8 pt-6 sm:pt-8 pb-5 sm:pb-6" style={{ borderBottom: "2px solid var(--or)" }}>
-            <div className="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-[var(--sarcelle)] mb-3">Eiden Group</div>
-            <div className="text-[1.6rem] font-light tracking-[0.1em] uppercase text-[var(--vert-fonce)] leading-tight">
-              {view === "login" ? "Sign In" : view === "register" ? "Register" : "Recovery"}
-            </div>
-            <div className="text-[0.72rem] text-[var(--gris)] mt-1">
-              {view === "login" ? "Access your CRM workspace" : view === "register" ? "Create your account" : "Reset your password"}
-            </div>
+        {/* Left visual panel — hidden on mobile */}
+        <div className="hidden md:flex relative overflow-hidden flex-col justify-between" style={{ width: "55%", background: "var(--deep-forest)", padding: "60px" }}>
+          <div className="silk-texture" />
+          <div style={{ position: "relative", zIndex: 10, fontFamily: "'JetBrains Mono', monospace", color: "var(--silk-creme)", letterSpacing: "-0.5px", fontWeight: 300, opacity: 0.7, fontSize: "0.8rem" }}>
+            EIDEN // CRM_V.01
+          </div>
+          <div style={{ position: "relative", zIndex: 10, color: "var(--silk-creme)" }}>
+            <h1 style={{ fontSize: "clamp(3rem,7vw,5.5rem)", lineHeight: 0.9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "-2px" }}>
+              Verdant<br />Intelligence
+            </h1>
+            <p style={{ fontFamily: "'JetBrains Mono', monospace", marginTop: 20, maxWidth: 380, fontSize: "0.82rem", opacity: 0.5, lineHeight: 1.6 }}>
+              High-fidelity client relationship management — built for precision, speed, and team clarity.
+            </p>
+          </div>
+          <div style={{ position: "relative", zIndex: 10, fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "var(--silk-creme)", opacity: 0.35, letterSpacing: "1px" }}>
+            © {new Date().getFullYear()} EIDEN GROUP
+          </div>
+        </div>
+
+        {/* Right form panel */}
+        <div className="flex-1 flex items-center justify-center p-8 sm:p-12 relative overflow-y-auto" style={{ background: "var(--silk-creme)" }}>
+          {/* Decorative vertical tag */}
+          <div className="hidden lg:block absolute bottom-10 right-10 text-[10px] tracking-[3px] opacity-15"
+            style={{ fontFamily: "'JetBrains Mono', monospace", writingMode: "vertical-rl", color: "var(--deep-forest)" }}>
+            SECURE · WORKSPACE
           </div>
 
-          <div className="px-5 sm:px-8 py-5 sm:py-7">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.23,1,0.32,1] }}
+            className="w-full" style={{ maxWidth: 400 }}>
+
+            {/* Form header */}
+            <header className="mb-12">
+              <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1px", color: "rgba(18,38,32,0.45)" }}>
+                {view === "login" ? "Access Portal" : view === "register" ? "New Account" : "Recovery"}
+              </div>
+              <h2 style={{ fontSize: "2.2rem", fontWeight: 700, letterSpacing: "-1px", color: "var(--deep-forest)", lineHeight: 1.1 }}>
+                {view === "login" ? "Welcome back." : view === "register" ? "Join the team." : "Reset access."}
+              </h2>
+            </header>
+
             {view === "login" && (
-              <div className="space-y-4">
-                <Field label="Username or Email">
-                  <input type="text" value={loginUser} onChange={e => { setLoginUser(e.target.value); setLoginError(null); }}
-                    onKeyDown={e => e.key === "Enter" && handleLogin()}
-                    placeholder="your.username" className="flash-input" autoComplete="username" />
-                </Field>
-                <Field label="Password">
-                  <input type="password" value={loginPass} onChange={e => { setLoginPass(e.target.value); setLoginError(null); }}
-                    onKeyDown={e => e.key === "Enter" && handleLogin()}
-                    placeholder="••••••••" className="flash-input" autoComplete="current-password" />
-                </Field>
+              <div>
+                <div className="mb-10">
+                  <AuthField label="Identity / Username">
+                    <input type="text" value={loginUser} onChange={e => { setLoginUser(e.target.value); setLoginError(null); }}
+                      onKeyDown={e => e.key === "Enter" && handleLogin()}
+                      placeholder="your.username" className="flash-input" autoComplete="username" />
+                  </AuthField>
+                </div>
+                <div className="mb-10">
+                  <AuthField label="Security Code">
+                    <input type="password" value={loginPass} onChange={e => { setLoginPass(e.target.value); setLoginError(null); }}
+                      onKeyDown={e => e.key === "Enter" && handleLogin()}
+                      placeholder="••••••••" className="flash-input" autoComplete="current-password" />
+                  </AuthField>
+                </div>
                 {loginError && (
-                  <motion.div initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
-                    className="p-3 text-[0.75rem]" style={{ border: "1px solid var(--danger)", background: "rgba(139,58,58,0.06)", color: "var(--danger)" }}>
+                  <motion.div initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} className="mb-6 px-4 py-3 text-[0.8rem]"
+                    style={{ border: "1px solid rgba(139,58,58,0.3)", color: "var(--danger)", background: "rgba(139,58,58,0.04)" }}>
                     {loginError}
                   </motion.div>
                 )}
-                <button onClick={handleLogin} className="flash-button">Sign In</button>
-                <div className="flex justify-between text-[0.72rem] text-[var(--gris)]">
-                  <button onClick={() => setView("recovery")} className="hover:text-[var(--sarcelle)] transition-colors">Forgot password?</button>
-                  <button onClick={() => { setView("register"); setRegStep(0); }} className="hover:text-[var(--sarcelle)] transition-colors">Create account</button>
+                <div className="space-y-3 mt-14">
+                  <button onClick={handleLogin} className="flash-button">
+                    <span>ENTER ENVIRONMENT</span>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                  </button>
+                  <button onClick={() => { setView("register"); setRegStep(0); }}
+                    className="w-full py-4 text-[0.75rem] text-center transition-all"
+                    style={{ border: "1px solid rgba(18,38,32,0.12)", background: "transparent", fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.55)", cursor: "pointer", letterSpacing: "1px", textTransform: "uppercase" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--pure-white)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--deep-forest)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(18,38,32,0.12)"; }}>
+                    Request Credentials
+                  </button>
                 </div>
-                <div className="pt-3 text-[0.68rem] text-[var(--gris)]" style={{ borderTop: "1px solid var(--border2)" }}>
-                  Default: <span className="font-bold text-[var(--sarcelle)]">admin / admin123</span>
+                <div className="flex gap-6 mt-10">
+                  <button onClick={() => setView("recovery")} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.35)", textTransform: "uppercase", letterSpacing: "1px", background: "none", border: "none", cursor: "pointer" }}
+                    onMouseEnter={e => (e.currentTarget.style.color = "var(--deep-forest)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(18,38,32,0.35)")}>
+                    Recovery
+                  </button>
+                  <span style={{ color: "rgba(18,38,32,0.2)", fontSize: "0.65rem" }}>·</span>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.25)", textTransform: "uppercase", letterSpacing: "1px" }}>
+                    admin / admin123
+                  </div>
                 </div>
               </div>
             )}
 
             {view === "register" && (
-              <div className="space-y-4">
-                <div className="flex gap-1 mb-5">
+              <div>
+                {/* Step progress */}
+                <div className="flex gap-1.5 mb-12">
                   {[0, 1, 2].map(i => (
-                    <div key={i} className="flex-1 h-0.5 transition-colors" style={{ background: i <= regStep ? "var(--sarcelle)" : "var(--border)" }} />
+                    <div key={i} className="flex-1 h-0.5 transition-all" style={{ background: i <= regStep ? "var(--deep-forest)" : "rgba(18,38,32,0.12)", transitionDuration: "0.4s" }} />
                   ))}
                 </div>
                 {regStep === 0 && (
-                  <div className="space-y-4">
-                    <Field label="Full Name">
+                  <div className="space-y-8">
+                    <AuthField label="Full Name">
                       <input type="text" placeholder="Your full name" className="flash-input" value={regName}
                         onChange={e => { setRegName(e.target.value); setRegError(null); }} />
-                    </Field>
-                    <Field label="Email">
+                    </AuthField>
+                    <AuthField label="Email">
                       <input type="email" placeholder="name@company.com" className="flash-input" value={regEmail}
                         onChange={e => { setRegEmail(e.target.value); setRegError(null); }} />
-                    </Field>
-                    <Field label="Company / Organization">
+                    </AuthField>
+                    <AuthField label="Company / Organization">
                       <input type="text" placeholder="Your company name" className="flash-input" value={regCompany}
                         onChange={e => { setRegCompany(e.target.value); setRegError(null); }} />
-                      <p className="text-[0.65rem] mt-1" style={{ color: "var(--gris)" }}>
-                        New company → you become Admin. Existing company → you join with your role.
+                      <p className="mt-2" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", color: "rgba(18,38,32,0.4)", lineHeight: 1.6 }}>
+                        New company → you become Admin. Existing → join with your role.
                       </p>
-                    </Field>
-                    <Field label="Your Role">
+                    </AuthField>
+                    <AuthField label="Your Role">
                       <select className="flash-input" value={regRole} onChange={e => { setRegRole(e.target.value); setRegError(null); }}>
                         <option value="">Select your role...</option>
                         <option value="Operational Manager">Operational Manager</option>
@@ -734,64 +785,76 @@ export default function App() {
                         <option value="Sales">Sales</option>
                         <option value="Commercial">Commercial</option>
                       </select>
-                    </Field>
-                    {regError && <div className="p-3 text-[0.72rem]" style={{ border: "1px solid var(--danger)", color: "var(--danger)" }}>{regError}</div>}
-                    <button onClick={() => { if (regName && regEmail && regCompany && regRole) { setRegError(null); setRegStep(1); } else setRegError("Fill in all fields"); }} className="flash-button">
-                      Continue →
+                    </AuthField>
+                    {regError && <div className="px-4 py-3 text-[0.78rem]" style={{ border: "1px solid rgba(139,58,58,0.3)", color: "var(--danger)" }}>{regError}</div>}
+                    <button onClick={() => { if (regName && regEmail && regCompany && regRole) { setRegError(null); setRegStep(1); } else setRegError("Fill in all fields"); }} className="flash-button mt-6">
+                      <span>CONTINUE</span>
+                      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                     </button>
                   </div>
                 )}
                 {regStep === 1 && (
-                  <div className="space-y-4">
-                    <div className="p-2.5 text-[0.72rem] space-y-1" style={{ border: "1px solid var(--or)", background: "rgba(215,187,147,0.08)" }}>
-                      <div><span className="text-[var(--gris)]">Company: </span><span className="font-bold text-[var(--sarcelle)]">{regCompany}</span></div>
-                      <div><span className="text-[var(--gris)]">Role: </span><span className="font-bold text-[var(--sarcelle)]">{regRole}</span></div>
+                  <div className="space-y-8">
+                    <div className="py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.1)" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", color: "rgba(18,38,32,0.4)", textTransform: "uppercase", letterSpacing: "1px" }}>
+                        {regCompany} · {regRole}
+                      </div>
                     </div>
-                    <Field label="Username">
+                    <AuthField label="Username">
                       <input type="text" placeholder="unique_username" className="flash-input" value={regUsername}
                         onChange={e => { setRegUsername(e.target.value); setRegError(null); }} />
-                    </Field>
-                    <Field label="Password">
+                    </AuthField>
+                    <AuthField label="Password">
                       <input type="password" placeholder="Min 6 characters" className="flash-input" value={regPassword}
                         onChange={e => { setRegPassword(e.target.value); setRegError(null); }} />
-                    </Field>
-                    {regError && <div className="p-3 text-[0.72rem]" style={{ border: "1px solid var(--danger)", color: "var(--danger)" }}>{regError}</div>}
-                    <button onClick={handleRegister} disabled={isRegistering} className="flash-button">
-                      {isRegistering ? "Creating account..." : "Create Account"}
+                    </AuthField>
+                    {regError && <div className="px-4 py-3 text-[0.78rem]" style={{ border: "1px solid rgba(139,58,58,0.3)", color: "var(--danger)" }}>{regError}</div>}
+                    <button onClick={handleRegister} disabled={isRegistering} className="flash-button mt-6">
+                      <span>{isRegistering ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}</span>
+                      {!isRegistering && <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>}
                     </button>
-                    <button onClick={() => setRegStep(0)} className="text-[0.72rem] text-[var(--gris)] hover:text-[var(--sarcelle)] transition-colors">← Back</button>
+                    <button onClick={() => setRegStep(0)} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.4)", textTransform: "uppercase", letterSpacing: "1px", background: "none", border: "none", cursor: "pointer" }}>← Back</button>
                   </div>
                 )}
                 {regStep === 2 && (
-                  <div className="text-center py-6 space-y-4">
-                    <CheckCircle2 size={40} className="mx-auto" style={{ color: "var(--success)" }} />
-                    <div className="text-[1rem] font-semibold text-[var(--vert-fonce)]">Account created!</div>
-                    <div className="text-[0.72rem] text-[var(--gris)]">You can now sign in with your credentials.</div>
-                    <button onClick={() => { setView("login"); setRegStep(0); }} className="flash-button">Sign In</button>
+                  <div className="text-center py-8 space-y-6">
+                    <CheckCircle2 size={48} className="mx-auto" style={{ color: "var(--success)", opacity: 0.8 }} />
+                    <div>
+                      <div style={{ fontSize: "1.6rem", fontWeight: 700, letterSpacing: "-1px" }}>Account created.</div>
+                      <div className="mt-2" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", color: "rgba(18,38,32,0.45)" }}>You can now sign in with your credentials.</div>
+                    </div>
+                    <button onClick={() => { setView("login"); setRegStep(0); }} className="flash-button">
+                      <span>SIGN IN</span>
+                      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                    </button>
                   </div>
                 )}
                 {regStep < 2 && (
-                  <button onClick={() => setView("login")} className="text-[0.72rem] text-[var(--gris)] hover:text-[var(--sarcelle)] transition-colors block mt-2">← Back to sign in</button>
+                  <button onClick={() => setView("login")} className="mt-4 block" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.35)", textTransform: "uppercase", letterSpacing: "1px", background: "none", border: "none", cursor: "pointer" }}>← Back to sign in</button>
                 )}
               </div>
             )}
 
             {view === "recovery" && (
-              <div className="space-y-4">
-                <p className="text-[0.75rem] text-[var(--gris)]">Enter your email to receive a reset link.</p>
-                <Field label="Email">
+              <div>
+                <p className="mb-10" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem", color: "rgba(18,38,32,0.5)", lineHeight: 1.6 }}>Enter your email and we'll send a reset link.</p>
+                <AuthField label="Email Address">
                   <input type="email" placeholder="your@email.com" className="flash-input" />
-                </Field>
+                </AuthField>
                 {showRecoveryDone ? (
-                  <div className="p-3 text-[0.72rem]" style={{ border: "1px solid var(--success)", color: "var(--success)" }}>Reset link sent. Check your inbox.</div>
+                  <div className="mt-8 px-4 py-3 text-[0.78rem]" style={{ border: "1px solid rgba(45,90,71,0.4)", color: "var(--success)" }}>Reset link sent — check your inbox.</div>
                 ) : (
-                  <button onClick={() => setShowRecoveryDone(true)} className="flash-button">Send Reset Link</button>
+                  <button onClick={() => setShowRecoveryDone(true)} className="flash-button mt-14">
+                    <span>SEND RESET LINK</span>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                  </button>
                 )}
-                <button onClick={() => { setView("login"); setShowRecoveryDone(false); }} className="text-[0.72rem] text-[var(--gris)] hover:text-[var(--sarcelle)] transition-colors">← Back to sign in</button>
+                <button onClick={() => { setView("login"); setShowRecoveryDone(false); }} className="mt-6 block" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.35)", textTransform: "uppercase", letterSpacing: "1px", background: "none", border: "none", cursor: "pointer" }}>← Back to sign in</button>
               </div>
             )}
-          </div>
-        </motion.div>
+
+          </motion.div>
+        </div>
       </div>
     );
   }
@@ -800,64 +863,72 @@ export default function App() {
   const overdueTasks = filteredTasks.filter(t => isOverdue(t.due_date, t.status));
 
   return (
-    <div className="h-screen w-full flex overflow-hidden" style={{ background: "#f0ede6" }}>
+    <div className="h-screen w-full flex overflow-hidden" style={{ background: "var(--silk-creme)" }}>
+
+      {/* Grain overlay */}
+      <svg className="grain-overlay">
+        <filter id="noiseFilter">
+          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#noiseFilter)" />
+      </svg>
 
       {/* ── Mobile sidebar overlay ── */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden" style={{ background: "rgba(0,0,0,0.5)" }} onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 z-40 lg:hidden" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* ── Sidebar ── */}
       <div className={`fixed lg:static inset-y-0 left-0 z-50 shrink-0 flex flex-col transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-        style={{ width: 220, background: "var(--vert-fonce)", minHeight: "100vh" }}>
+        style={{ width: 220, background: "var(--deep-forest)", minHeight: "100vh" }}>
         {/* Brand */}
-        <div className="flex items-center justify-between gap-3 px-5 py-0" style={{ height: 64, borderBottom: "1px solid rgba(215,187,147,0.15)" }}>
+        <div className="flex items-center justify-between gap-3 px-6 py-0" style={{ height: 64, borderBottom: "1px solid rgba(244,235,208,0.08)" }}>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 flex items-center justify-center shrink-0" style={{ border: "1.5px solid var(--or)", color: "var(--or)", fontSize: "0.75rem", fontWeight: 700 }}>E</div>
-            <div className="text-[0.9rem] font-bold tracking-[0.15em] uppercase" style={{ color: "var(--or)" }}>Eiden CRM</div>
+            <div className="w-7 h-7 flex items-center justify-center shrink-0 text-[0.72rem] font-bold" style={{ border: "1px solid rgba(244,235,208,0.35)", color: "var(--silk-creme)" }}>E</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "var(--silk-creme)", opacity: 0.8 }}>Eiden CRM</div>
           </div>
-          <button className="lg:hidden p-1" style={{ color: "rgba(245,241,232,0.5)" }} onClick={() => setSidebarOpen(false)}>✕</button>
+          <button className="lg:hidden p-1" style={{ color: "rgba(244,235,208,0.4)", background: "none", border: "none", cursor: "pointer" }} onClick={() => setSidebarOpen(false)}>✕</button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 py-4 flex flex-col gap-0.5 overflow-y-auto">
-          <NavItem active={activeTab === "dashboard"} onClick={() => { setActiveTab("dashboard"); setSidebarOpen(false); }} icon={<ActivityIcon size={15} />} label="Dashboard" />
-          {perms.tabs.includes("pipeline") && <NavItem active={activeTab === "pipeline"} onClick={() => { setActiveTab("pipeline"); setSidebarOpen(false); }} icon={<TrendingUp size={15} />} label="Pipeline" />}
-          {perms.tabs.includes("contacts") && <NavItem active={activeTab === "contacts"} onClick={() => { setActiveTab("contacts"); setSidebarOpen(false); }} icon={<Users size={15} />} label="Contacts" />}
-          <NavItem active={activeTab === "tasks"} onClick={() => { setActiveTab("tasks"); setSidebarOpen(false); }} icon={<CheckCircle2 size={15} />} label="Tasks" badge={overdueTasks.length > 0 ? overdueTasks.length : undefined} />
-          {perms.tabs.includes("analytics") && <NavItem active={activeTab === "analytics"} onClick={() => { setActiveTab("analytics"); setSidebarOpen(false); }} icon={<BarChart2 size={15} />} label="Analytics" />}
-          {perms.tabs.includes("codex") && <NavItem active={activeTab === "codex"} onClick={() => { setActiveTab("codex"); setSidebarOpen(false); }} icon={<BookOpen size={15} />} label="Codex" />}
-          <div className="mx-5 my-2" style={{ height: 1, background: "rgba(215,187,147,0.1)" }} />
-          <NavItem active={activeTab === "communications"} onClick={() => { setActiveTab("communications"); setChatUnread(0); setSidebarOpen(false); }} icon={<MessageSquare size={15} />} label="Team Chat" badge={chatUnread > 0 ? chatUnread : undefined} />
+        <nav className="flex-1 py-6 flex flex-col gap-0 overflow-y-auto">
+          <NavItem active={activeTab === "dashboard"} onClick={() => { setActiveTab("dashboard"); setSidebarOpen(false); }} icon={<ActivityIcon size={14} />} label="Dashboard" />
+          {perms.tabs.includes("pipeline") && <NavItem active={activeTab === "pipeline"} onClick={() => { setActiveTab("pipeline"); setSidebarOpen(false); }} icon={<TrendingUp size={14} />} label="Pipeline" />}
+          {perms.tabs.includes("contacts") && <NavItem active={activeTab === "contacts"} onClick={() => { setActiveTab("contacts"); setSidebarOpen(false); }} icon={<Users size={14} />} label="Contacts" />}
+          <NavItem active={activeTab === "tasks"} onClick={() => { setActiveTab("tasks"); setSidebarOpen(false); }} icon={<CheckCircle2 size={14} />} label="Tasks" badge={overdueTasks.length > 0 ? overdueTasks.length : undefined} />
+          {perms.tabs.includes("analytics") && <NavItem active={activeTab === "analytics"} onClick={() => { setActiveTab("analytics"); setSidebarOpen(false); }} icon={<BarChart2 size={14} />} label="Analytics" />}
+          {perms.tabs.includes("codex") && <NavItem active={activeTab === "codex"} onClick={() => { setActiveTab("codex"); setSidebarOpen(false); }} icon={<BookOpen size={14} />} label="Codex" />}
+          <div className="mx-6 my-3" style={{ height: 1, background: "rgba(244,235,208,0.06)" }} />
+          <NavItem active={activeTab === "communications"} onClick={() => { setActiveTab("communications"); setChatUnread(0); setSidebarOpen(false); }} icon={<MessageSquare size={14} />} label="Team Chat" badge={chatUnread > 0 ? chatUnread : undefined} />
           {perms.tabs.includes("admin") && (
             <>
-              <div className="mx-5 my-2" style={{ height: 1, background: "rgba(215,187,147,0.1)" }} />
-              <NavItem active={activeTab === "admin"} onClick={() => { setActiveTab("admin"); setSidebarOpen(false); }} icon={<Shield size={15} />} label="Admin Panel" />
+              <div className="mx-6 my-3" style={{ height: 1, background: "rgba(244,235,208,0.06)" }} />
+              <NavItem active={activeTab === "admin"} onClick={() => { setActiveTab("admin"); setSidebarOpen(false); }} icon={<Shield size={14} />} label="Admin Panel" />
             </>
           )}
         </nav>
 
         {/* User / bottom */}
-        <div className="px-5 py-4" style={{ borderTop: "1px solid rgba(215,187,147,0.1)" }}>
+        <div className="px-6 py-5" style={{ borderTop: "1px solid rgba(244,235,208,0.07)" }}>
           {currentUser?.role === "Admin" && (
             <select value={currentWorkspace?.id} onChange={e => {
               const ws = workspaces.find(w => w.id === parseInt(e.target.value));
               if (ws) setCurrentWorkspace(ws);
-            }} className="w-full text-[0.72rem] outline-none mb-3 px-2 py-1.5"
-              style={{ border: "1px solid rgba(215,187,147,0.25)", background: "rgba(215,187,147,0.06)", color: "var(--or)", fontFamily: "'Montserrat', sans-serif" }}>
+            }} className="w-full outline-none mb-4 px-2 py-1.5"
+              style={{ border: "1px solid rgba(244,235,208,0.15)", background: "rgba(244,235,208,0.05)", color: "rgba(244,235,208,0.6)", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem" }}>
               {workspaces.map(ws => <option key={ws.id} value={ws.id} style={{ background: "#122620" }}>{ws.name}</option>)}
             </select>
           )}
-          <div className="mb-3">
-            <div className="text-[0.8rem] font-semibold" style={{ color: "var(--creme)" }}>{currentUser?.name}</div>
-            <div className="text-[0.65rem] mt-0.5" style={{ color: "rgba(245,241,232,0.45)" }}>{currentUser?.role} · {currentWorkspace?.name}</div>
+          <div className="mb-4">
+            <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--silk-creme)" }}>{currentUser?.name}</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", marginTop: 3, color: "rgba(244,235,208,0.35)", letterSpacing: "0.5px" }}>{currentUser?.role} · {currentWorkspace?.name}</div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setShowProfileModal(true)} className="btn-mini flex-1 justify-center" style={{ background: "transparent", borderColor: "rgba(215,187,147,0.3)", color: "rgba(245,241,232,0.6)" }}>
-              <Settings size={11} /> Profile
+            <button onClick={() => setShowProfileModal(true)} className="btn-mini flex-1 justify-center" style={{ borderColor: "rgba(244,235,208,0.15)", color: "rgba(244,235,208,0.5)" }}>
+              <Settings size={10} /> Profile
             </button>
-            <button onClick={() => { setIsLoggedIn(false); setCurrentUser(null); setCurrentWorkspace(null); localStorage.removeItem("eiden_session"); }} className="btn-mini flex-1 justify-center danger" style={{ background: "transparent", borderColor: "rgba(139,58,58,0.5)", color: "#c87070" }}>
-              <LogOut size={11} /> Logout
+            <button onClick={() => { setIsLoggedIn(false); setCurrentUser(null); setCurrentWorkspace(null); localStorage.removeItem("eiden_session"); }} className="btn-mini flex-1 justify-center danger" style={{ borderColor: "rgba(139,58,58,0.4)", color: "rgba(200,112,112,0.8)" }}>
+              <LogOut size={10} /> Logout
             </button>
           </div>
         </div>
@@ -866,15 +937,15 @@ export default function App() {
       {/* ── Main content ── */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top bar */}
-        <div className="shrink-0 flex items-center justify-between px-4 lg:px-7" style={{ height: 64, background: "var(--blanc)", borderBottom: "1px solid rgba(215,187,147,0.3)", boxShadow: "0 2px 12px rgba(18,38,32,0.06)" }}>
+        <div className="shrink-0 flex items-center justify-between px-4 lg:px-8" style={{ height: 64, background: "var(--pure-white)", borderBottom: "1px solid rgba(18,38,32,0.08)" }}>
           <div className="flex items-center gap-3">
             {/* Hamburger */}
-            <button className="lg:hidden flex flex-col gap-1 p-1 mr-1" onClick={() => setSidebarOpen(true)} style={{ color: "var(--vert-fonce)" }}>
-              <span className="block w-5 h-0.5 bg-current" />
-              <span className="block w-5 h-0.5 bg-current" />
-              <span className="block w-5 h-0.5 bg-current" />
+            <button className="lg:hidden flex flex-col gap-1.5 p-1 mr-1" onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", cursor: "pointer" }}>
+              <span className="block w-5 h-0.5" style={{ background: "var(--deep-forest)" }} />
+              <span className="block w-5 h-0.5" style={{ background: "var(--deep-forest)" }} />
+              <span className="block w-5 h-0.5" style={{ background: "var(--deep-forest)" }} />
             </button>
-            <h1 className="text-[0.85rem] sm:text-[1rem] font-semibold tracking-[0.08em] uppercase text-[var(--vert-fonce)] truncate max-w-[140px] sm:max-w-none">
+            <h1 style={{ fontSize: "0.95rem", fontWeight: 700, letterSpacing: "-0.3px", color: "var(--deep-forest)", textTransform: "uppercase" }}>
               {activeTab === "dashboard" ? "Dashboard"
                : activeTab === "pipeline" ? "Pipeline"
                : activeTab === "contacts" ? "Contacts"
@@ -884,26 +955,27 @@ export default function App() {
                : activeTab === "admin" ? "Admin"
                : "Team Chat"}
             </h1>
-            <div className="hidden sm:block w-px h-6 opacity-40" style={{ background: "var(--or)" }} />
-            <span className="hidden sm:block text-[0.72rem] text-[var(--gris)] truncate max-w-[120px]">{currentWorkspace?.name}</span>
+            <div className="hidden sm:block w-px h-4 opacity-20" style={{ background: "var(--deep-forest)" }} />
+            <span className="hidden sm:block truncate max-w-[120px]" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.4)", letterSpacing: "0.5px" }}>{currentWorkspace?.name}</span>
             {overdueTasks.length > 0 && (
-              <span className="hidden md:flex items-center gap-1.5 text-[0.68rem] font-semibold" style={{ color: "var(--danger)" }}>
-                <AlertTriangle size={12} /> {overdueTasks.length} overdue
+              <span className="hidden md:flex items-center gap-1.5 text-[0.65rem] font-semibold" style={{ color: "var(--danger)" }}>
+                <AlertTriangle size={11} /> {overdueTasks.length} overdue
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
-            {activeTab === "pipeline" && perms.canCreate && <button onClick={() => setShowNewDealModal(true)} className="btn-primary text-[0.72rem] px-3 py-1.5">+ Deal</button>}
-            {activeTab === "contacts" && perms.canCreate && <button onClick={() => setShowNewContactModal(true)} className="btn-primary text-[0.72rem] px-3 py-1.5">+ Contact</button>}
-            {activeTab === "tasks" && <button onClick={() => { setSelectedDealForTask(null); setShowNewTaskModal(true); }} className="btn-primary text-[0.72rem] px-3 py-1.5">+ Task</button>}
-            <button onClick={fetchData} className="text-[var(--gris)] hover:text-[var(--sarcelle)] transition-colors p-1" title="Refresh">
+            {activeTab === "pipeline" && perms.canCreate && <button onClick={() => setShowNewDealModal(true)} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Deal</button>}
+            {activeTab === "contacts" && perms.canCreate && <button onClick={() => setShowNewContactModal(true)} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Contact</button>}
+            {activeTab === "tasks" && <button onClick={() => { setSelectedDealForTask(null); setShowNewTaskModal(true); }} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Task</button>}
+            <button onClick={fetchData} style={{ color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", padding: 4 }} title="Refresh"
+              onMouseEnter={e => (e.currentTarget.style.color = "var(--deep-forest)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(18,38,32,0.35)")}>
               <RefreshCw size={14} />
             </button>
           </div>
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 overflow-hidden px-3 sm:px-5 lg:px-7 py-4 lg:py-6">
+        <div className="flex-1 overflow-hidden px-3 sm:px-5 lg:px-8 py-4 lg:py-6" style={{ background: "var(--silk-creme)" }}>
           <AnimatePresence mode="wait">
             {/* ── Dashboard ─────────────────────────────────────── */}
             {activeTab === "dashboard" && (
@@ -921,10 +993,10 @@ export default function App() {
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px] gap-3 lg:gap-4 min-h-0">
                   {/* AI Chat Panel */}
                   <div className="eiden-card flex flex-col overflow-hidden" style={{ minHeight: 340 }}>
-                    <div className="shrink-0 px-3 sm:px-4 py-3 flex flex-wrap items-center justify-between gap-2" style={{ background: "var(--vert-fonce)", borderBottom: "1px solid rgba(215,187,147,0.2)" }}>
+                    <div className="shrink-0 px-3 sm:px-4 py-3 flex flex-wrap items-center justify-between gap-2" style={{ background: "var(--deep-forest)", borderBottom: "1px solid rgba(244,235,208,0.08)" }}>
                       <div className="flex items-center gap-2">
-                        <Bot size={14} style={{ color: "var(--or)" }} />
-                        <span className="text-[0.75rem] font-bold tracking-[0.1em] uppercase" style={{ color: "var(--or)" }}>Eiden AI</span>
+                        <Bot size={14} style={{ color: "var(--silk-creme)", opacity: 0.8 }} />
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "var(--silk-creme)", opacity: 0.8 }}>Eiden AI</span>
                         <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--success)" }} />
                       </div>
                       <div className="flex flex-wrap gap-1.5">
@@ -949,21 +1021,21 @@ export default function App() {
                       {aiMessages.map((msg, i) => (
                         <div key={i} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                           {msg.role === "assistant" && (
-                            <div className="shrink-0 w-7 h-7 flex items-center justify-center mt-0.5" style={{ background: "var(--vert-fonce)", color: "var(--or)" }}>
+                            <div className="shrink-0 w-7 h-7 flex items-center justify-center mt-0.5" style={{ background: "var(--deep-forest)", color: "var(--silk-creme)" }}>
                               <Bot size={13} />
                             </div>
                           )}
                           <div className="max-w-[85%] px-3 py-2 text-[0.8rem] leading-relaxed whitespace-pre-wrap break-words"
                             style={msg.role === "user"
-                              ? { background: "var(--sarcelle)", color: "var(--blanc)", borderBottomRightRadius: 2 }
-                              : { background: "var(--blanc)", border: "1px solid rgba(215,187,147,0.4)", color: "var(--vert-fonce)", borderBottomLeftRadius: 2 }}>
+                              ? { background: "var(--deep-forest)", color: "var(--silk-creme)" }
+                              : { background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.1)", color: "var(--deep-forest)" }}>
                             {msg.content.replace(/\{"action".*?\}/gs, "").trim()}
                             {msg.content.includes('"action":"create_task"') && (
-                              <div className="mt-2 pt-2 text-[0.68rem] font-semibold" style={{ borderTop: "1px solid var(--border)", color: "var(--success)" }}>✓ Task created</div>
+                              <div className="mt-2 pt-2 text-[0.68rem] font-semibold" style={{ borderTop: "1px solid rgba(18,38,32,0.1)", color: "var(--success)" }}>✓ Task created</div>
                             )}
                           </div>
                           {msg.role === "user" && (
-                            <div className="shrink-0 w-7 h-7 flex items-center justify-center mt-0.5 text-[0.72rem] font-bold" style={{ background: "var(--or)", color: "var(--vert-fonce)" }}>
+                            <div className="shrink-0 w-7 h-7 flex items-center justify-center mt-0.5 text-[0.72rem] font-bold" style={{ background: "rgba(18,38,32,0.1)", color: "var(--deep-forest)" }}>
                               {currentUser?.name[0]}
                             </div>
                           )}
@@ -971,12 +1043,12 @@ export default function App() {
                       ))}
                       {isAiThinking && (
                         <div className="flex gap-2.5">
-                          <div className="shrink-0 w-7 h-7 flex items-center justify-center" style={{ background: "var(--vert-fonce)", color: "var(--or)" }}>
+                          <div className="shrink-0 w-7 h-7 flex items-center justify-center" style={{ background: "var(--deep-forest)", color: "var(--silk-creme)" }}>
                             <Bot size={13} />
                           </div>
-                          <div className="px-3 py-2" style={{ background: "var(--blanc)", border: "1px solid rgba(215,187,147,0.4)" }}>
+                          <div className="px-3 py-2" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.1)" }}>
                             <div className="flex gap-1 items-center">
-                              {[0, 150, 300].map(d => <span key={d} className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--sarcelle)", animationDelay: `${d}ms` }} />)}
+                              {[0, 150, 300].map(d => <span key={d} className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--deep-forest)", opacity: 0.4, animationDelay: `${d}ms` }} />)}
                             </div>
                           </div>
                         </div>
@@ -984,15 +1056,15 @@ export default function App() {
                       <div ref={aiEndRef} />
                     </div>
 
-                    <form onSubmit={e => { e.preventDefault(); sendAiMessage(); }} className="shrink-0 flex gap-2 p-3" style={{ borderTop: "1px solid rgba(215,187,147,0.3)" }}>
+                    <form onSubmit={e => { e.preventDefault(); sendAiMessage(); }} className="shrink-0 flex gap-2 p-3" style={{ borderTop: "1px solid rgba(18,38,32,0.07)" }}>
                       <input type="text" value={aiInput} onChange={e => setAiInput(e.target.value)}
                         placeholder="Ask Eiden AI anything…"
                         className="flex-1 outline-none text-[0.82rem]"
-                        style={{ border: "1px solid var(--or)", padding: "8px 12px", fontFamily: "'Montserrat', sans-serif", color: "var(--vert-fonce)", background: "var(--blanc)" }}
+                        style={{ border: "none", borderBottom: "1.5px solid rgba(18,38,32,0.15)", padding: "8px 0", fontFamily: "'Space Grotesk', sans-serif", color: "var(--deep-forest)", background: "transparent" }}
                         disabled={isAiThinking} />
                       <button type="submit" disabled={isAiThinking || !aiInput.trim()}
-                        className="flex items-center justify-center transition-opacity disabled:opacity-40"
-                        style={{ background: "var(--vert-fonce)", color: "var(--blanc)", width: 38, flexShrink: 0, border: "none", cursor: "pointer" }}>
+                        className="flex items-center justify-center transition-opacity disabled:opacity-30"
+                        style={{ background: "var(--deep-forest)", color: "var(--silk-creme)", width: 38, flexShrink: 0, border: "none", cursor: "pointer" }}>
                         <Send size={14} />
                       </button>
                     </form>
@@ -1025,15 +1097,15 @@ export default function App() {
 
                     {/* Recent activity */}
                     <div className="eiden-card overflow-hidden flex flex-col lg:flex-1 lg:min-h-0">
-                      <div className="shrink-0 px-3 sm:px-4 py-2.5" style={{ borderBottom: "1px solid rgba(215,187,147,0.3)" }}>
+                      <div className="shrink-0 px-3 sm:px-4 py-2.5" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
                         <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)]">Recent Activity</span>
                       </div>
                       <div className="overflow-y-auto p-3 space-y-1 max-h-52 sm:max-h-64 lg:max-h-none lg:flex-1">
                         {activities.slice(0, 15).map(a => (
-                          <div key={a.id} className="flex gap-2 p-2 text-[0.72rem]" style={{ borderLeft: "2px solid rgba(215,187,147,0.3)" }}>
+                          <div key={a.id} className="flex gap-2 p-2 text-[0.72rem]" style={{ borderLeft: "2px solid rgba(18,38,32,0.08)" }}>
                             <span className="text-[var(--gris)] shrink-0 w-10">{a.time}</span>
                             <div className="min-w-0">
-                              <span className="text-[var(--vert-fonce)] font-medium">{a.action}</span>
+                              <span className="text-[var(--deep-forest)] font-medium">{a.action}</span>
                               {a.related_to && <span className="text-[var(--gris)] ml-1">· {a.related_to}</span>}
                             </div>
                           </div>
@@ -1054,7 +1126,7 @@ export default function App() {
                               <span className="font-semibold" style={{ color: barColor }}>{stage}</span>
                               <span className="text-[var(--gris)]">{count}</span>
                             </div>
-                            <div className="h-1.5" style={{ background: "rgba(215,187,147,0.2)" }}>
+                            <div className="h-1.5" style={{ background: "rgba(18,38,32,0.06)" }}>
                               <motion.div initial={{ width: 0 }} animate={{ width: `${(count / total) * 100}%` }} className="h-full" style={{ background: barColor }} />
                             </div>
                           </div>
@@ -1077,20 +1149,20 @@ export default function App() {
                       onDragOver={e => e.preventDefault()}
                       onDrop={async e => { const id = Number(e.dataTransfer.getData("dealId")); if (id) await updateDealStage(id, stage); }}>
                       {/* Column header */}
-                      <div className="px-3 py-3 mb-3 flex justify-between items-center" style={{ background: "var(--blanc)", border: "1px solid rgba(215,187,147,0.4)", borderLeft: `3px solid ${accentColor}` }}>
+                      <div className="px-3 py-3 mb-3 flex justify-between items-center" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.08)", borderLeft: `3px solid ${accentColor}` }}>
                         <span className="text-[0.7rem] font-bold uppercase tracking-[0.06em]" style={{ color: accentColor }}>{stage}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-[0.65rem] font-bold" style={{ background: accentColor, color: "var(--blanc)", padding: "1px 8px" }}>{stageDeals.length}</span>
+                          <span className="text-[0.65rem] font-bold" style={{ background: accentColor, color: "var(--pure-white)", padding: "1px 8px" }}>{stageDeals.length}</span>
                           <span className="text-[0.65rem] text-[var(--gris)]">${stageDeals.reduce((s, d) => s + d.value, 0).toLocaleString()}</span>
                         </div>
                       </div>
                       <div className="flex-1 overflow-y-auto space-y-2 pr-0.5">
                         {stageDeals.map(deal => (
                           <div key={deal.id} draggable onDragStart={e => e.dataTransfer.setData("dealId", deal.id.toString())}
-                            className="group cursor-grab relative" style={{ background: "var(--blanc)", border: "1px solid rgba(215,187,147,0.4)", borderLeft: `3px solid ${accentColor}`, padding: "12px 14px" }}>
+                            className="group cursor-grab relative" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.08)", borderLeft: `3px solid ${accentColor}`, padding: "12px 14px" }}>
                             {/* Corner accent */}
                             <div className="absolute bottom-0 right-0 w-3 h-3 pointer-events-none" style={{ borderBottom: "1.5px solid var(--sarcelle)", borderRight: "1.5px solid var(--sarcelle)" }} />
-                            <div className="font-semibold text-[0.82rem] leading-tight mb-2" style={{ color: "var(--vert-fonce)" }}>{deal.title}</div>
+                            <div className="font-semibold text-[0.82rem] leading-tight mb-2" style={{ color: "var(--deep-forest)" }}>{deal.title}</div>
                             <div className="flex justify-between text-[0.72rem] mb-1">
                               <span className="font-bold" style={{ color: "var(--sarcelle)" }}>${deal.value.toLocaleString()}</span>
                               <span className="font-medium" style={{ color: deal.risk_score > 50 ? "var(--danger)" : "var(--success)" }}>Risk {deal.risk_score}%</span>
@@ -1122,13 +1194,13 @@ export default function App() {
                   <StatCard icon={<TrendingUp size={15} />} label="Leads" value={String(filteredContacts.filter(c => c.status === "Lead").length)} color="teal" />
                 </div>
                 <div className="flex-1 eiden-card overflow-hidden flex flex-col">
-                  <div className="shrink-0 px-5 py-3" style={{ borderBottom: "1px solid rgba(215,187,147,0.3)", background: "rgba(215,187,147,0.05)" }}>
+                  <div className="shrink-0 px-5 py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.03)" }}>
                     <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)]">Contacts — {filteredContacts.length} records</span>
                   </div>
                   <div className="flex-1 overflow-auto">
                     <table className="w-full text-left min-w-[600px]">
-                      <thead className="sticky top-0" style={{ background: "rgba(215,187,147,0.08)" }}>
-                        <tr style={{ borderBottom: "1px solid rgba(215,187,147,0.3)" }}>
+                      <thead className="sticky top-0" style={{ background: "rgba(18,38,32,0.04)" }}>
+                        <tr style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
                           {["Name","Company","Email","Phone","Status","Source","LTV"].map(h => (
                             <th key={h} className="py-2.5 px-4 text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)]">{h}</th>
                           ))}
@@ -1136,12 +1208,12 @@ export default function App() {
                       </thead>
                       <tbody>
                         {filteredContacts.map(c => (
-                          <tr key={c.id} className="text-[0.78rem] transition-colors cursor-default" style={{ borderBottom: "1px solid rgba(215,187,147,0.15)" }}
+                          <tr key={c.id} className="text-[0.78rem] transition-colors cursor-default" style={{ borderBottom: "1px solid rgba(18,38,32,0.05)" }}
                             onMouseEnter={e => (e.currentTarget.style.background = "rgba(12,87,82,0.04)") }
                             onMouseLeave={e => (e.currentTarget.style.background = "") }>
-                            <td className="py-3 px-4 font-semibold" style={{ color: "var(--vert-fonce)" }}>
+                            <td className="py-3 px-4 font-semibold" style={{ color: "var(--deep-forest)" }}>
                               <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 flex items-center justify-center text-[0.65rem] font-bold shrink-0" style={{ background: "var(--sarcelle)", color: "var(--blanc)" }}>{c.name[0]}</div>
+                                <div className="w-7 h-7 flex items-center justify-center text-[0.65rem] font-bold shrink-0" style={{ background: "var(--sarcelle)", color: "var(--pure-white)" }}>{c.name[0]}</div>
                                 {c.name}
                               </div>
                             </td>
@@ -1176,7 +1248,7 @@ export default function App() {
                 </div>
 
                 {/* AI quick task creation */}
-                <div className="shrink-0 flex gap-3 items-center px-4 py-3" style={{ background: "var(--blanc)", border: "1px solid rgba(215,187,147,0.4)", borderLeft: "3px solid var(--sarcelle)" }}>
+                <div className="shrink-0 flex gap-3 items-center px-4 py-3" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.1)", borderLeft: "3px solid var(--sarcelle)" }}>
                   <Bot size={14} className="shrink-0" style={{ color: "var(--sarcelle)" }} />
                   <form className="flex-1 flex gap-2" onSubmit={async e => {
                     e.preventDefault();
@@ -1189,19 +1261,19 @@ export default function App() {
                   }}>
                     <input name="ai_task" type="text" placeholder="Ask AI to create tasks… e.g. 'high priority task to review proposal for Sarah by Friday'"
                       className="flex-1 text-[0.8rem] outline-none"
-                      style={{ border: "1px solid var(--or)", padding: "7px 12px", fontFamily: "'Montserrat',sans-serif", color: "var(--vert-fonce)", background: "var(--blanc)" }} />
+                      style={{ border: "none", borderBottom: "1.5px solid rgba(18,38,32,0.15)", padding: "7px 0", fontFamily: "'Space Grotesk',sans-serif", color: "var(--deep-forest)", background: "transparent" }} />
                     <button type="submit" className="btn-primary">Ask AI</button>
                   </form>
                 </div>
 
                 <div className="flex-1 eiden-card overflow-hidden flex flex-col min-h-0">
-                  <div className="shrink-0 px-5 py-3" style={{ borderBottom: "1px solid rgba(215,187,147,0.3)", background: "rgba(215,187,147,0.05)" }}>
+                  <div className="shrink-0 px-5 py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.03)" }}>
                     <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)]">All Tasks — {filteredTasks.length} total</span>
                   </div>
                   <div className="flex-1 overflow-auto">
                     <table className="w-full text-left min-w-[700px]">
-                      <thead className="sticky top-0" style={{ background: "rgba(215,187,147,0.08)" }}>
-                        <tr style={{ borderBottom: "1px solid rgba(215,187,147,0.3)" }}>
+                      <thead className="sticky top-0" style={{ background: "rgba(18,38,32,0.04)" }}>
+                        <tr style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
                           {["Task","Assignee","Deal","Due Date","Priority","Status","Actions"].map(h => (
                             <th key={h} className="py-2.5 px-4 text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)]">{h}</th>
                           ))}
@@ -1212,11 +1284,11 @@ export default function App() {
                           const overdue = isOverdue(task.due_date, task.status);
                           return (
                             <tr key={task.id} className="text-[0.78rem] transition-colors"
-                              style={{ borderBottom: "1px solid rgba(215,187,147,0.15)", background: overdue ? "rgba(139,58,58,0.03)" : "" }}
+                              style={{ borderBottom: "1px solid rgba(18,38,32,0.05)", background: overdue ? "rgba(139,58,58,0.03)" : "" }}
                               onMouseEnter={e => (e.currentTarget.style.background = "rgba(12,87,82,0.04)")}
                               onMouseLeave={e => (e.currentTarget.style.background = overdue ? "rgba(139,58,58,0.03)" : "")}>
                               <td className="py-3 px-4">
-                                <div className="font-semibold" style={{ color: "var(--vert-fonce)" }}>{task.title}</div>
+                                <div className="font-semibold" style={{ color: "var(--deep-forest)" }}>{task.title}</div>
                                 {task.description && <div className="text-[0.65rem] mt-0.5 truncate max-w-[200px]" style={{ color: "var(--gris)" }}>{task.description}</div>}
                               </td>
                               <td className="py-3 px-4 text-[var(--gris)]">{task.assignee_name || "Unassigned"}</td>
@@ -1232,7 +1304,7 @@ export default function App() {
                               <td className="py-3 px-4">
                                 <select value={task.status} onChange={e => updateTaskStatus(task.id, e.target.value)}
                                   className="text-[0.72rem] outline-none cursor-pointer"
-                                  style={{ border: "1px solid var(--or)", padding: "4px 8px", fontFamily: "'Montserrat',sans-serif", color: "var(--vert-fonce)", background: "var(--blanc)" }}>
+                                  style={{ border: "none", borderBottom: "1px solid rgba(18,38,32,0.15)", padding: "4px 0", fontFamily: "'Space Grotesk',sans-serif", color: "var(--deep-forest)", background: "transparent" }}>
                                   <option>Pending</option>
                                   <option>In Progress</option>
                                   <option>Completed</option>
@@ -1310,7 +1382,7 @@ export default function App() {
                               <span className="font-semibold" style={{ color: barColor }}>{stage}</span>
                               <span className="text-[var(--gris)]">{stageDl.length} deals · ${val.toLocaleString()}</span>
                             </div>
-                            <div className="h-1.5" style={{ background: "rgba(215,187,147,0.2)" }}>
+                            <div className="h-1.5" style={{ background: "rgba(18,38,32,0.06)" }}>
                               <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} className="h-full" style={{ background: barColor }} />
                             </div>
                           </div>
@@ -1331,10 +1403,10 @@ export default function App() {
                         const completed = userTasks.filter(t => t.status === "Completed").length;
                         const overdue = userTasks.filter(t => isOverdue(t.due_date, t.status)).length;
                         return (
-                          <div key={u.id} className="p-3" style={{ border: "1px solid rgba(215,187,147,0.3)", borderLeft: "3px solid var(--sarcelle)" }}>
+                          <div key={u.id} className="p-3" style={{ border: "1px solid rgba(18,38,32,0.08)", borderLeft: "3px solid var(--sarcelle)" }}>
                             <div className="flex justify-between mb-1.5">
                               <div>
-                                <div className="font-semibold text-[0.82rem]" style={{ color: "var(--vert-fonce)" }}>{u.name}</div>
+                                <div className="font-semibold text-[0.82rem]" style={{ color: "var(--deep-forest)" }}>{u.name}</div>
                                 <div className="text-[0.65rem] text-[var(--gris)]">{u.role}</div>
                               </div>
                               {overdue > 0 && (
@@ -1366,8 +1438,8 @@ export default function App() {
                             <div key={d.id} className="flex items-center gap-3 text-[0.75rem]">
                               <span className="w-9 text-right shrink-0 font-bold" style={{ color: riskColor }}>{d.risk_score}%</span>
                               <div className="flex-1">
-                                <div className="font-medium truncate" style={{ color: "var(--vert-fonce)" }}>{d.title}</div>
-                                <div className="h-1.5 mt-1" style={{ background: "rgba(215,187,147,0.2)" }}>
+                                <div className="font-medium truncate" style={{ color: "var(--deep-forest)" }}>{d.title}</div>
+                                <div className="h-1.5 mt-1" style={{ background: "rgba(18,38,32,0.06)" }}>
                                   <div className="h-full" style={{ width: `${d.risk_score}%`, background: riskColor }} />
                                 </div>
                               </div>
@@ -1391,11 +1463,11 @@ export default function App() {
                   {knowledge.map(item => (
                     <div key={item.id} className="eiden-card p-5 space-y-3 group hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setSelectedKnowledge(item); setShowKnowledgeModal(true); }}>
                       <div className="flex items-start justify-between gap-3">
-                        <h3 className="font-bold text-[0.9rem] leading-tight" style={{ color: "var(--vert-fonce)" }}>{item.title}</h3>
-                        <span className="shrink-0 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.06em]" style={{ border: "1px solid var(--or)", color: "var(--sarcelle)", background: "rgba(215,187,147,0.1)" }}>{item.category}</span>
+                        <h3 className="font-bold text-[0.9rem] leading-tight" style={{ color: "var(--deep-forest)" }}>{item.title}</h3>
+                        <span className="shrink-0 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.06em]" style={{ border: "1px solid rgba(18,38,32,0.12)", color: "var(--sarcelle)", background: "rgba(18,38,32,0.04)" }}>{item.category}</span>
                       </div>
                       <p className="text-[0.75rem] leading-relaxed line-clamp-4" style={{ color: "var(--gris)" }}>{item.content}</p>
-                      <div className="flex justify-between items-center pt-3" style={{ borderTop: "1px dashed rgba(215,187,147,0.4)" }}>
+                      <div className="flex justify-between items-center pt-3" style={{ borderTop: "1px dashed rgba(18,38,32,0.1)" }}>
                         <span className="text-[0.65rem] text-[var(--gris)]">KB-{item.id.toString().padStart(3, "0")}</span>
                         <span className="text-[0.72rem] font-semibold" style={{ color: "var(--sarcelle)" }}>Read more →</span>
                       </div>
@@ -1410,13 +1482,13 @@ export default function App() {
               <motion.div key="communications" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
 
                 {/* ── Zoom panel ── */}
-                <div className="shrink-0" style={{ background: "var(--blanc)", border: "1px solid rgba(215,187,147,0.4)", borderLeft: "3px solid #2D8CFF" }}>
+                <div className="shrink-0" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.1)", borderLeft: "3px solid #2D8CFF" }}>
                   {/* Header row */}
-                  <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: zoomConnected ? "1px solid rgba(215,187,147,0.3)" : "none" }}>
+                  <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: zoomConnected ? "1px solid rgba(18,38,32,0.08)" : "none" }}>
                     <div className="flex items-center gap-2">
                       {/* Zoom logo-ish icon */}
                       <div className="w-6 h-6 flex items-center justify-center text-[0.6rem] font-bold text-white rounded-sm" style={{ background: "#2D8CFF" }}>Z</div>
-                      <span className="text-[0.75rem] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--vert-fonce)" }}>Zoom</span>
+                      <span className="text-[0.75rem] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--deep-forest)" }}>Zoom</span>
                       {zoomConnected && (
                         <span className="flex items-center gap-1 text-[0.65rem] font-semibold px-2 py-0.5" style={{ background: "rgba(45,90,71,0.08)", color: "var(--success)", border: "1px solid var(--success)" }}>
                           ✓ {zoomEmail}
@@ -1442,9 +1514,9 @@ export default function App() {
                   {zoomConnected && zoomMeetings.length > 0 && (
                     <div className="px-5 py-3 flex flex-col gap-2">
                       {zoomMeetings.map(m => (
-                        <div key={m.id} className="flex items-center justify-between gap-4 py-2" style={{ borderBottom: "1px dashed rgba(215,187,147,0.3)" }}>
+                        <div key={m.id} className="flex items-center justify-between gap-4 py-2" style={{ borderBottom: "1px dashed rgba(18,38,32,0.08)" }}>
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[0.78rem] font-semibold" style={{ color: "var(--vert-fonce)" }}>{m.topic}</span>
+                            <span className="text-[0.78rem] font-semibold" style={{ color: "var(--deep-forest)" }}>{m.topic}</span>
                             <span className="text-[0.65rem]" style={{ color: "var(--gris)" }}>
                               {new Date(m.start_time).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })} · {m.duration} min
                             </span>
@@ -1462,11 +1534,11 @@ export default function App() {
                 </div>
 
                 {/* Meeting bar */}
-                <div className="shrink-0 flex gap-3 items-center px-5 py-3" style={{ background: "var(--blanc)", border: "1px solid rgba(215,187,147,0.4)", borderLeft: "3px solid var(--sarcelle)" }}>
+                <div className="shrink-0 flex gap-3 items-center px-5 py-3" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.1)", borderLeft: "3px solid var(--sarcelle)" }}>
                   <Bell size={14} style={{ color: "var(--sarcelle)" }} className="shrink-0" />
                   <input value={meetingLink} onChange={e => setMeetingLink(e.target.value)}
                     className="flex-1 outline-none text-[0.8rem]"
-                    style={{ border: "1px solid var(--or)", padding: "7px 12px", fontFamily: "'Montserrat',sans-serif", color: "var(--vert-fonce)", background: "var(--blanc)" }}
+                    style={{ border: "none", borderBottom: "1.5px solid rgba(18,38,32,0.15)", padding: "7px 0", fontFamily: "'Space Grotesk',sans-serif", color: "var(--deep-forest)", background: "transparent" }}
                     placeholder="Quick meeting URL or ID" />
                   {meetingLink.trim() && (
                     <a href={meetingLink.startsWith("http") ? meetingLink : `https://zoom.us/j/${meetingLink}`}
@@ -1480,16 +1552,14 @@ export default function App() {
                 </div>
 
                 {/* Chat panel */}
-                <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "var(--blanc)", border: "1px solid rgba(215,187,147,0.4)", position: "relative" }}>
-                  {/* Corner accent */}
-                  <div className="absolute bottom-0 right-0 w-4 h-4 pointer-events-none z-10" style={{ borderBottom: "1.5px solid var(--sarcelle)", borderRight: "1.5px solid var(--sarcelle)" }} />
+                <div className="flex-1 flex flex-col overflow-hidden eiden-card" style={{ position: "relative" }}>
                   {/* Header */}
-                  <div className="shrink-0 px-5 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(215,187,147,0.3)", background: "var(--vert-fonce)" }}>
+                  <div className="shrink-0 px-5 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "var(--deep-forest)" }}>
                     <div className="flex items-center gap-2">
-                      <MessageSquare size={14} style={{ color: "var(--or)" }} />
-                      <span className="text-[0.78rem] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--or)" }}>Team Chat</span>
+                      <MessageSquare size={13} style={{ color: "rgba(244,235,208,0.6)" }} />
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "rgba(244,235,208,0.7)" }}>Team Chat</span>
                     </div>
-                    <span className="text-[0.65rem] font-medium px-2 py-0.5" style={{ background: "rgba(215,187,147,0.15)", color: "var(--or)", border: "1px solid rgba(215,187,147,0.2)" }}>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(244,235,208,0.3)", letterSpacing: "1px" }}>
                       {currentWorkspace?.name}
                     </span>
                   </div>
@@ -1498,10 +1568,10 @@ export default function App() {
                   <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
                     {chatMessages.length === 0 && (
                       <div className="text-center py-12">
-                        <div className="w-12 h-12 flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(12,87,82,0.08)", border: "1px solid rgba(215,187,147,0.4)" }}>
-                          <MessageSquare size={20} style={{ color: "var(--sarcelle)" }} />
+                        <div className="w-12 h-12 flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(18,38,32,0.04)", border: "1px solid rgba(18,38,32,0.08)" }}>
+                          <MessageSquare size={20} style={{ color: "rgba(18,38,32,0.25)" }} />
                         </div>
-                        <p className="text-[0.75rem]" style={{ color: "var(--gris)" }}>No messages yet — start the conversation.</p>
+                        <p style={{ fontSize: "0.78rem", color: "rgba(18,38,32,0.4)", fontFamily: "'JetBrains Mono', monospace" }}>No messages yet — start the conversation.</p>
                       </div>
                     )}
                     {chatMessages.map(msg => {
@@ -1510,27 +1580,27 @@ export default function App() {
                         <div key={msg.id} className={`flex gap-3 ${isMe ? "justify-end" : "justify-start"}`}>
                           {!isMe && (
                             <div className="shrink-0 w-8 h-8 flex items-center justify-center mt-0.5 text-[0.7rem] font-bold"
-                              style={{ background: "var(--sarcelle)", color: "var(--blanc)" }}>
+                              style={{ background: "var(--deep-forest)", color: "var(--silk-creme)" }}>
                               {msg.user[0].toUpperCase()}
                             </div>
                           )}
                           <div className="max-w-[68%] flex flex-col gap-1">
                             {!isMe && (
-                              <span className="text-[0.65rem] font-semibold ml-1" style={{ color: "var(--sarcelle)" }}>{msg.user}</span>
+                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.45)", marginLeft: 4 }}>{msg.user}</span>
                             )}
-                            <div className="px-4 py-2.5 text-[0.78rem] font-medium leading-relaxed"
+                            <div className="px-4 py-2.5 text-[0.78rem] leading-relaxed"
                               style={isMe
-                                ? { background: "var(--sarcelle)", color: "var(--blanc)" }
-                                : { background: "var(--creme)", color: "var(--vert-fonce)", border: "1px solid rgba(215,187,147,0.4)" }}>
+                                ? { background: "var(--deep-forest)", color: "var(--silk-creme)" }
+                                : { background: "var(--pure-white)", color: "var(--deep-forest)", border: "1px solid rgba(18,38,32,0.08)" }}>
                               {msg.text}
                             </div>
-                            <span className={`text-[0.6rem] font-medium px-1 ${isMe ? "text-right" : "text-left"}`} style={{ color: "var(--gris)" }}>
+                            <span className={`text-[0.58rem] px-1 ${isMe ? "text-right" : "text-left"}`} style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.3)" }}>
                               {msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
                             </span>
                           </div>
                           {isMe && (
                             <div className="shrink-0 w-8 h-8 flex items-center justify-center mt-0.5 text-[0.7rem] font-bold"
-                              style={{ background: "var(--or)", color: "var(--vert-fonce)" }}>
+                              style={{ background: "rgba(18,38,32,0.08)", color: "var(--deep-forest)" }}>
                               {(currentUser?.name ?? "M")[0].toUpperCase()}
                             </div>
                           )}
@@ -1541,16 +1611,16 @@ export default function App() {
                   </div>
 
                   {/* Input */}
-                  <div className="shrink-0 flex gap-3 px-5 py-3" style={{ borderTop: "1px solid rgba(215,187,147,0.3)", background: "rgba(215,187,147,0.04)" }}>
+                  <div className="shrink-0 flex gap-3 px-5 py-3" style={{ borderTop: "1px solid rgba(18,38,32,0.07)" }}>
                     <input value={chatInput} onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => e.key === "Enter" && sendChatMessage()}
                       placeholder={`Message ${currentWorkspace?.name}…`}
-                      className="flex-1 outline-none text-[0.8rem]"
-                      style={{ border: "1px solid var(--or)", padding: "9px 14px", fontFamily: "'Montserrat',sans-serif", color: "var(--vert-fonce)", background: "var(--blanc)" }} />
+                      className="flex-1 outline-none text-[0.82rem]"
+                      style={{ border: "none", borderBottom: "1.5px solid rgba(18,38,32,0.15)", padding: "8px 0", fontFamily: "'Space Grotesk', sans-serif", color: "var(--deep-forest)", background: "transparent" }} />
                     <button onClick={sendChatMessage}
                       className="flex items-center justify-center transition-opacity hover:opacity-80"
-                      style={{ background: "var(--vert-fonce)", color: "var(--or)", width: 40, height: 40, flexShrink: 0, border: "none", cursor: "pointer" }}>
-                      <Send size={15} />
+                      style={{ background: "var(--deep-forest)", color: "var(--silk-creme)", width: 40, height: 40, flexShrink: 0, border: "none", cursor: "pointer" }}>
+                      <Send size={14} />
                     </button>
                   </div>
                 </div>
@@ -1560,7 +1630,7 @@ export default function App() {
             {activeTab === "admin" && currentUser?.role === "Admin" && (
               <motion.div key="admin" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
                 {/* Sub-tabs */}
-                <div className="shrink-0 flex gap-0" style={{ borderBottom: "2px solid rgba(215,187,147,0.3)" }}>
+                <div className="shrink-0 flex gap-0" style={{ borderBottom: "2px solid rgba(18,38,32,0.08)" }}>
                   {(["workspaces", "users", "ai"] as const).map(s => (
                     <button key={s} onClick={() => setAdminSection(s)}
                       className="px-5 py-2.5 text-[0.7rem] font-bold uppercase tracking-[0.08em] transition-colors"
@@ -1588,7 +1658,7 @@ export default function App() {
                         <div key={ws.id} className="eiden-card p-5">
                           <div className="flex items-start justify-between mb-4">
                             <div>
-                              <div className="font-bold text-[0.9rem]" style={{ color: "var(--vert-fonce)" }}>{ws.name}</div>
+                              <div className="font-bold text-[0.9rem]" style={{ color: "var(--deep-forest)" }}>{ws.name}</div>
                               <div className="text-[0.65rem] mt-0.5" style={{ color: "var(--gris)" }}>Workspace #{ws.id}</div>
                             </div>
                             <button onClick={async () => { if (confirm(`Delete "${ws.name}" and all its data?`)) { await fetch(`/api/workspaces/${ws.id}`, { method: "DELETE" }); fetchAdminData(); } }}
@@ -1601,7 +1671,7 @@ export default function App() {
                               { label: "Contacts", value: ws.contacts, color: "var(--warning)" },
                               { label: "Tasks", value: ws.tasks, color: "var(--gris)" },
                             ].map(({ label, value, color }) => (
-                              <div key={label} className="p-2 text-center" style={{ border: "1px solid rgba(215,187,147,0.3)" }}>
+                              <div key={label} className="p-2 text-center" style={{ border: "1px solid rgba(18,38,32,0.08)" }}>
                                 <div className="text-[1.1rem] font-bold" style={{ color }}>{value}</div>
                                 <div className="text-[0.6rem] uppercase tracking-[0.06em]" style={{ color: "var(--gris)" }}>{label}</div>
                               </div>
@@ -1616,7 +1686,7 @@ export default function App() {
                   {/* AI Settings */}
                   {adminSection === "ai" && (
                     <div className="space-y-4 pb-4">
-                      <div className="p-4" style={{ border: "1px solid rgba(215,187,147,0.3)", background: "rgba(215,187,147,0.04)" }}>
+                      <div className="p-4" style={{ border: "1px solid rgba(18,38,32,0.08)", background: "rgba(18,38,32,0.03)" }}>
                         <div className="text-[0.65rem] font-bold uppercase tracking-[0.08em] mb-1" style={{ color: "var(--gris)" }}>Active Provider</div>
                         <div className="text-[0.85rem] font-semibold" style={{ color: "var(--sarcelle)" }}>
                           {aiProviderData?.providers.find((p: any) => p.id === aiProviderData.active)?.name || aiProviderData?.active || "—"}
@@ -1632,11 +1702,11 @@ export default function App() {
                           const isActive = aiProviderData?.active === p.id;
                           const color = p.id === "claude" ? "#c07830" : p.id === "groq" ? "#6a4fc0" : p.id === "gemini" ? "#1a73e8" : "#0f7a6e";
                           return (
-                            <div key={p.id} className="p-4 relative" style={{ border: `1px solid ${isActive ? color : "rgba(215,187,147,0.3)"}`, background: isActive ? `${color}10` : "var(--blanc)" }}>
+                            <div key={p.id} className="p-4 relative" style={{ border: `1px solid ${isActive ? color : "rgba(18,38,32,0.08)"}`, background: isActive ? `${color}10` : "var(--pure-white)" }}>
                               <div className="absolute bottom-0 right-0 w-3 h-3 pointer-events-none" style={{ borderBottom: `1.5px solid ${color}`, borderRight: `1.5px solid ${color}` }} />
                               <div className="flex items-start justify-between mb-3">
                                 <div>
-                                  <div className="font-bold text-[0.82rem]" style={{ color: "var(--vert-fonce)" }}>{p.name}</div>
+                                  <div className="font-bold text-[0.82rem]" style={{ color: "var(--deep-forest)" }}>{p.name}</div>
                                   <div className="text-[0.62rem] mt-0.5" style={{ color: "var(--gris)" }}>{p.model}</div>
                                 </div>
                                 {isActive && <span className="text-[0.6rem] font-bold px-2 py-0.5" style={{ background: color, color: "#fff" }}>ACTIVE</span>}
@@ -1649,14 +1719,14 @@ export default function App() {
                                   if (res.ok) fetchAdminData();
                                 }}
                                 className="btn-primary w-full justify-center"
-                                style={{ fontSize: "0.65rem", padding: "6px", background: isActive ? color : "var(--vert-fonce)", opacity: (!p.available || isActive) ? 0.5 : 1, cursor: (!p.available || isActive) ? "not-allowed" : "pointer" }}>
+                                style={{ fontSize: "0.65rem", padding: "6px", background: isActive ? color : "var(--deep-forest)", opacity: (!p.available || isActive) ? 0.5 : 1, cursor: (!p.available || isActive) ? "not-allowed" : "pointer" }}>
                                 {isActive ? "✓ In Use" : p.available ? "Switch to this" : "Add key to .env"}
                               </button>
                             </div>
                           );
                         })}
                       </div>
-                      <div className="p-3 text-[0.7rem]" style={{ border: "1px solid rgba(215,187,147,0.3)", color: "var(--gris)", background: "rgba(215,187,147,0.04)" }}>
+                      <div className="p-3 text-[0.7rem]" style={{ border: "1px solid rgba(18,38,32,0.08)", color: "var(--gris)", background: "rgba(18,38,32,0.03)" }}>
                         To add a provider, set its key in <span className="font-bold" style={{ color: "var(--sarcelle)" }}>.env</span> and restart the server.
                         Free providers: <span className="font-semibold" style={{ color: "var(--success)" }}>Groq</span> · <span className="font-semibold" style={{ color: "var(--success)" }}>Gemini</span>
                       </div>
@@ -1666,8 +1736,8 @@ export default function App() {
                   {adminData && adminSection === "users" && (
                     <div className="eiden-card overflow-hidden">
                       <table className="w-full text-left">
-                        <thead className="sticky top-0" style={{ background: "rgba(215,187,147,0.08)" }}>
-                          <tr style={{ borderBottom: "1px solid rgba(215,187,147,0.3)" }}>
+                        <thead className="sticky top-0" style={{ background: "rgba(18,38,32,0.04)" }}>
+                          <tr style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
                             {["Name", "Email", "Role", "Workspace", "Actions"].map(h => (
                               <th key={h} className="py-2.5 px-4 text-[0.6rem] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--gris)" }}>{h}</th>
                             ))}
@@ -1675,15 +1745,15 @@ export default function App() {
                         </thead>
                         <tbody>
                           {adminData.users.map((u: any) => (
-                            <tr key={u.id} style={{ borderBottom: "1px solid rgba(215,187,147,0.15)" }}>
-                              <td className="py-3 px-4 font-semibold text-[0.78rem]" style={{ color: "var(--vert-fonce)" }}>{u.name}</td>
+                            <tr key={u.id} style={{ borderBottom: "1px solid rgba(18,38,32,0.05)" }}>
+                              <td className="py-3 px-4 font-semibold text-[0.78rem]" style={{ color: "var(--deep-forest)" }}>{u.name}</td>
                               <td className="py-3 px-4 text-[0.72rem]" style={{ color: "var(--gris)" }}>{u.email}</td>
                               <td className="py-3 px-4">
                                 <select value={u.role} onChange={async e => {
                                   await fetch(`/api/users/${u.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: e.target.value }) });
                                   fetchAdminData();
                                 }} className="text-[0.7rem] outline-none px-2 py-1 font-semibold"
-                                  style={{ border: "1px solid rgba(215,187,147,0.4)", background: "var(--blanc)", color: "var(--sarcelle)", fontFamily: "'Montserrat', sans-serif", cursor: "pointer" }}>
+                                  style={{ border: "none", borderBottom: "1px solid rgba(18,38,32,0.15)", background: "transparent", color: "var(--sarcelle)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}>
                                   {["Admin", "Operational Manager", "Brand Manager", "Marketing Strategy", "Web / IT Developer", "Commercial"].map(r => (
                                     <option key={r} value={r}>{r}</option>
                                   ))}
@@ -1694,7 +1764,7 @@ export default function App() {
                                   await fetch(`/api/users/${u.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspace_id: e.target.value }) });
                                   fetchAdminData();
                                 }} className="text-[0.7rem] outline-none px-2 py-1"
-                                  style={{ border: "1px solid rgba(215,187,147,0.4)", background: "var(--blanc)", color: "var(--vert-fonce)", fontFamily: "'Montserrat', sans-serif", cursor: "pointer" }}>
+                                  style={{ border: "none", borderBottom: "1px solid rgba(18,38,32,0.15)", background: "transparent", color: "var(--deep-forest)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}>
                                   {adminData.workspaces.map((ws: any) => <option key={ws.id} value={ws.id}>{ws.name}</option>)}
                                 </select>
                               </td>
@@ -1857,8 +1927,8 @@ export default function App() {
         {showKnowledgeModal && selectedKnowledge && (
           <Modal title={selectedKnowledge.title} onClose={() => { setShowKnowledgeModal(false); setSelectedKnowledge(null); }}>
             <div className="space-y-4">
-              <span className="inline-block px-2 py-0.5 text-[0.6rem] font-bold uppercase" style={{ border: "1px solid var(--or)", color: "var(--sarcelle)", background: "rgba(215,187,147,0.1)" }}>{selectedKnowledge.category}</span>
-              <div className="p-4 text-[0.8rem] leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto" style={{ background: "var(--creme)", border: "1px solid rgba(215,187,147,0.4)", color: "var(--vert-fonce)" }}>
+              <span className="inline-block px-2 py-0.5 text-[0.6rem] font-bold uppercase" style={{ border: "1px solid rgba(18,38,32,0.12)", color: "var(--sarcelle)", background: "rgba(18,38,32,0.04)" }}>{selectedKnowledge.category}</span>
+              <div className="p-4 text-[0.8rem] leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto" style={{ background: "var(--silk-creme)", border: "1px solid rgba(18,38,32,0.1)", color: "var(--deep-forest)" }}>
                 {selectedKnowledge.content}
               </div>
               <button onClick={() => { setShowKnowledgeModal(false); setSelectedKnowledge(null); }} className="flash-button" style={{ marginBottom: 0 }}>Close</button>
@@ -1925,9 +1995,9 @@ export default function App() {
                   { label: "Workspace", value: currentWorkspace?.name, colored: false },
                   { label: "Open Tasks", value: `${tasks.filter(t => t.assignee_id === currentUser?.id && t.status !== "Completed").length} open`, colored: true },
                 ].map(({ label, value, colored }) => (
-                  <div key={label} className="p-3" style={{ border: "1px solid rgba(215,187,147,0.4)" }}>
+                  <div key={label} className="p-3" style={{ border: "1px solid rgba(18,38,32,0.1)" }}>
                     <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] mb-1" style={{ color: "var(--gris)" }}>{label}</div>
-                    <div className="font-semibold text-[0.85rem]" style={{ color: colored ? "var(--sarcelle)" : "var(--vert-fonce)" }}>{value}</div>
+                    <div className="font-semibold text-[0.85rem]" style={{ color: colored ? "var(--sarcelle)" : "var(--deep-forest)" }}>{value}</div>
                   </div>
                 ))}
               </div>
@@ -1944,19 +2014,19 @@ export default function App() {
             initial={{ opacity: 0, y: 40, x: "-50%" }}
             animate={{ opacity: 1, y: 0, x: "-50%" }}
             exit={{ opacity: 0, y: 40, x: "-50%" }}
-            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            transition={{ type: "spring", stiffness: 260, damping: 26 }}
             onClick={() => { setActiveTab("communications"); setChatUnread(0); setChatToast(null); }}
-            className="fixed bottom-6 left-1/2 cursor-pointer z-[9999] flex items-center gap-3 px-4 py-3"
-            style={{ background: "var(--vert-fonce)", border: "1px solid var(--or)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 260, maxWidth: 360 }}
+            className="fixed bottom-6 left-1/2 cursor-pointer z-[9999] flex items-center gap-3 px-5 py-4"
+            style={{ background: "var(--deep-forest)", boxShadow: "0 12px 40px rgba(0,0,0,0.35)", minWidth: 260, maxWidth: 360 }}
           >
-            <div className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-[0.75rem] font-bold" style={{ background: "var(--sarcelle)", color: "var(--blanc)" }}>
+            <div className="shrink-0 w-8 h-8 flex items-center justify-center text-[0.72rem] font-bold" style={{ background: "rgba(244,235,208,0.15)", color: "var(--silk-creme)", border: "1px solid rgba(244,235,208,0.2)" }}>
               {chatToast.user[0]?.toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[0.65rem] font-bold uppercase tracking-wide" style={{ color: "var(--or)" }}>{chatToast.user}</div>
-              <div className="text-[0.78rem] truncate" style={{ color: "var(--blanc)" }}>{chatToast.text}</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(244,235,208,0.5)", textTransform: "uppercase", letterSpacing: "1px" }}>{chatToast.user}</div>
+              <div className="text-[0.78rem] truncate mt-0.5" style={{ color: "var(--silk-creme)", fontWeight: 500 }}>{chatToast.text}</div>
             </div>
-            <MessageSquare size={14} style={{ color: "var(--sarcelle)", flexShrink: 0 }} />
+            <MessageSquare size={13} style={{ color: "rgba(244,235,208,0.4)", flexShrink: 0 }} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1970,10 +2040,10 @@ function NavItem({ active, onClick, icon, label, badge }: {
 }) {
   return (
     <button onClick={onClick} className={`nav-item-eiden ${active ? "active" : ""}`}>
-      <span className="shrink-0">{icon}</span>
+      <span className="shrink-0 opacity-70">{icon}</span>
       <span>{label}</span>
       {badge != null && badge > 0 && (
-        <span className="ml-auto shrink-0 w-4 h-4 rounded-full bg-[var(--danger)] flex items-center justify-center text-[8px] text-white font-bold">{badge}</span>
+        <span className="ml-auto shrink-0 w-4 h-4 flex items-center justify-center text-[8px] font-bold" style={{ background: "var(--danger)", color: "#fff" }}>{badge}</span>
       )}
     </button>
   );
@@ -1981,17 +2051,18 @@ function NavItem({ active, onClick, icon, label, badge }: {
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(18,38,32,0.55)", backdropFilter: "blur(4px)" }}>
-      <motion.div initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }}
-        className="bg-[var(--blanc)] w-full max-w-md mx-3 sm:mx-0 relative shadow-2xl"
-        style={{ border: "1px solid var(--or)", maxHeight: "90vh", overflowY: "auto" }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(18,38,32,0.6)", backdropFilter: "blur(6px)" }}>
+      <motion.div initial={{ opacity: 0, scale: 0.97, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }}
+        className="w-full max-w-md mx-3 sm:mx-0 relative"
+        style={{ background: "var(--pure-white)", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 32px 80px rgba(0,0,0,0.2)" }}>
         {/* Corner accent */}
-        <div className="absolute bottom-0 right-0 w-8 h-8 pointer-events-none" style={{ borderBottom: "2px solid var(--sarcelle)", borderRight: "2px solid var(--sarcelle)" }} />
-        <div className="flex items-center justify-between px-5 sm:px-8 pt-5 sm:pt-7 pb-4 sm:pb-5" style={{ borderBottom: "2px solid var(--or)" }}>
-          <h2 className="font-hud text-[1.1rem] font-light tracking-[0.12em] uppercase text-[var(--vert-fonce)]">{title}</h2>
-          <button onClick={onClose} className="text-[var(--gris)] hover:text-[var(--danger)] transition-colors text-xl leading-none">×</button>
+        <div className="absolute bottom-0 right-0 w-8 h-8 pointer-events-none" style={{ borderBottom: "1.5px solid rgba(18,38,32,0.2)", borderRight: "1.5px solid rgba(18,38,32,0.2)" }} />
+        <div className="flex items-center justify-between px-6 sm:px-8 pt-7 pb-5" style={{ borderBottom: "1px solid rgba(18,38,32,0.08)" }}>
+          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, letterSpacing: "-0.3px", color: "var(--deep-forest)", textTransform: "uppercase" }}>{title}</h2>
+          <button onClick={onClose} style={{ color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", fontSize: "1.3rem", lineHeight: 1, transition: "color 0.2s" }}
+            onMouseEnter={e => (e.currentTarget.style.color = "var(--danger)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(18,38,32,0.35)")}>×</button>
         </div>
-        <div className="px-5 sm:px-8 py-5 sm:py-6">{children}</div>
+        <div className="px-6 sm:px-8 py-6 sm:py-7">{children}</div>
       </motion.div>
     </div>
   );
@@ -2000,34 +2071,36 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[0.68rem] font-bold uppercase tracking-[0.08em] text-[var(--sarcelle)] mb-1.5">{label}</label>
+      <label style={{ display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1px", color: "rgba(18,38,32,0.5)", marginBottom: 8 }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function AuthField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label style={{ display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1px", color: "rgba(18,38,32,0.45)", marginBottom: 10 }}>{label}</label>
       {children}
     </div>
   );
 }
 
 function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: "teal" | "success" | "danger" | "warn" | "muted" }) {
-  const c = {
-    teal: "text-[var(--sarcelle)]",
-    success: "text-[var(--success)]",
-    danger: "text-[var(--danger)]",
-    warn: "text-[var(--warning)]",
-    muted: "text-[var(--gris)]"
-  }[color];
-  const borderL = {
-    teal: "border-l-[var(--sarcelle)]",
-    success: "border-l-[var(--success)]",
-    danger: "border-l-[var(--danger)]",
-    warn: "border-l-[var(--warning)]",
-    muted: "border-l-[var(--gris)]"
+  const accent = {
+    teal:    "#0c5752",
+    success: "#2d5a47",
+    danger:  "#8b3a3a",
+    warn:    "#a67c37",
+    muted:   "#9a9a9a",
   }[color];
   return (
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-      className={`eiden-card p-4 border-l-4 ${borderL} hover:shadow-md transition-shadow`}>
-      <div className={`flex items-center gap-1.5 text-[0.62rem] font-bold uppercase tracking-[0.08em] mb-2 ${c}`}>
+      className="eiden-card p-4" style={{ borderLeft: `3px solid ${accent}` }}>
+      <div className="flex items-center gap-1.5 mb-2" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1px", color: accent, opacity: 0.8 }}>
         {icon} {label}
       </div>
-      <div className={`text-[1.9rem] font-light leading-none ${c}`}>{value}</div>
+      <div style={{ fontSize: "1.8rem", fontWeight: 300, lineHeight: 1, color: accent }}>{value}</div>
     </motion.div>
   );
 }
