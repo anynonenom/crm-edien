@@ -81,7 +81,7 @@ const stageColor = (s: string) =>
   s === "Won" ? "text-[var(--success)]"
   : s === "Lost" ? "text-[var(--danger)]"
   : s === "Negotiation" ? "text-[var(--warning)]"
-  : "text-[var(--sarcelle)]";
+  : "text-[var(--deep-forest)]";
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
@@ -958,7 +958,7 @@ export default function App() {
             <div className="hidden sm:block w-px h-4 opacity-20" style={{ background: "var(--deep-forest)" }} />
             <span className="hidden sm:block truncate max-w-[120px]" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.4)", letterSpacing: "0.5px" }}>{currentWorkspace?.name}</span>
             {overdueTasks.length > 0 && (
-              <span className="hidden md:flex items-center gap-1.5 text-[0.65rem] font-semibold" style={{ color: "var(--danger)" }}>
+              <span className="hidden md:flex items-center gap-1.5" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 600, color: "var(--danger)" }}>
                 <AlertTriangle size={11} /> {overdueTasks.length} overdue
               </span>
             )}
@@ -1009,7 +1009,7 @@ export default function App() {
                     <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-3 space-y-3">
                       {aiMessages.length === 0 && (
                         <div className="text-center py-8 space-y-3">
-                          <Bot size={32} className="mx-auto opacity-20" style={{ color: "var(--sarcelle)" }} />
+                          <Bot size={32} className="mx-auto opacity-20" style={{ color: "var(--deep-forest)" }} />
                           <div className="text-[0.75rem] text-[var(--gris)]">Ask me anything about your pipeline, tasks, or team.</div>
                           <div className="flex flex-wrap gap-2 justify-center">
                             {["What deals need attention?", "Summarize my tasks", "Pipeline health?", "Any overdue tasks?"].map(q => (
@@ -1077,7 +1077,7 @@ export default function App() {
                       <div className="sm:col-span-2 lg:col-span-1 shrink-0 p-3 sm:p-4" style={{ border: "1px solid var(--danger)", background: "rgba(139,58,58,0.04)", borderLeft: "3px solid var(--danger)" }}>
                         <div className="flex items-center gap-2 mb-2">
                           <AlertTriangle size={12} style={{ color: "var(--danger)" }} />
-                          <span className="text-[0.65rem] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--danger)" }}>Overdue Tasks</span>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px", color: "var(--danger)" }}>Overdue Tasks</span>
                         </div>
                         <div className="space-y-1.5">
                           {overdueTasks.slice(0, 3).map(t => (
@@ -1097,16 +1097,16 @@ export default function App() {
 
                     {/* Recent activity */}
                     <div className="eiden-card overflow-hidden flex flex-col lg:flex-1 lg:min-h-0">
-                      <div className="shrink-0 px-3 sm:px-4 py-2.5" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
-                        <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)]">Recent Activity</span>
+                      <div className="shrink-0 px-3 sm:px-4 py-2.5" style={{ borderBottom: "1px solid rgba(18,38,32,0.06)" }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Recent Activity</span>
                       </div>
                       <div className="overflow-y-auto p-3 space-y-1 max-h-52 sm:max-h-64 lg:max-h-none lg:flex-1">
                         {activities.slice(0, 15).map(a => (
-                          <div key={a.id} className="flex gap-2 p-2 text-[0.72rem]" style={{ borderLeft: "2px solid rgba(18,38,32,0.08)" }}>
-                            <span className="text-[var(--gris)] shrink-0 w-10">{a.time}</span>
+                          <div key={a.id} className="flex gap-2 py-2 px-2" style={{ borderLeft: "1.5px solid rgba(18,38,32,0.1)" }}>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(18,38,32,0.3)", flexShrink: 0, width: 40 }}>{a.time}</span>
                             <div className="min-w-0">
-                              <span className="text-[var(--deep-forest)] font-medium">{a.action}</span>
-                              {a.related_to && <span className="text-[var(--gris)] ml-1">· {a.related_to}</span>}
+                              <span style={{ fontSize: "0.72rem", fontWeight: 500, color: "var(--deep-forest)" }}>{a.action}</span>
+                              {a.related_to && <span style={{ fontSize: "0.72rem", color: "rgba(18,38,32,0.4)", marginLeft: 4 }}>· {a.related_to}</span>}
                             </div>
                           </div>
                         ))}
@@ -1115,18 +1115,18 @@ export default function App() {
 
                     {/* Pipeline snapshot */}
                     <div className="shrink-0 eiden-card p-3 sm:p-4">
-                      <div className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)] mb-3">Pipeline Snapshot</div>
+                      <div className="mb-3" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Pipeline Snapshot</div>
                       {["Lead", "Proposal", "Negotiation", "Won"].map(stage => {
                         const count = filteredDeals.filter(d => d.stage === stage).length;
                         const total = filteredDeals.length || 1;
-                        const barColor = stage === "Won" ? "var(--success)" : stage === "Lost" ? "var(--danger)" : "var(--sarcelle)";
+                        const barColor = stage === "Won" ? "var(--success)" : stage === "Lost" ? "var(--danger)" : "var(--deep-forest)";
                         return (
                           <div key={stage} className="mb-2.5">
                             <div className="flex justify-between text-[0.68rem] mb-1">
                               <span className="font-semibold" style={{ color: barColor }}>{stage}</span>
                               <span className="text-[var(--gris)]">{count}</span>
                             </div>
-                            <div className="h-1.5" style={{ background: "rgba(18,38,32,0.06)" }}>
+                            <div style={{ height: 2, background: "rgba(18,38,32,0.08)", marginTop: 4 }}>
                               <motion.div initial={{ width: 0 }} animate={{ width: `${(count / total) * 100}%` }} className="h-full" style={{ background: barColor }} />
                             </div>
                           </div>
@@ -1143,17 +1143,17 @@ export default function App() {
               <motion.div key="pipeline" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex gap-3 lg:gap-4 overflow-x-auto pb-2">
                 {["Lead", "Proposal", "Negotiation", "Won", "Lost"].map(stage => {
                   const stageDeals = filteredDeals.filter(d => d.stage === stage);
-                  const accentColor = stage === "Won" ? "var(--success)" : stage === "Lost" ? "var(--danger)" : "var(--sarcelle)";
+                  const accentColor = stage === "Won" ? "var(--success)" : stage === "Lost" ? "var(--danger)" : "var(--deep-forest)";
                   return (
                     <div key={stage} className="w-[240px] sm:w-[270px] shrink-0 flex flex-col"
                       onDragOver={e => e.preventDefault()}
                       onDrop={async e => { const id = Number(e.dataTransfer.getData("dealId")); if (id) await updateDealStage(id, stage); }}>
                       {/* Column header */}
                       <div className="px-3 py-3 mb-3 flex justify-between items-center" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.08)", borderLeft: `3px solid ${accentColor}` }}>
-                        <span className="text-[0.7rem] font-bold uppercase tracking-[0.06em]" style={{ color: accentColor }}>{stage}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "2px", color: accentColor }}>{stage}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-[0.65rem] font-bold" style={{ background: accentColor, color: "var(--pure-white)", padding: "1px 8px" }}>{stageDeals.length}</span>
-                          <span className="text-[0.65rem] text-[var(--gris)]">${stageDeals.reduce((s, d) => s + d.value, 0).toLocaleString()}</span>
+                          <span className="text-[0.65rem] font-bold" style={{ background: accentColor, color: "var(--silk-creme)", padding: "2px 8px", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", letterSpacing: "1px" }}>{stageDeals.length}</span>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.4)" }}>${stageDeals.reduce((s, d) => s + d.value, 0).toLocaleString()}</span>
                         </div>
                       </div>
                       <div className="flex-1 overflow-y-auto space-y-2 pr-0.5">
@@ -1161,10 +1161,10 @@ export default function App() {
                           <div key={deal.id} draggable onDragStart={e => e.dataTransfer.setData("dealId", deal.id.toString())}
                             className="group cursor-grab relative" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.08)", borderLeft: `3px solid ${accentColor}`, padding: "12px 14px" }}>
                             {/* Corner accent */}
-                            <div className="absolute bottom-0 right-0 w-3 h-3 pointer-events-none" style={{ borderBottom: "1.5px solid var(--sarcelle)", borderRight: "1.5px solid var(--sarcelle)" }} />
-                            <div className="font-semibold text-[0.82rem] leading-tight mb-2" style={{ color: "var(--deep-forest)" }}>{deal.title}</div>
+                            <div className="absolute bottom-0 right-0 w-3 h-3 pointer-events-none" style={{ borderBottom: "1.5px solid rgba(18,38,32,0.2)", borderRight: "1.5px solid rgba(18,38,32,0.2)" }} />
+                            <div className="mb-2" style={{ fontSize: "0.82rem", fontWeight: 600, lineHeight: 1.3, color: "var(--deep-forest)" }}>{deal.title}</div>
                             <div className="flex justify-between text-[0.72rem] mb-1">
-                              <span className="font-bold" style={{ color: "var(--sarcelle)" }}>${deal.value.toLocaleString()}</span>
+                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem", fontWeight: 600, color: "var(--deep-forest)" }}>${deal.value.toLocaleString()}</span>
                               <span className="font-medium" style={{ color: deal.risk_score > 50 ? "var(--danger)" : "var(--success)" }}>Risk {deal.risk_score}%</span>
                             </div>
                             {deal.contact_name && <div className="text-[0.65rem] text-[var(--gris)] mb-2">{deal.contact_name}</div>}
@@ -1195,39 +1195,39 @@ export default function App() {
                 </div>
                 <div className="flex-1 eiden-card overflow-hidden flex flex-col">
                   <div className="shrink-0 px-5 py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.03)" }}>
-                    <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)]">Contacts — {filteredContacts.length} records</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Contacts — {filteredContacts.length} records</span>
                   </div>
                   <div className="flex-1 overflow-auto">
                     <table className="w-full text-left min-w-[600px]">
                       <thead className="sticky top-0" style={{ background: "rgba(18,38,32,0.04)" }}>
                         <tr style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
                           {["Name","Company","Email","Phone","Status","Source","LTV"].map(h => (
-                            <th key={h} className="py-2.5 px-4 text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)]">{h}</th>
+                            <th key={h} className="py-2.5 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.35)" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {filteredContacts.map(c => (
                           <tr key={c.id} className="text-[0.78rem] transition-colors cursor-default" style={{ borderBottom: "1px solid rgba(18,38,32,0.05)" }}
-                            onMouseEnter={e => (e.currentTarget.style.background = "rgba(12,87,82,0.04)") }
+                            onMouseEnter={e => (e.currentTarget.style.background = "rgba(18,38,32,0.025)") }
                             onMouseLeave={e => (e.currentTarget.style.background = "") }>
-                            <td className="py-3 px-4 font-semibold" style={{ color: "var(--deep-forest)" }}>
+                            <td className="py-3 px-4" style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--deep-forest)" }}>
                               <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 flex items-center justify-center text-[0.65rem] font-bold shrink-0" style={{ background: "var(--sarcelle)", color: "var(--pure-white)" }}>{c.name[0]}</div>
+                                <div className="w-7 h-7 flex items-center justify-center text-[0.65rem] font-bold shrink-0" style={{ background: "var(--deep-forest)", color: "var(--silk-creme)" }}>{c.name[0]}</div>
                                 {c.name}
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-[var(--gris)]">{c.company}</td>
-                            <td className="py-3 px-4 font-medium" style={{ color: "var(--sarcelle)" }}>{c.email}</td>
-                            <td className="py-3 px-4 text-[var(--gris)]">{c.phone || "—"}</td>
+                            <td className="py-3 px-4" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.5)" }}>{c.company}</td>
+                            <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", color: "rgba(18,38,32,0.6)" }}>{c.email}</td>
+                            <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", color: "rgba(18,38,32,0.45)" }}>{c.phone || "—"}</td>
                             <td className="py-3 px-4">
                               <span className="px-2 py-0.5 text-[0.6rem] font-bold uppercase"
                                 style={{ border: `1px solid ${c.status === "Active" ? "var(--success)" : c.status === "Lead" ? "var(--warning)" : "var(--gris)"}`, color: c.status === "Active" ? "var(--success)" : c.status === "Lead" ? "var(--warning)" : "var(--gris)" }}>
                                 {c.status}
                               </span>
                             </td>
-                            <td className="py-3 px-4 text-[var(--gris)]">{c.source || "—"}</td>
-                            <td className="py-3 px-4 font-semibold" style={{ color: "var(--sarcelle)" }}>${(c.ltv || 0).toLocaleString()}</td>
+                            <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.38)" }}>{c.source || "—"}</td>
+                            <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", fontWeight: 600, color: "var(--deep-forest)" }}>${(c.ltv || 0).toLocaleString()}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1248,8 +1248,8 @@ export default function App() {
                 </div>
 
                 {/* AI quick task creation */}
-                <div className="shrink-0 flex gap-3 items-center px-4 py-3" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.1)", borderLeft: "3px solid var(--sarcelle)" }}>
-                  <Bot size={14} className="shrink-0" style={{ color: "var(--sarcelle)" }} />
+                <div className="shrink-0 flex gap-3 items-center px-4 py-3" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.1)", borderLeft: "1.5px solid var(--deep-forest)" }}>
+                  <Bot size={14} className="shrink-0" style={{ color: "var(--deep-forest)" }} />
                   <form className="flex-1 flex gap-2" onSubmit={async e => {
                     e.preventDefault();
                     const fd = new FormData(e.currentTarget);
@@ -1268,14 +1268,14 @@ export default function App() {
 
                 <div className="flex-1 eiden-card overflow-hidden flex flex-col min-h-0">
                   <div className="shrink-0 px-5 py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.03)" }}>
-                    <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)]">All Tasks — {filteredTasks.length} total</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>All Tasks — {filteredTasks.length} total</span>
                   </div>
                   <div className="flex-1 overflow-auto">
                     <table className="w-full text-left min-w-[700px]">
                       <thead className="sticky top-0" style={{ background: "rgba(18,38,32,0.04)" }}>
                         <tr style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
                           {["Task","Assignee","Deal","Due Date","Priority","Status","Actions"].map(h => (
-                            <th key={h} className="py-2.5 px-4 text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)]">{h}</th>
+                            <th key={h} className="py-2.5 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.35)" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -1285,14 +1285,14 @@ export default function App() {
                           return (
                             <tr key={task.id} className="text-[0.78rem] transition-colors"
                               style={{ borderBottom: "1px solid rgba(18,38,32,0.05)", background: overdue ? "rgba(139,58,58,0.03)" : "" }}
-                              onMouseEnter={e => (e.currentTarget.style.background = "rgba(12,87,82,0.04)")}
+                              onMouseEnter={e => (e.currentTarget.style.background = "rgba(18,38,32,0.025)")}
                               onMouseLeave={e => (e.currentTarget.style.background = overdue ? "rgba(139,58,58,0.03)" : "")}>
                               <td className="py-3 px-4">
-                                <div className="font-semibold" style={{ color: "var(--deep-forest)" }}>{task.title}</div>
-                                {task.description && <div className="text-[0.65rem] mt-0.5 truncate max-w-[200px]" style={{ color: "var(--gris)" }}>{task.description}</div>}
+                                <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--deep-forest)" }}>{task.title}</div>
+                                {task.description && <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", marginTop: 2, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "rgba(18,38,32,0.38)" }}>{task.description}</div>}
                               </td>
-                              <td className="py-3 px-4 text-[var(--gris)]">{task.assignee_name || "Unassigned"}</td>
-                              <td className="py-3 px-4 text-[var(--gris)]">{task.deal_title || "—"}</td>
+                              <td className="py-3 px-4" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.5)" }}>{task.assignee_name || "Unassigned"}</td>
+                              <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", color: "rgba(18,38,32,0.4)" }}>{task.deal_title || "—"}</td>
                               <td className="py-3 px-4">
                                 <span className="font-medium" style={{ color: overdue ? "var(--danger)" : "var(--gris)" }}>
                                   {task.due_date || "—"}{overdue && " ⚠"}
@@ -1312,7 +1312,7 @@ export default function App() {
                               </td>
                               <td className="py-3 px-4">
                                 <div className="flex gap-2">
-                                  <button onClick={() => { setEditTask({ ...task }); setShowEditTaskModal(true); }} style={{ color: "var(--sarcelle)" }} className="hover:opacity-70 transition-opacity"><Edit3 size={13} /></button>
+                                  <button onClick={() => { setEditTask({ ...task }); setShowEditTaskModal(true); }} style={{ color: "var(--deep-forest)" }} className="hover:opacity-70 transition-opacity"><Edit3 size={13} /></button>
                                   {perms.canDelete && <button onClick={() => deleteTask(task.id)} style={{ color: "var(--gris)" }} className="hover:text-[var(--danger)] transition-colors"><Trash2 size={13} /></button>}
                                 </div>
                               </td>
@@ -1332,16 +1332,16 @@ export default function App() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-4">
                   {/* Revenue */}
                   <div className="eiden-card p-6">
-                    <div className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)] mb-1">Revenue Overview</div>
-                    <div className="text-[0.72rem] text-[var(--gris)] mb-5">Won vs Pending revenue</div>
+                    <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Revenue Overview</div>
+                    <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Won vs Pending revenue</div>
                     <div className="grid grid-cols-2 gap-4 mb-6">
                       <div className="p-3" style={{ borderLeft: "3px solid var(--success)" }}>
                         <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)] mb-1">Won Revenue</div>
-                        <div className="text-[1.6rem] font-light" style={{ color: "var(--success)" }}>${(financials?.totalRevenue || 0).toLocaleString()}</div>
+                        <div style={{ fontSize: "1.8rem", fontWeight: 300, color: "var(--success)", lineHeight: 1 }}>${(financials?.totalRevenue || 0).toLocaleString()}</div>
                       </div>
-                      <div className="p-3" style={{ borderLeft: "3px solid var(--sarcelle)" }}>
+                      <div className="p-3" style={{ borderLeft: "1.5px solid var(--deep-forest)" }}>
                         <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)] mb-1">Pipeline</div>
-                        <div className="text-[1.6rem] font-light" style={{ color: "var(--sarcelle)" }}>${(financials?.pendingRevenue || 0).toLocaleString()}</div>
+                        <div style={{ fontSize: "1.8rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>${(financials?.pendingRevenue || 0).toLocaleString()}</div>
                       </div>
                     </div>
                     {financials?.monthly && financials.monthly.length > 0 && (
@@ -1353,11 +1353,11 @@ export default function App() {
                             return (
                               <div key={i} className="flex-1 relative group flex flex-col items-center justify-end h-full">
                                 <div className="opacity-80 hover:opacity-100 transition-opacity w-full"
-                                  style={{ height: `${(m.total / maxVal) * 100}%`, minHeight: 4, background: "var(--sarcelle)" }} />
-                                <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[0.58rem] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity font-semibold" style={{ color: "var(--sarcelle)" }}>
+                                  style={{ height: `${(m.total / maxVal) * 100}%`, minHeight: 4, background: "var(--deep-forest)" }} />
+                                <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[0.58rem] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity font-semibold" style={{ color: "var(--deep-forest)" }}>
                                   ${m.total.toLocaleString()}
                                 </div>
-                                <div className="text-center text-[0.58rem] text-[var(--gris)] mt-1">{m.month?.slice(5) || i + 1}</div>
+                                <div className="text-center mt-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.35)" }}>{m.month?.slice(5) || i + 1}</div>
                               </div>
                             );
                           })}
@@ -1368,21 +1368,21 @@ export default function App() {
 
                   {/* Pipeline distribution */}
                   <div className="eiden-card p-6">
-                    <div className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)] mb-1">Pipeline Distribution</div>
-                    <div className="text-[0.72rem] text-[var(--gris)] mb-5">Deal stages breakdown</div>
+                    <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Pipeline Distribution</div>
+                    <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Deal stages breakdown</div>
                     <div className="space-y-4">
                       {["Lead", "Proposal", "Negotiation", "Won", "Lost"].map(stage => {
                         const stageDl = filteredDeals.filter(d => d.stage === stage);
                         const pct = filteredDeals.length > 0 ? (stageDl.length / filteredDeals.length) * 100 : 0;
                         const val = stageDl.reduce((s, d) => s + d.value, 0);
-                        const barColor = stage === "Won" ? "var(--success)" : stage === "Lost" ? "var(--danger)" : "var(--sarcelle)";
+                        const barColor = stage === "Won" ? "var(--success)" : stage === "Lost" ? "var(--danger)" : "var(--deep-forest)";
                         return (
                           <div key={stage}>
                             <div className="flex justify-between text-[0.72rem] mb-1.5">
                               <span className="font-semibold" style={{ color: barColor }}>{stage}</span>
                               <span className="text-[var(--gris)]">{stageDl.length} deals · ${val.toLocaleString()}</span>
                             </div>
-                            <div className="h-1.5" style={{ background: "rgba(18,38,32,0.06)" }}>
+                            <div style={{ height: 2, background: "rgba(18,38,32,0.08)", marginTop: 4 }}>
                               <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} className="h-full" style={{ background: barColor }} />
                             </div>
                           </div>
@@ -1393,8 +1393,8 @@ export default function App() {
 
                   {/* Team workload */}
                   <div className="eiden-card p-6">
-                    <div className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)] mb-1">Team Workload</div>
-                    <div className="text-[0.72rem] text-[var(--gris)] mb-5">Tasks per team member</div>
+                    <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Team Workload</div>
+                    <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Tasks per team member</div>
                     <div className="space-y-3">
                       {users.map(u => {
                         const userTasks = tasks.filter(t => t.assignee_id === u.id);
@@ -1403,11 +1403,11 @@ export default function App() {
                         const completed = userTasks.filter(t => t.status === "Completed").length;
                         const overdue = userTasks.filter(t => isOverdue(t.due_date, t.status)).length;
                         return (
-                          <div key={u.id} className="p-3" style={{ border: "1px solid rgba(18,38,32,0.08)", borderLeft: "3px solid var(--sarcelle)" }}>
+                          <div key={u.id} className="p-3" style={{ border: "1px solid rgba(18,38,32,0.08)", borderLeft: "1.5px solid var(--deep-forest)" }}>
                             <div className="flex justify-between mb-1.5">
                               <div>
                                 <div className="font-semibold text-[0.82rem]" style={{ color: "var(--deep-forest)" }}>{u.name}</div>
-                                <div className="text-[0.65rem] text-[var(--gris)]">{u.role}</div>
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.35)" }}>{u.role}</div>
                               </div>
                               {overdue > 0 && (
                                 <span className="text-[0.65rem] font-bold flex items-center gap-1" style={{ color: "var(--danger)" }}>
@@ -1417,7 +1417,7 @@ export default function App() {
                             </div>
                             <div className="flex gap-3 text-[0.68rem] font-semibold">
                               <span style={{ color: "var(--warning)" }}>{pending} pending</span>
-                              <span style={{ color: "var(--sarcelle)" }}>{inProgress} active</span>
+                              <span style={{ color: "var(--deep-forest)" }}>{inProgress} active</span>
                               <span style={{ color: "var(--success)" }}>{completed} done</span>
                             </div>
                           </div>
@@ -1428,15 +1428,15 @@ export default function App() {
 
                   {/* Risk overview */}
                   <div className="eiden-card p-6">
-                    <div className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--sarcelle)] mb-1">Deal Risk Overview</div>
-                    <div className="text-[0.72rem] text-[var(--gris)] mb-5">Active deals sorted by risk</div>
+                    <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Deal Risk Overview</div>
+                    <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Active deals sorted by risk</div>
                     <div className="space-y-3">
                       {filteredDeals.filter(d => d.stage !== "Won" && d.stage !== "Lost")
                         .sort((a, b) => b.risk_score - a.risk_score).slice(0, 6).map(d => {
                           const riskColor = d.risk_score > 60 ? "var(--danger)" : d.risk_score > 30 ? "var(--warning)" : "var(--success)";
                           return (
                             <div key={d.id} className="flex items-center gap-3 text-[0.75rem]">
-                              <span className="w-9 text-right shrink-0 font-bold" style={{ color: riskColor }}>{d.risk_score}%</span>
+                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 600, textAlign: "right", flexShrink: 0, width: 36, color: riskColor }}>{d.risk_score}%</span>
                               <div className="flex-1">
                                 <div className="font-medium truncate" style={{ color: "var(--deep-forest)" }}>{d.title}</div>
                                 <div className="h-1.5 mt-1" style={{ background: "rgba(18,38,32,0.06)" }}>
@@ -1461,15 +1461,15 @@ export default function App() {
               <motion.div key="codex" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
                   {knowledge.map(item => (
-                    <div key={item.id} className="eiden-card p-5 space-y-3 group hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setSelectedKnowledge(item); setShowKnowledgeModal(true); }}>
+                    <div key={item.id} className="eiden-card p-5 space-y-3 group cursor-pointer" onClick={() => { setSelectedKnowledge(item); setShowKnowledgeModal(true); }}>
                       <div className="flex items-start justify-between gap-3">
-                        <h3 className="font-bold text-[0.9rem] leading-tight" style={{ color: "var(--deep-forest)" }}>{item.title}</h3>
-                        <span className="shrink-0 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.06em]" style={{ border: "1px solid rgba(18,38,32,0.12)", color: "var(--sarcelle)", background: "rgba(18,38,32,0.04)" }}>{item.category}</span>
+                        <h3 style={{ fontSize: "0.9rem", fontWeight: 700, lineHeight: 1.3, color: "var(--deep-forest)" }}>{item.title}</h3>
+                        <span className="shrink-0 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.06em]" style={{ border: "1px solid rgba(18,38,32,0.12)", color: "var(--deep-forest)", background: "rgba(18,38,32,0.04)" }}>{item.category}</span>
                       </div>
                       <p className="text-[0.75rem] leading-relaxed line-clamp-4" style={{ color: "var(--gris)" }}>{item.content}</p>
                       <div className="flex justify-between items-center pt-3" style={{ borderTop: "1px dashed rgba(18,38,32,0.1)" }}>
-                        <span className="text-[0.65rem] text-[var(--gris)]">KB-{item.id.toString().padStart(3, "0")}</span>
-                        <span className="text-[0.72rem] font-semibold" style={{ color: "var(--sarcelle)" }}>Read more →</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.3)" }}>KB-{item.id.toString().padStart(3, "0")}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: 500, color: "var(--deep-forest)", display: "flex", alignItems: "center", gap: 4 }}>Read →</span>
                       </div>
                     </div>
                   ))}
@@ -1482,15 +1482,14 @@ export default function App() {
               <motion.div key="communications" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
 
                 {/* ── Zoom panel ── */}
-                <div className="shrink-0" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.1)", borderLeft: "3px solid #2D8CFF" }}>
+                <div className="shrink-0 eiden-card">
                   {/* Header row */}
-                  <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: zoomConnected ? "1px solid rgba(18,38,32,0.08)" : "none" }}>
-                    <div className="flex items-center gap-2">
-                      {/* Zoom logo-ish icon */}
-                      <div className="w-6 h-6 flex items-center justify-center text-[0.6rem] font-bold text-white rounded-sm" style={{ background: "#2D8CFF" }}>Z</div>
-                      <span className="text-[0.75rem] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--deep-forest)" }}>Zoom</span>
+                  <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: zoomConnected ? "1px solid rgba(18,38,32,0.06)" : "none" }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 flex items-center justify-center text-[0.6rem] font-bold" style={{ background: "#2D8CFF", color: "#fff" }}>Z</div>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "2px", color: "var(--deep-forest)" }}>Zoom</span>
                       {zoomConnected && (
-                        <span className="flex items-center gap-1 text-[0.65rem] font-semibold px-2 py-0.5" style={{ background: "rgba(45,90,71,0.08)", color: "var(--success)", border: "1px solid var(--success)" }}>
+                        <span className="flex items-center gap-1 px-2 py-0.5" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "var(--success)", border: "1px solid rgba(45,90,71,0.25)" }}>
                           ✓ {zoomEmail}
                         </span>
                       )}
@@ -1516,8 +1515,8 @@ export default function App() {
                       {zoomMeetings.map(m => (
                         <div key={m.id} className="flex items-center justify-between gap-4 py-2" style={{ borderBottom: "1px dashed rgba(18,38,32,0.08)" }}>
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[0.78rem] font-semibold" style={{ color: "var(--deep-forest)" }}>{m.topic}</span>
-                            <span className="text-[0.65rem]" style={{ color: "var(--gris)" }}>
+                            <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--deep-forest)" }}>{m.topic}</span>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.4)" }}>
                               {new Date(m.start_time).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })} · {m.duration} min
                             </span>
                           </div>
@@ -1529,13 +1528,13 @@ export default function App() {
                     </div>
                   )}
                   {zoomConnected && zoomMeetings.length === 0 && (
-                    <div className="px-5 py-3 text-[0.72rem]" style={{ color: "var(--gris)" }}>No upcoming meetings. Schedule one above.</div>
+                    <div className="px-5 py-3" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.35)" }}>No upcoming meetings — schedule one above.</div>
                   )}
                 </div>
 
                 {/* Meeting bar */}
-                <div className="shrink-0 flex gap-3 items-center px-5 py-3" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.1)", borderLeft: "3px solid var(--sarcelle)" }}>
-                  <Bell size={14} style={{ color: "var(--sarcelle)" }} className="shrink-0" />
+                <div className="shrink-0 flex gap-3 items-center px-5 py-3 eiden-card">
+                  <Bell size={13} style={{ color: "rgba(18,38,32,0.4)" }} className="shrink-0" />
                   <input value={meetingLink} onChange={e => setMeetingLink(e.target.value)}
                     className="flex-1 outline-none text-[0.8rem]"
                     style={{ border: "none", borderBottom: "1.5px solid rgba(18,38,32,0.15)", padding: "7px 0", fontFamily: "'Space Grotesk',sans-serif", color: "var(--deep-forest)", background: "transparent" }}
@@ -1633,8 +1632,8 @@ export default function App() {
                 <div className="shrink-0 flex gap-0" style={{ borderBottom: "2px solid rgba(18,38,32,0.08)" }}>
                   {(["workspaces", "users", "ai"] as const).map(s => (
                     <button key={s} onClick={() => setAdminSection(s)}
-                      className="px-5 py-2.5 text-[0.7rem] font-bold uppercase tracking-[0.08em] transition-colors"
-                      style={{ borderBottom: adminSection === s ? "2px solid var(--sarcelle)" : "2px solid transparent", color: adminSection === s ? "var(--sarcelle)" : "var(--gris)", marginBottom: -2, background: "none", cursor: "pointer" }}>
+                      style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "2px", padding: "10px 20px", background: "none", border: "none", cursor: "pointer", transition: "all 0.2s" }}
+                      style={{ borderBottom: adminSection === s ? "1.5px solid var(--deep-forest)" : "2px solid transparent", color: adminSection === s ? "var(--deep-forest)" : "var(--gris)", marginBottom: -2, background: "none", cursor: "pointer" }}>
                       {s === "workspaces" ? "Workspaces" : s === "users" ? "Users" : "AI Settings"}
                     </button>
                   ))}
@@ -1642,7 +1641,7 @@ export default function App() {
                     {adminSection === "workspaces" && (
                       <button onClick={() => setShowCreateWsModal(true)} className="btn-primary" style={{ fontSize: "0.68rem", padding: "5px 14px" }}>+ New Workspace</button>
                     )}
-                    <button onClick={fetchAdminData} className="ml-2 text-[var(--gris)] hover:text-[var(--sarcelle)] transition-colors"><RefreshCw size={13} /></button>
+                    <button onClick={fetchAdminData} className="ml-2 text-[var(--gris)] hover:text-[var(--deep-forest)] transition-colors"><RefreshCw size={13} /></button>
                   </div>
                 </div>
 
@@ -1658,22 +1657,22 @@ export default function App() {
                         <div key={ws.id} className="eiden-card p-5">
                           <div className="flex items-start justify-between mb-4">
                             <div>
-                              <div className="font-bold text-[0.9rem]" style={{ color: "var(--deep-forest)" }}>{ws.name}</div>
-                              <div className="text-[0.65rem] mt-0.5" style={{ color: "var(--gris)" }}>Workspace #{ws.id}</div>
+                              <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--deep-forest)" }}>{ws.name}</div>
+                              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(18,38,32,0.3)", marginTop: 2 }}>WS-{ws.id}</div>
                             </div>
                             <button onClick={async () => { if (confirm(`Delete "${ws.name}" and all its data?`)) { await fetch(`/api/workspaces/${ws.id}`, { method: "DELETE" }); fetchAdminData(); } }}
                               className="btn-mini danger" style={{ fontSize: "0.6rem" }}><Trash2 size={10} /></button>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             {[
-                              { label: "Members", value: ws.members, color: "var(--sarcelle)" },
+                              { label: "Members", value: ws.members, color: "var(--deep-forest)" },
                               { label: "Deals", value: ws.deals, color: "var(--success)" },
                               { label: "Contacts", value: ws.contacts, color: "var(--warning)" },
                               { label: "Tasks", value: ws.tasks, color: "var(--gris)" },
                             ].map(({ label, value, color }) => (
                               <div key={label} className="p-2 text-center" style={{ border: "1px solid rgba(18,38,32,0.08)" }}>
-                                <div className="text-[1.1rem] font-bold" style={{ color }}>{value}</div>
-                                <div className="text-[0.6rem] uppercase tracking-[0.06em]" style={{ color: "var(--gris)" }}>{label}</div>
+                                <div style={{ fontSize: "1.4rem", fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.35)", marginTop: 2 }}>{label}</div>
                               </div>
                             ))}
                           </div>
@@ -1687,8 +1686,8 @@ export default function App() {
                   {adminSection === "ai" && (
                     <div className="space-y-4 pb-4">
                       <div className="p-4" style={{ border: "1px solid rgba(18,38,32,0.08)", background: "rgba(18,38,32,0.03)" }}>
-                        <div className="text-[0.65rem] font-bold uppercase tracking-[0.08em] mb-1" style={{ color: "var(--gris)" }}>Active Provider</div>
-                        <div className="text-[0.85rem] font-semibold" style={{ color: "var(--sarcelle)" }}>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.4)", marginBottom: 4 }}>Active Provider</div>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--deep-forest)" }}>
                           {aiProviderData?.providers.find((p: any) => p.id === aiProviderData.active)?.name || aiProviderData?.active || "—"}
                         </div>
                       </div>
@@ -1706,8 +1705,8 @@ export default function App() {
                               <div className="absolute bottom-0 right-0 w-3 h-3 pointer-events-none" style={{ borderBottom: `1.5px solid ${color}`, borderRight: `1.5px solid ${color}` }} />
                               <div className="flex items-start justify-between mb-3">
                                 <div>
-                                  <div className="font-bold text-[0.82rem]" style={{ color: "var(--deep-forest)" }}>{p.name}</div>
-                                  <div className="text-[0.62rem] mt-0.5" style={{ color: "var(--gris)" }}>{p.model}</div>
+                                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--deep-forest)" }}>{p.name}</div>
+                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(18,38,32,0.35)", marginTop: 3 }}>{p.model}</div>
                                 </div>
                                 {isActive && <span className="text-[0.6rem] font-bold px-2 py-0.5" style={{ background: color, color: "#fff" }}>ACTIVE</span>}
                                 {!p.available && <span className="text-[0.6rem] font-bold px-2 py-0.5" style={{ border: "1px solid var(--danger)", color: "var(--danger)" }}>NO KEY</span>}
@@ -1726,8 +1725,8 @@ export default function App() {
                           );
                         })}
                       </div>
-                      <div className="p-3 text-[0.7rem]" style={{ border: "1px solid rgba(18,38,32,0.08)", color: "var(--gris)", background: "rgba(18,38,32,0.03)" }}>
-                        To add a provider, set its key in <span className="font-bold" style={{ color: "var(--sarcelle)" }}>.env</span> and restart the server.
+                      <div style={{ padding: "12px 14px", border: "1px solid rgba(18,38,32,0.07)", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.4)", background: "rgba(18,38,32,0.02)", lineHeight: 1.7 }}>
+                        To add a provider, set its key in <span className="font-bold" style={{ color: "var(--deep-forest)" }}>.env</span> and restart the server.
                         Free providers: <span className="font-semibold" style={{ color: "var(--success)" }}>Groq</span> · <span className="font-semibold" style={{ color: "var(--success)" }}>Gemini</span>
                       </div>
                     </div>
@@ -1739,21 +1738,21 @@ export default function App() {
                         <thead className="sticky top-0" style={{ background: "rgba(18,38,32,0.04)" }}>
                           <tr style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
                             {["Name", "Email", "Role", "Workspace", "Actions"].map(h => (
-                              <th key={h} className="py-2.5 px-4 text-[0.6rem] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--gris)" }}>{h}</th>
+                              <th key={h} className="py-2.5 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.35)" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {adminData.users.map((u: any) => (
                             <tr key={u.id} style={{ borderBottom: "1px solid rgba(18,38,32,0.05)" }}>
-                              <td className="py-3 px-4 font-semibold text-[0.78rem]" style={{ color: "var(--deep-forest)" }}>{u.name}</td>
-                              <td className="py-3 px-4 text-[0.72rem]" style={{ color: "var(--gris)" }}>{u.email}</td>
+                              <td className="py-3 px-4" style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--deep-forest)" }}>{u.name}</td>
+                              <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.4)" }}>{u.email}</td>
                               <td className="py-3 px-4">
                                 <select value={u.role} onChange={async e => {
                                   await fetch(`/api/users/${u.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: e.target.value }) });
                                   fetchAdminData();
                                 }} className="text-[0.7rem] outline-none px-2 py-1 font-semibold"
-                                  style={{ border: "none", borderBottom: "1px solid rgba(18,38,32,0.15)", background: "transparent", color: "var(--sarcelle)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}>
+                                  style={{ border: "none", borderBottom: "1px solid rgba(18,38,32,0.15)", background: "transparent", color: "var(--deep-forest)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}>
                                   {["Admin", "Operational Manager", "Brand Manager", "Marketing Strategy", "Web / IT Developer", "Commercial"].map(r => (
                                     <option key={r} value={r}>{r}</option>
                                   ))}
@@ -1927,7 +1926,7 @@ export default function App() {
         {showKnowledgeModal && selectedKnowledge && (
           <Modal title={selectedKnowledge.title} onClose={() => { setShowKnowledgeModal(false); setSelectedKnowledge(null); }}>
             <div className="space-y-4">
-              <span className="inline-block px-2 py-0.5 text-[0.6rem] font-bold uppercase" style={{ border: "1px solid rgba(18,38,32,0.12)", color: "var(--sarcelle)", background: "rgba(18,38,32,0.04)" }}>{selectedKnowledge.category}</span>
+              <span className="inline-block px-2 py-0.5 text-[0.6rem] font-bold uppercase" style={{ border: "1px solid rgba(18,38,32,0.12)", color: "var(--deep-forest)", background: "rgba(18,38,32,0.04)" }}>{selectedKnowledge.category}</span>
               <div className="p-4 text-[0.8rem] leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto" style={{ background: "var(--silk-creme)", border: "1px solid rgba(18,38,32,0.1)", color: "var(--deep-forest)" }}>
                 {selectedKnowledge.content}
               </div>
@@ -1997,7 +1996,7 @@ export default function App() {
                 ].map(({ label, value, colored }) => (
                   <div key={label} className="p-3" style={{ border: "1px solid rgba(18,38,32,0.1)" }}>
                     <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] mb-1" style={{ color: "var(--gris)" }}>{label}</div>
-                    <div className="font-semibold text-[0.85rem]" style={{ color: colored ? "var(--sarcelle)" : "var(--deep-forest)" }}>{value}</div>
+                    <div className="font-semibold text-[0.85rem]" style={{ color: colored ? "var(--deep-forest)" : "var(--deep-forest)" }}>{value}</div>
                   </div>
                 ))}
               </div>
@@ -2043,7 +2042,7 @@ function NavItem({ active, onClick, icon, label, badge }: {
       <span className="shrink-0 opacity-70">{icon}</span>
       <span>{label}</span>
       {badge != null && badge > 0 && (
-        <span className="ml-auto shrink-0 w-4 h-4 flex items-center justify-center text-[8px] font-bold" style={{ background: "var(--danger)", color: "#fff" }}>{badge}</span>
+        <span className="ml-auto shrink-0 w-4 h-4 flex items-center justify-center text-[8px] font-bold" style={{ background: "var(--danger)", color: "var(--pure-white)" }}>{badge}</span>
       )}
     </button>
   );
