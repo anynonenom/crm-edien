@@ -699,7 +699,7 @@ export default function App() {
         <div className="hidden md:flex relative overflow-hidden flex-col justify-between" style={{ width: "55%", background: "var(--deep-forest)", padding: "60px" }}>
           <div className="silk-texture" />
           <div style={{ position: "relative", zIndex: 10 }}>
-            <img src="https://eiden-group.com/wp-content/uploads/2025/11/cropped-1.png" alt="Eiden Group" style={{ height: 56, width: "auto", opacity: 0.92 }} />
+            <img src="https://eiden-group.com/wp-content/uploads/2025/11/ChatGPT-Image-Nov-25-2025-03_46_55-PM.png" alt="Eiden Group" style={{ height: 56, width: "auto", opacity: 0.92 }} />
           </div>
           <div style={{ position: "relative", zIndex: 10, color: "var(--silk-creme)" }}>
             <h1 style={{ fontSize: "clamp(3rem,7vw,5.5rem)", lineHeight: 0.9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "-2px" }}>
@@ -919,7 +919,7 @@ export default function App() {
         {/* Brand */}
         <div className="flex items-center justify-between gap-3 px-6 py-0" style={{ height: 64, borderBottom: "1px solid rgba(244,235,208,0.08)" }}>
           <div className="flex items-center gap-3">
-            <img src="https://eiden-group.com/wp-content/uploads/2025/11/cropped-1.png" alt="Eiden Group" style={{ height: 38, width: "auto", opacity: 0.92 }} />
+            <img src="https://eiden-group.com/wp-content/uploads/2025/11/ChatGPT-Image-Nov-25-2025-03_46_55-PM.png" alt="Eiden Group" style={{ height: 38, width: "auto", opacity: 0.92 }} />
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "var(--silk-creme)", opacity: 0.8 }}>Eiden CRM</div>
           </div>
           <button className="lg:hidden p-1" style={{ color: "rgba(244,235,208,0.4)", background: "none", border: "none", cursor: "pointer" }} onClick={() => setSidebarOpen(false)}>✕</button>
