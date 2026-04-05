@@ -698,8 +698,8 @@ export default function App() {
         {/* Left visual panel — hidden on mobile */}
         <div className="hidden md:flex relative overflow-hidden flex-col justify-between" style={{ width: "55%", background: "var(--deep-forest)", padding: "60px" }}>
           <div className="silk-texture" />
-          <div style={{ position: "relative", zIndex: 10, fontFamily: "'JetBrains Mono', monospace", color: "var(--silk-creme)", letterSpacing: "-0.5px", fontWeight: 300, opacity: 0.7, fontSize: "0.8rem" }}>
-            EIDEN // CRM_V.01
+          <div style={{ position: "relative", zIndex: 10 }}>
+            <img src="https://eiden-group.com/wp-content/uploads/2025/02/cropped-favicon-transparent.png" alt="Eiden Group" style={{ height: 44, width: "auto", filter: "brightness(0) invert(1)", opacity: 0.85 }} />
           </div>
           <div style={{ position: "relative", zIndex: 10, color: "var(--silk-creme)" }}>
             <h1 style={{ fontSize: "clamp(3rem,7vw,5.5rem)", lineHeight: 0.9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "-2px" }}>
@@ -919,7 +919,7 @@ export default function App() {
         {/* Brand */}
         <div className="flex items-center justify-between gap-3 px-6 py-0" style={{ height: 64, borderBottom: "1px solid rgba(244,235,208,0.08)" }}>
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 flex items-center justify-center shrink-0 text-[0.72rem] font-bold" style={{ border: "1px solid rgba(244,235,208,0.35)", color: "var(--silk-creme)" }}>E</div>
+            <img src="https://eiden-group.com/wp-content/uploads/2025/02/cropped-favicon-transparent.png" alt="Eiden Group" style={{ height: 28, width: "auto", filter: "brightness(0) invert(1)", opacity: 0.85 }} />
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "var(--silk-creme)", opacity: 0.8 }}>Eiden CRM</div>
           </div>
           <button className="lg:hidden p-1" style={{ color: "rgba(244,235,208,0.4)", background: "none", border: "none", cursor: "pointer" }} onClick={() => setSidebarOpen(false)}>✕</button>
