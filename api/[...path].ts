@@ -122,6 +122,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // ─── Time Logs ────────────────────────────────────────────────────────────
+    if (r0 === "time-logs") {
+      if (!r1) {
+        if (method === "GET") {
+          const workspace_id = req.query.workspace_id ? Number(req.query.workspace_id) : undefined;
+          const user_id = req.query.user_id ? Number(req.query.user_id) : undefined;
+          let q = supabase.from("time_logs").select("*").order("start_time", { ascending: false }).limit(200);
+          if (workspace_id) q = q.eq("workspace_id", workspace_id);
+          if (user_id) q = q.eq("user_id", user_id);
+          const { data } = await q;
+          return res.json(data || []);
+        }
+        if (method === "POST") {
+          const { user_id, user_name, task_id, task_title, start_time, notes, workspace_id } = req.body;
+          const { data } = await supabase.from("time_logs").insert({
+            user_id, user_name: user_name || "", task_id: task_id || null, task_title: task_title || "",
+            start_time: start_time || new Date().toISOString(), notes: notes || "", workspace_id
+          }).select().single();
+          return res.json({ id: data?.id });
+        }
+      }
+      if (r1) {
+        if (method === "PATCH") {
+          const { end_time, duration_minutes, notes } = req.body;
+          await supabase.from("time_logs").update({ end_time, duration_minutes, notes }).eq("id", r1);
+          return res.json({ success: true });
+        }
+        if (method === "DELETE") {
+          await supabase.from("time_logs").delete().eq("id", r1);
+          return res.json({ success: true });
+        }
+      }
+    }
+
     // ─── Clients ──────────────────────────────────────────────────────────────
     if (r0 === "clients") {
       if (!r1) {
