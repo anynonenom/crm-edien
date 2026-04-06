@@ -53,18 +53,20 @@ interface AiMessage { role: "user" | "assistant"; content: string; }
 interface ZoomMeeting { id: number; topic: string; start_time: string; duration: number; join_url: string; }
 
 // ─── Permissions ──────────────────────────────────────────────────────────────
-const PERMISSIONS: Record<string, { tabs: string[]; canCreate: boolean; canDelete: boolean; canViewAnalytics: boolean }> = {
-  "Admin":               { tabs: ["dashboard","pipeline","contacts","tasks","analytics","codex","communications","admin"], canCreate: true,  canDelete: true,  canViewAnalytics: true  },
-  "Operational Manager": { tabs: ["dashboard","pipeline","contacts","tasks","analytics","codex","communications"],         canCreate: true,  canDelete: true,  canViewAnalytics: true  },
-  "Solution Architect":  { tabs: ["dashboard","pipeline","contacts","tasks","analytics","codex","communications"],         canCreate: true,  canDelete: false, canViewAnalytics: true  },
-  "Brand Manager":       { tabs: ["dashboard","pipeline","contacts","tasks","codex","communications"],                     canCreate: true,  canDelete: false, canViewAnalytics: false },
-  "Marketing Strategy":  { tabs: ["dashboard","pipeline","contacts","tasks","analytics","codex","communications"],         canCreate: false, canDelete: false, canViewAnalytics: true  },
-  "Sales":               { tabs: ["dashboard","pipeline","contacts","tasks","codex","communications"],                     canCreate: true,  canDelete: false, canViewAnalytics: false },
-  "Commercial":          { tabs: ["dashboard","pipeline","contacts","tasks","codex","communications"],                     canCreate: true,  canDelete: false, canViewAnalytics: false },
-  "Web Developer":       { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false },
-  "Content Creator":     { tabs: ["dashboard","contacts","tasks","codex","communications"],                                canCreate: false, canDelete: false, canViewAnalytics: false },
+// canAssignAll  → can assign tasks to any user (not just themselves)
+// ownTasksOnly  → only see tasks assigned to them
+const PERMISSIONS: Record<string, { tabs: string[]; canCreate: boolean; canDelete: boolean; canViewAnalytics: boolean; canAssignAll: boolean; ownTasksOnly: boolean }> = {
+  "Admin":               { tabs: ["dashboard","pipeline","contacts","tasks","analytics","codex","communications","admin"], canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Operational Manager": { tabs: ["dashboard","pipeline","contacts","tasks","codex","communications"],                     canCreate: true,  canDelete: true,  canViewAnalytics: false, canAssignAll: true,  ownTasksOnly: false },
+  "Solution Architect":  { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Brand Manager":       { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Marketing Strategy":  { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Sales":               { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Commercial":          { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Web Developer":       { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Content Creator":     { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
 };
-const getPerms = (role?: string | null) => PERMISSIONS[role ?? ""] ?? { tabs: ["dashboard","tasks","codex","communications"], canCreate: false, canDelete: false, canViewAnalytics: false };
+const getPerms = (role?: string | null) => PERMISSIONS[role ?? ""] ?? { tabs: ["dashboard","tasks","codex","communications"], canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const isOverdue = (dueDate: string, status: string) => {
@@ -180,10 +182,13 @@ export default function App() {
   const [showRecoveryDone, setShowRecoveryDone] = useState(false);
 
   // ─── Filtered data by workspace ─────────────────────────────────────────────
-  const filteredDeals = deals.filter(d => d.workspace_id === currentWorkspace?.id);
-  const filteredTasks = tasks.filter(t => t.workspace_id === currentWorkspace?.id);
-  const filteredContacts = contacts.filter(c => c.workspace_id === currentWorkspace?.id);
   const perms = getPerms(currentUser?.role);
+  const filteredDeals = deals.filter(d => d.workspace_id === currentWorkspace?.id);
+  const filteredContacts = contacts.filter(c => c.workspace_id === currentWorkspace?.id);
+  const filteredTasks = tasks.filter(t =>
+    t.workspace_id === currentWorkspace?.id &&
+    (!perms.ownTasksOnly || t.assignee_id === currentUser?.id)
+  );
 
   // ─── Fetch all data ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -1946,7 +1951,7 @@ export default function App() {
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Assignee">
                   <select name="assignee_id" required className="field-input">
-                    {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    {(perms.canAssignAll ? users : users.filter(u => u.id === currentUser?.id)).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                   </select>
                 </Field>
                 <Field label="Priority">
@@ -1996,7 +2001,7 @@ export default function App() {
               </Field>
               <Field label="Assignee">
                 <select value={editTask.assignee_id} onChange={e => setEditTask({ ...editTask, assignee_id: parseInt(e.target.value) })} className="field-input">
-                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  {(perms.canAssignAll ? users : users.filter((u: User) => u.id === currentUser?.id)).map((u: User) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               </Field>
               <button onClick={handleUpdateTask} className="flash-button mb-0">Save Changes</button>
