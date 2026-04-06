@@ -57,17 +57,21 @@ interface ZoomMeeting { id: number; topic: string; start_time: string; duration:
 // canAssignAll  → can assign tasks to any user (not just themselves)
 // ownTasksOnly  → only see tasks assigned to them
 const PERMISSIONS: Record<string, { tabs: string[]; canCreate: boolean; canDelete: boolean; canViewAnalytics: boolean; canAssignAll: boolean; ownTasksOnly: boolean }> = {
-  "Admin":               { tabs: ["dashboard","pipeline","contacts","tasks","analytics","codex","communications","admin"], canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Operational Manager": { tabs: ["dashboard","pipeline","contacts","tasks","codex","communications"],                     canCreate: true,  canDelete: true,  canViewAnalytics: false, canAssignAll: true,  ownTasksOnly: false },
-  "Solution Architect":  { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Brand Manager":       { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Marketing Strategy":  { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Sales":               { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Commercial":          { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Web Developer":       { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Content Creator":     { tabs: ["dashboard","tasks","codex","communications"],                                           canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Admin":               { tabs: ["dashboard","pipeline","contacts","tasks","analytics","knowledge_base","admin"], canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Eiden HQ":            { tabs: ["dashboard","pipeline","contacts","tasks","analytics","knowledge_base"],          canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Eiden Global":        { tabs: ["dashboard","pipeline","contacts","tasks","knowledge_base"],                      canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: true,  ownTasksOnly: false },
+  "Operational Manager": { tabs: ["dashboard","pipeline","contacts","tasks","knowledge_base"],                      canCreate: true,  canDelete: true,  canViewAnalytics: false, canAssignAll: true,  ownTasksOnly: false },
+  "Brand Manager":       { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Designer":            { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Video Editor":        { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Web Developer":       { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Content Creator":     { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Marketing Strategy":  { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Sales":               { tabs: ["dashboard","pipeline","contacts","tasks","knowledge_base"],                      canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Commercial":          { tabs: ["dashboard","pipeline","contacts","tasks","knowledge_base"],                      canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Solution Architect":  { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
 };
-const getPerms = (role?: string | null) => PERMISSIONS[role ?? ""] ?? { tabs: ["dashboard","tasks","codex","communications"], canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true };
+const getPerms = (role?: string | null) => PERMISSIONS[role ?? ""] ?? { tabs: ["dashboard","tasks","knowledge_base"], canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const isOverdue = (dueDate: string, status: string) => {
@@ -94,7 +98,7 @@ export default function App() {
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(savedSession?.workspace ?? null);
   const [view, setView] = useState<"login" | "register" | "recovery">("login");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "pipeline" | "contacts" | "tasks" | "analytics" | "codex" | "communications" | "admin">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "pipeline" | "contacts" | "tasks" | "analytics" | "knowledge_base" | "admin">("dashboard");
   const [showTfa, setShowTfa] = useState(false);
   const [tfaProgress, setTfaProgress] = useState(0);
 
@@ -227,23 +231,6 @@ export default function App() {
       .catch(() => {});
   }, [isLoggedIn, currentWorkspace?.id]);
 
-  // Zoom status + meetings (load when communications tab opens)
-  useEffect(() => {
-    if (!isLoggedIn || activeTab !== "communications" || !currentWorkspace?.id) return;
-    fetch(`/api/zoom/status?workspace_id=${currentWorkspace.id}`)
-      .then(r => r.json())
-      .then(d => {
-        setZoomConnected(d.connected);
-        setZoomEmail(d.email || "");
-        if (d.connected) {
-          fetch(`/api/zoom/meetings?workspace_id=${currentWorkspace.id}`)
-            .then(r => r.json())
-            .then(meetings => setZoomMeetings(Array.isArray(meetings) ? meetings : []))
-            .catch(() => {});
-        }
-      })
-      .catch(() => {});
-  }, [isLoggedIn, activeTab, currentWorkspace?.id]);
 
   // Handle ?zoom=connected or ?zoom=error after OAuth redirect
   useEffect(() => {
@@ -252,20 +239,10 @@ export default function App() {
     if (zoom) {
       window.history.replaceState({}, "", window.location.pathname);
       if (zoom === "connected") {
-        setActiveTab("communications");
       }
     }
   }, []);
 
-  // Team chat — load history when tab opens + clear unread
-  useEffect(() => {
-    if (!isLoggedIn || activeTab !== "communications" || !currentWorkspace?.id) return;
-    fetch(`/api/chat?workspace_id=${currentWorkspace.id}`)
-      .then(r => r.json())
-      .then(d => setChatMessages(d || []))
-      .catch(() => {});
-    setChatUnread(0);
-  }, [isLoggedIn, activeTab, currentWorkspace?.id]);
 
   // Team chat — background realtime subscription (always on when logged in)
   useEffect(() => {
@@ -470,7 +447,7 @@ export default function App() {
       const res = await fetch("/api/users/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: regName, email: regEmail, username: regUsername, password: regPassword, company_name: regCompany, role: regRole })
+        body: JSON.stringify({ name: regName, email: regEmail, username: regUsername, password: regPassword, company_name: regCompany, role: regRole, pending: true })
       });
       if (res.ok) {
         setRegStep(2);
@@ -580,6 +557,12 @@ export default function App() {
   };
 
   // ─── Contact Actions ──────────────────────────────────────────────────────────
+  const deleteContact = async (id: number) => {
+    if (!confirm("Delete this contact? This cannot be undone.")) return;
+    await fetch(`/api/contacts/${id}`, { method: "DELETE" });
+    fetchData();
+  };
+
   const handleCreateContact = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -817,7 +800,7 @@ export default function App() {
                       <input type="text" placeholder="Your company name" className="flash-input" value={regCompany}
                         onChange={e => { setRegCompany(e.target.value); setRegError(null); }} />
                       <p className="mt-2" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", color: "rgba(18,38,32,0.4)", lineHeight: 1.6 }}>
-                        New company → you become Admin. Existing → join with your role.
+                        Your account will be reviewed and a workspace assigned by the Admin before you can log in.
                       </p>
                     </AuthField>
                     <AuthField label="Your Role">
@@ -825,12 +808,16 @@ export default function App() {
                         <option value="">Select your role...</option>
                         <option value="Operational Manager">Operational Manager</option>
                         <option value="Brand Manager">Brand Manager</option>
+                        <option value="Designer">Designer</option>
+                        <option value="Video Editor">Video Editor</option>
                         <option value="Web Developer">Web Developer</option>
                         <option value="Content Creator">Content Creator</option>
-                        <option value="Solution Architect">Solution Architect</option>
                         <option value="Marketing Strategy">Marketing Strategy</option>
                         <option value="Sales">Sales</option>
                         <option value="Commercial">Commercial</option>
+                        <option value="Solution Architect">Solution Architect</option>
+                        <option value="Eiden Global">Eiden Global</option>
+                        <option value="Eiden HQ">Eiden HQ</option>
                       </select>
                     </AuthField>
                     {regError && <div className="px-4 py-3 text-[0.78rem]" style={{ border: "1px solid rgba(139,58,58,0.3)", color: "var(--danger)" }}>{regError}</div>}
@@ -944,9 +931,7 @@ export default function App() {
           {perms.tabs.includes("contacts") && <NavItem active={activeTab === "contacts"} onClick={() => { setActiveTab("contacts"); setSidebarOpen(false); }} icon={<Users size={14} />} label="Contacts" />}
           <NavItem active={activeTab === "tasks"} onClick={() => { setActiveTab("tasks"); setSidebarOpen(false); }} icon={<CheckCircle2 size={14} />} label="Tasks" badge={overdueTasks.length > 0 ? overdueTasks.length : undefined} />
           {perms.tabs.includes("analytics") && <NavItem active={activeTab === "analytics"} onClick={() => { setActiveTab("analytics"); setSidebarOpen(false); }} icon={<BarChart2 size={14} />} label="Analytics" />}
-          {perms.tabs.includes("codex") && <NavItem active={activeTab === "codex"} onClick={() => { setActiveTab("codex"); setSidebarOpen(false); }} icon={<BookOpen size={14} />} label="Codex" />}
-          <div className="mx-6 my-3" style={{ height: 1, background: "rgba(244,235,208,0.06)" }} />
-          <NavItem active={activeTab === "communications"} onClick={() => { setActiveTab("communications"); setChatUnread(0); setSidebarOpen(false); }} icon={<MessageSquare size={14} />} label="Team Chat" badge={chatUnread > 0 ? chatUnread : undefined} />
+          {perms.tabs.includes("knowledge_base") && <NavItem active={activeTab === "knowledge_base"} onClick={() => { setActiveTab("knowledge_base"); setSidebarOpen(false); }} icon={<BookOpen size={14} />} label="Knowledge Base" />}
           {perms.tabs.includes("admin") && (
             <>
               <div className="mx-6 my-3" style={{ height: 1, background: "rgba(244,235,208,0.06)" }} />
@@ -998,9 +983,9 @@ export default function App() {
                : activeTab === "contacts" ? "Contacts"
                : activeTab === "tasks" ? "Tasks"
                : activeTab === "analytics" ? "Analytics"
-               : activeTab === "codex" ? "Codex"
+               : activeTab === "knowledge_base" ? "Codex"
                : activeTab === "admin" ? "Admin"
-               : "Team Chat"}
+               : ""}
             </h1>
             <div className="hidden sm:block w-px h-4 opacity-20" style={{ background: "var(--deep-forest)" }} />
             <span className="hidden sm:block truncate max-w-[120px]" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.4)", letterSpacing: "0.5px" }}>{currentWorkspace?.name}</span>
@@ -1014,7 +999,7 @@ export default function App() {
             {activeTab === "pipeline" && perms.canCreate && <button onClick={() => setShowNewDealModal(true)} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Deal</button>}
             {activeTab === "contacts" && perms.canCreate && <button onClick={() => setShowNewContactModal(true)} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Contact</button>}
             {activeTab === "tasks" && <button onClick={() => { setSelectedDealForTask(null); setShowNewTaskModal(true); }} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Task</button>}
-            {activeTab === "codex" && currentUser?.role === "Admin" && <button onClick={() => { setKbTitle(""); setKbContent(""); setKbCategory("Services"); setShowNewKnowledgeModal(true); }} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Entry</button>}
+            {activeTab === "knowledge_base" && currentUser?.role === "Admin" && <button onClick={() => { setKbTitle(""); setKbContent(""); setKbCategory("Services"); setShowNewKnowledgeModal(true); }} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Entry</button>}
             <button onClick={fetchData} style={{ color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", padding: 4 }} title="Refresh"
               onMouseEnter={e => (e.currentTarget.style.color = "var(--deep-forest)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(18,38,32,0.35)")}>
               <RefreshCw size={14} />
@@ -1249,7 +1234,7 @@ export default function App() {
                     <table className="w-full text-left min-w-[600px]">
                       <thead className="sticky top-0" style={{ background: "rgba(18,38,32,0.04)" }}>
                         <tr style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
-                          {["Name","Company","Email","Phone","Status","Source","LTV"].map(h => (
+                          {["Name","Company","Email","Phone","Status","Source","LTV",""].map(h => (
                             <th key={h} className="py-2.5 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.35)" }}>{h}</th>
                           ))}
                         </tr>
@@ -1276,6 +1261,13 @@ export default function App() {
                             </td>
                             <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.38)" }}>{c.source || "—"}</td>
                             <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", fontWeight: 600, color: "var(--deep-forest)" }}>${(c.ltv || 0).toLocaleString()}</td>
+                            <td className="py-3 px-4">
+                              {perms.canDelete && (
+                                <button onClick={() => deleteContact(c.id)} className="btn-mini danger" title="Delete contact" style={{ padding: "3px 7px" }}>
+                                  <Trash2 size={11} />
+                                </button>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1505,8 +1497,8 @@ export default function App() {
             )}
 
             {/* ── Codex ────────────────────────────────────────── */}
-            {activeTab === "codex" && (
-              <motion.div key="codex" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
+            {activeTab === "knowledge_base" && (
+              <motion.div key="knowledge_base" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
                 {/* Category groups */}
                 {["Company", "Services", "Methodology", "Results", "Sales", "Brand"].map(cat => {
                   const items = knowledge.filter(k => k.category === cat);
@@ -1572,154 +1564,7 @@ export default function App() {
               </motion.div>
             )}
 
-            {/* ── Communications ───────────────────────────────── */}
-            {activeTab === "communications" && (
-              <motion.div key="communications" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
 
-                {/* ── Zoom panel ── */}
-                <div className="shrink-0 eiden-card">
-                  {/* Header row */}
-                  <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: zoomConnected ? "1px solid rgba(18,38,32,0.06)" : "none" }}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 flex items-center justify-center text-[0.6rem] font-bold" style={{ background: "#2D8CFF", color: "#fff" }}>Z</div>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "2px", color: "var(--deep-forest)" }}>Zoom</span>
-                      {zoomConnected && (
-                        <span className="flex items-center gap-1 px-2 py-0.5" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "var(--success)", border: "1px solid rgba(45,90,71,0.25)" }}>
-                          ✓ {zoomEmail}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {zoomConnected ? (
-                        <>
-                          <button onClick={() => setShowScheduleModal(true)} className="btn-primary" style={{ fontSize: "0.68rem", padding: "6px 14px" }}>+ Schedule Meeting</button>
-                          <button onClick={disconnectZoom} className="btn-mini danger" style={{ fontSize: "0.6rem" }}>Disconnect</button>
-                        </>
-                      ) : (
-                        <a href={`/api/zoom/auth?workspace_id=${currentWorkspace?.id}`}
-                          className="btn-primary" style={{ fontSize: "0.68rem", padding: "6px 14px", textDecoration: "none" }}>
-                          Connect Zoom
-                        </a>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Meeting list */}
-                  {zoomConnected && zoomMeetings.length > 0 && (
-                    <div className="px-5 py-3 flex flex-col gap-2">
-                      {zoomMeetings.map(m => (
-                        <div key={m.id} className="flex items-center justify-between gap-4 py-2" style={{ borderBottom: "1px dashed rgba(18,38,32,0.08)" }}>
-                          <div className="flex flex-col gap-0.5">
-                            <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--deep-forest)" }}>{m.topic}</span>
-                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.4)" }}>
-                              {new Date(m.start_time).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })} · {m.duration} min
-                            </span>
-                          </div>
-                          <a href={m.join_url} target="_blank" rel="noreferrer" className="btn-mini shrink-0" style={{ borderColor: "#2D8CFF", color: "#2D8CFF" }}>
-                            Join
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {zoomConnected && zoomMeetings.length === 0 && (
-                    <div className="px-5 py-3" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.35)" }}>No upcoming meetings — schedule one above.</div>
-                  )}
-                </div>
-
-                {/* Meeting bar */}
-                <div className="shrink-0 flex gap-3 items-center px-5 py-3 eiden-card">
-                  <Bell size={13} style={{ color: "rgba(18,38,32,0.4)" }} className="shrink-0" />
-                  <input value={meetingLink} onChange={e => setMeetingLink(e.target.value)}
-                    className="flex-1 outline-none text-[0.8rem]"
-                    style={{ border: "none", borderBottom: "1.5px solid rgba(18,38,32,0.15)", padding: "7px 0", fontFamily: "'Space Grotesk',sans-serif", color: "var(--deep-forest)", background: "transparent" }}
-                    placeholder="Quick meeting URL or ID" />
-                  {meetingLink.trim() && (
-                    <a href={meetingLink.startsWith("http") ? meetingLink : `https://zoom.us/j/${meetingLink}`}
-                      target="_blank" rel="noreferrer" className="btn-mini whitespace-nowrap">
-                      Open
-                    </a>
-                  )}
-                  <button onClick={saveMeetingLink} disabled={isMeetingSaving} className="btn-primary" style={{ opacity: isMeetingSaving ? 0.5 : 1 }}>
-                    {isMeetingSaving ? "Saving…" : "Save"}
-                  </button>
-                </div>
-
-                {/* Chat panel */}
-                <div className="flex-1 flex flex-col overflow-hidden eiden-card" style={{ position: "relative" }}>
-                  {/* Header */}
-                  <div className="shrink-0 px-5 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "var(--deep-forest)" }}>
-                    <div className="flex items-center gap-2">
-                      <MessageSquare size={13} style={{ color: "rgba(244,235,208,0.6)" }} />
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "rgba(244,235,208,0.7)" }}>Team Chat</span>
-                    </div>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(244,235,208,0.3)", letterSpacing: "1px" }}>
-                      {currentWorkspace?.name}
-                    </span>
-                  </div>
-
-                  {/* Messages */}
-                  <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-                    {chatMessages.length === 0 && (
-                      <div className="text-center py-12">
-                        <div className="w-12 h-12 flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(18,38,32,0.04)", border: "1px solid rgba(18,38,32,0.08)" }}>
-                          <MessageSquare size={20} style={{ color: "rgba(18,38,32,0.25)" }} />
-                        </div>
-                        <p style={{ fontSize: "0.78rem", color: "rgba(18,38,32,0.4)", fontFamily: "'JetBrains Mono', monospace" }}>No messages yet — start the conversation.</p>
-                      </div>
-                    )}
-                    {chatMessages.map(msg => {
-                      const isMe = msg.user === currentUser?.name;
-                      return (
-                        <div key={msg.id} className={`flex gap-3 ${isMe ? "justify-end" : "justify-start"}`}>
-                          {!isMe && (
-                            <div className="shrink-0 w-8 h-8 flex items-center justify-center mt-0.5 text-[0.7rem] font-bold"
-                              style={{ background: "var(--deep-forest)", color: "var(--silk-creme)" }}>
-                              {msg.user[0].toUpperCase()}
-                            </div>
-                          )}
-                          <div className="max-w-[68%] flex flex-col gap-1">
-                            {!isMe && (
-                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.45)", marginLeft: 4 }}>{msg.user}</span>
-                            )}
-                            <div className="px-4 py-2.5 text-[0.78rem] leading-relaxed"
-                              style={isMe
-                                ? { background: "var(--deep-forest)", color: "var(--silk-creme)" }
-                                : { background: "var(--pure-white)", color: "var(--deep-forest)", border: "1px solid rgba(18,38,32,0.08)" }}>
-                              {msg.text}
-                            </div>
-                            <span className={`text-[0.58rem] px-1 ${isMe ? "text-right" : "text-left"}`} style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.3)" }}>
-                              {msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
-                            </span>
-                          </div>
-                          {isMe && (
-                            <div className="shrink-0 w-8 h-8 flex items-center justify-center mt-0.5 text-[0.7rem] font-bold"
-                              style={{ background: "rgba(18,38,32,0.08)", color: "var(--deep-forest)" }}>
-                              {(currentUser?.name ?? "M")[0].toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    <div ref={chatEndRef} />
-                  </div>
-
-                  {/* Input */}
-                  <div className="shrink-0 flex gap-3 px-5 py-3" style={{ borderTop: "1px solid rgba(18,38,32,0.07)" }}>
-                    <input value={chatInput} onChange={e => setChatInput(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && sendChatMessage()}
-                      placeholder={`Message ${currentWorkspace?.name}…`}
-                      className="flex-1 outline-none text-[0.82rem]"
-                      style={{ border: "none", borderBottom: "1.5px solid rgba(18,38,32,0.15)", padding: "8px 0", fontFamily: "'Space Grotesk', sans-serif", color: "var(--deep-forest)", background: "transparent" }} />
-                    <button onClick={sendChatMessage}
-                      className="flex items-center justify-center transition-opacity hover:opacity-80"
-                      style={{ background: "var(--deep-forest)", color: "var(--silk-creme)", width: 40, height: 40, flexShrink: 0, border: "none", cursor: "pointer" }}>
-                      <Send size={14} />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
             {/* ── Admin Panel ──────────────────────────────────── */}
             {activeTab === "admin" && currentUser?.role === "Admin" && (
               <motion.div key="admin" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
@@ -1847,7 +1692,7 @@ export default function App() {
                                   fetchAdminData();
                                 }} className="text-[0.7rem] outline-none px-2 py-1 font-semibold"
                                   style={{ border: "none", borderBottom: "1px solid rgba(18,38,32,0.15)", background: "transparent", color: "var(--deep-forest)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}>
-                                  {["Admin", "Operational Manager", "Brand Manager", "Marketing Strategy", "Web / IT Developer", "Commercial"].map(r => (
+                                  {["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Brand Manager", "Designer", "Video Editor", "Web Developer", "Content Creator", "Marketing Strategy", "Sales", "Commercial", "Solution Architect"].map(r => (
                                     <option key={r} value={r}>{r}</option>
                                   ))}
                                 </select>
@@ -2175,7 +2020,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0, x: "-50%" }}
             exit={{ opacity: 0, y: 40, x: "-50%" }}
             transition={{ type: "spring", stiffness: 260, damping: 26 }}
-            onClick={() => { setActiveTab("communications"); setChatUnread(0); setChatToast(null); }}
+            onClick={() => setChatToast(null)}
             className="fixed bottom-6 left-1/2 cursor-pointer z-[9999] flex items-center gap-3 px-5 py-4"
             style={{ background: "var(--deep-forest)", boxShadow: "0 12px 40px rgba(0,0,0,0.35)", minWidth: 260, maxWidth: 360 }}
           >
