@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "./lib/supabase";
+import { useAiChatStore } from "./stores/aiChatStore";
+import type { AiMessage } from "./stores/aiChatStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Stats {
@@ -49,7 +51,6 @@ interface KnowledgeItem {
 }
 interface Workspace { id: number; name: string; }
 interface ChatMessage { id: number; user: string; text: string; created_at: string; }
-interface AiMessage { role: "user" | "assistant"; content: string; }
 interface ZoomMeeting { id: number; topic: string; start_time: string; duration: number; join_url: string; }
 
 // ─── Permissions ──────────────────────────────────────────────────────────────
@@ -161,8 +162,9 @@ export default function App() {
   // Registration
   const [regCompany, setRegCompany] = useState("");
 
-  // AI Assistant
-  const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
+  // AI Assistant — persistent via Zustand + localStorage
+  const { getMessages, addMessage, clearHistory } = useAiChatStore();
+  const aiMessages = currentWorkspace ? getMessages(currentWorkspace.id) : [];
   const [aiInput, setAiInput] = useState("");
   const [isAiThinking, setIsAiThinking] = useState(false);
   const aiEndRef = useRef<HTMLDivElement>(null);
@@ -310,35 +312,38 @@ export default function App() {
   // ─── AI Assistant ────────────────────────────────────────────────────────────
   const sendAiMessage = useCallback(async (text: string = aiInput) => {
     const trimmed = text.trim();
-    if (!trimmed || isAiThinking) return;
+    if (!trimmed || isAiThinking || !currentWorkspace) return;
 
-    const newMessages: AiMessage[] = [...aiMessages, { role: "user", content: trimmed }];
-    setAiMessages(newMessages);
+    const wsId = currentWorkspace.id;
+    const userMsg: Omit<AiMessage, "timestamp"> = { role: "user", content: trimmed };
+    addMessage(wsId, userMsg);
     setAiInput("");
     setIsAiThinking(true);
+
+    // Build history to send (include the new user message)
+    const history = [...getMessages(wsId), { ...userMsg, timestamp: Date.now() }];
 
     try {
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages })
+        body: JSON.stringify({ messages: history.map(m => ({ role: m.role, content: m.content })) })
       });
       const data = await res.json();
 
       if (!res.ok) {
-        setAiMessages(prev => [...prev, { role: "assistant", content: `Error: ${data.error || "AI unavailable"}` }]);
+        addMessage(wsId, { role: "assistant", content: `Error: ${data.error || "AI unavailable"}` });
         return;
       }
 
       const responseText: string = data.text || "No response.";
-      setAiMessages(prev => [...prev, { role: "assistant", content: responseText }]);
+      addMessage(wsId, { role: "assistant", content: responseText });
 
       // Parse and execute AI actions
       try {
         const start = responseText.indexOf('"action"');
         let action: any = null;
         if (start !== -1) {
-          // Find the opening brace of the action object
           let objStart = responseText.lastIndexOf("{", start);
           if (objStart !== -1) {
             let depth = 0, end = objStart;
@@ -362,15 +367,15 @@ export default function App() {
                 assignee_id: assignee?.id || currentUser?.id,
                 due_date: d.due_date || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
                 priority: d.priority || "Medium",
-                workspace_id: currentWorkspace?.id
+                workspace_id: wsId
               })
             });
             if (taskRes.ok) {
-              setAiMessages(prev => [...prev, { role: "assistant", content: `✅ Task "${d.title}" created successfully!` }]);
+              addMessage(wsId, { role: "assistant", content: `✅ Task "${d.title}" created successfully!` });
               await fetchData();
             } else {
               const err = await taskRes.json().catch(() => ({ error: "Unknown error" }));
-              setAiMessages(prev => [...prev, { role: "assistant", content: `❌ Failed to create task: ${err.error || taskRes.status}` }]);
+              addMessage(wsId, { role: "assistant", content: `❌ Failed to create task: ${err.error || taskRes.status}` });
             }
           } else if (action.action === "create_deal" && action.data) {
             const d = action.data;
@@ -381,15 +386,15 @@ export default function App() {
                 title: d.title,
                 value: d.value || 0,
                 stage: d.stage || "Lead",
-                workspace_id: currentWorkspace?.id
+                workspace_id: wsId
               })
             });
             if (dealRes.ok) {
-              setAiMessages(prev => [...prev, { role: "assistant", content: `✅ Deal "${d.title}" created successfully!` }]);
+              addMessage(wsId, { role: "assistant", content: `✅ Deal "${d.title}" created successfully!` });
               await fetchData();
             } else {
               const err = await dealRes.json().catch(() => ({ error: "Unknown error" }));
-              setAiMessages(prev => [...prev, { role: "assistant", content: `❌ Failed to create deal: ${err.error || dealRes.status}` }]);
+              addMessage(wsId, { role: "assistant", content: `❌ Failed to create deal: ${err.error || dealRes.status}` });
             }
           }
         }
@@ -397,11 +402,11 @@ export default function App() {
         console.error("AI action parse error:", e);
       }
     } catch {
-      setAiMessages(prev => [...prev, { role: "assistant", content: "Connection error. Please check your network and try again." }]);
+      addMessage(wsId, { role: "assistant", content: "Connection error. Please check your network and try again." });
     } finally {
       setIsAiThinking(false);
     }
-  }, [aiInput, aiMessages, isAiThinking, users, currentUser, currentWorkspace, fetchData]);
+  }, [aiInput, isAiThinking, getMessages, addMessage, users, currentUser, currentWorkspace, fetchData]);
 
   // ─── Auth ────────────────────────────────────────────────────────────────────
   const handleLogin = async () => {
@@ -438,11 +443,13 @@ export default function App() {
             setIsLoggedIn(true);
             setShowTfa(false);
             localStorage.setItem("eiden_session", JSON.stringify({ user, workspace: ws }));
-            // Welcome message
-            setAiMessages([{
-              role: "assistant",
-              content: `Welcome back, ${user.name}! I'm EIDEN AI, your CRM assistant. I can help you manage tasks, analyze your pipeline, and keep your team on track.\n\nTry asking me:\n• "What tasks are overdue?"\n• "Give me a morning briefing"\n• "What deals are at risk?"\n• "Create a task to review the proposal for Sarah"`
-            }]);
+            // Welcome message — only add if this workspace has no history yet
+            if (useAiChatStore.getState().getMessages(ws.id).length === 0) {
+              useAiChatStore.getState().addMessage(ws.id, {
+                role: "assistant",
+                content: `Welcome back, ${user.name}! I'm EIDEN AI, your CRM assistant. I can help you manage tasks, analyze your pipeline, and keep your team on track.\n\nTry asking me:\n• "What tasks are overdue?"\n• "Give me a morning briefing"\n• "What deals are at risk?"\n• "Create a task to review the proposal for Sarah"`
+              });
+            }
           }, 400);
         }
       }, 40);
@@ -1043,7 +1050,7 @@ export default function App() {
                       <div className="flex flex-wrap gap-1.5">
                         <button onClick={() => sendAiMessage("Give me a morning briefing on the pipeline and top priorities")} className="btn-mini" style={{ fontSize: "0.6rem" }}>Brief</button>
                         <button onClick={() => sendAiMessage("Which tasks are overdue and what should I prioritize?")} className="btn-mini" style={{ fontSize: "0.6rem" }}>Urgent?</button>
-                        <button onClick={() => setAiMessages([])} className="btn-mini" style={{ fontSize: "0.6rem" }}>Clear</button>
+                        <button onClick={() => currentWorkspace && clearHistory(currentWorkspace.id)} className="btn-mini" style={{ fontSize: "0.6rem" }}>Clear</button>
                       </div>
                     </div>
 
