@@ -108,12 +108,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       if (r1) {
         if (method === "PATCH") {
-          const { title, description, assignee_id, related_deal_id, due_date, status, priority } = req.body;
-          await supabase.from("tasks").update({ title, description, assignee_id, related_deal_id, due_date, status, priority }).eq("id", r1);
+          const { title, description, assignee_id, related_deal_id, due_date, status, priority, overdue_reason, overdue_reason_at } = req.body;
+          const updates: any = { title, description, assignee_id, related_deal_id, due_date, status, priority };
+          if (overdue_reason !== undefined) updates.overdue_reason = overdue_reason;
+          if (overdue_reason_at !== undefined) updates.overdue_reason_at = overdue_reason_at;
+          await supabase.from("tasks").update(updates).eq("id", r1);
           return res.json({ success: true });
         }
         if (method === "DELETE") {
           await supabase.from("tasks").delete().eq("id", r1);
+          return res.json({ success: true });
+        }
+      }
+    }
+
+    // ─── Clients ──────────────────────────────────────────────────────────────
+    if (r0 === "clients") {
+      if (!r1) {
+        if (method === "GET") {
+          const { data } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
+          return res.json(data || []);
+        }
+        if (method === "POST") {
+          const { name, industry, status, onboarding_stage, contact_person, contact_email, contact_phone, monthly_value, notes, workspace_id } = req.body;
+          if (!name) return res.status(400).json({ error: "Name is required" });
+          const { data } = await supabase.from("clients").insert({ name, industry, status: status || "Active", onboarding_stage: onboarding_stage || "Not Started", contact_person, contact_email, contact_phone, monthly_value: Number(monthly_value) || 0, notes, workspace_id }).select().single();
+          await logActivity(1, `Added client: ${name}`, name, "client");
+          return res.json({ id: data?.id });
+        }
+      }
+      if (r1) {
+        if (method === "PATCH") {
+          const { name, industry, status, onboarding_stage, contact_person, contact_email, contact_phone, monthly_value, notes } = req.body;
+          await supabase.from("clients").update({ name, industry, status, onboarding_stage, contact_person, contact_email, contact_phone, monthly_value: Number(monthly_value) || 0, notes }).eq("id", r1);
+          return res.json({ success: true });
+        }
+        if (method === "DELETE") {
+          await supabase.from("clients").delete().eq("id", r1);
           return res.json({ success: true });
         }
       }

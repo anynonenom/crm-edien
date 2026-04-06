@@ -37,6 +37,13 @@ interface Task {
   assignee_name: string; assignee_id: number; deal_title?: string;
   related_deal_id?: number; due_date: string; status: string;
   priority: string; workspace_id: number; created_at?: string;
+  overdue_reason?: string; overdue_reason_at?: string;
+}
+interface Client {
+  id: number; name: string; industry: string; status: string;
+  onboarding_stage: string; contact_person: string; contact_email: string;
+  contact_phone: string; monthly_value: number; notes?: string;
+  workspace_id: number; created_at?: string;
 }
 interface User {
   id: number; name: string; role: string; workspace_id: number;
@@ -57,18 +64,18 @@ interface ZoomMeeting { id: number; topic: string; start_time: string; duration:
 // canAssignAll  → can assign tasks to any user (not just themselves)
 // ownTasksOnly  → only see tasks assigned to them
 const PERMISSIONS: Record<string, { tabs: string[]; canCreate: boolean; canDelete: boolean; canViewAnalytics: boolean; canAssignAll: boolean; ownTasksOnly: boolean }> = {
-  "Admin":               { tabs: ["dashboard","pipeline","contacts","tasks","analytics","knowledge_base","admin"], canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Eiden HQ":            { tabs: ["dashboard","pipeline","contacts","tasks","analytics","knowledge_base"],          canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Eiden Global":        { tabs: ["dashboard","pipeline","contacts","tasks","knowledge_base"],                      canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: true,  ownTasksOnly: false },
-  "Operational Manager": { tabs: ["dashboard","pipeline","contacts","tasks","knowledge_base"],                      canCreate: true,  canDelete: true,  canViewAnalytics: false, canAssignAll: true,  ownTasksOnly: false },
+  "Admin":               { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","knowledge_base","admin"], canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Eiden HQ":            { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","knowledge_base"],          canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Eiden Global":        { tabs: ["dashboard","pipeline","contacts","clients","tasks","knowledge_base"],                      canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: true,  ownTasksOnly: false },
+  "Operational Manager": { tabs: ["dashboard","pipeline","contacts","clients","tasks","knowledge_base"],                      canCreate: true,  canDelete: true,  canViewAnalytics: false, canAssignAll: true,  ownTasksOnly: false },
   "Brand Manager":       { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
   "Designer":            { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
   "Video Editor":        { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
   "Web Developer":       { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
   "Content Creator":     { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
   "Marketing Strategy":  { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Sales":               { tabs: ["dashboard","pipeline","contacts","tasks","knowledge_base"],                      canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Commercial":          { tabs: ["dashboard","pipeline","contacts","tasks","knowledge_base"],                      canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Sales":               { tabs: ["dashboard","pipeline","contacts","clients","tasks","knowledge_base"],                      canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Commercial":          { tabs: ["dashboard","pipeline","contacts","clients","tasks","knowledge_base"],                      canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
   "Solution Architect":  { tabs: ["dashboard","tasks","knowledge_base"],                                            canCreate: true,  canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
 };
 const getPerms = (role?: string | null) => PERMISSIONS[role ?? ""] ?? { tabs: ["dashboard","tasks","knowledge_base"], canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true };
@@ -98,7 +105,7 @@ export default function App() {
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(savedSession?.workspace ?? null);
   const [view, setView] = useState<"login" | "register" | "recovery">("login");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "pipeline" | "contacts" | "tasks" | "analytics" | "knowledge_base" | "admin">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "pipeline" | "contacts" | "clients" | "tasks" | "analytics" | "knowledge_base" | "admin">("dashboard");
   const [showTfa, setShowTfa] = useState(false);
   const [tfaProgress, setTfaProgress] = useState(0);
 
@@ -133,6 +140,17 @@ export default function App() {
 
   // Edit task
   const [editTask, setEditTask] = useState<Task | null>(null);
+
+  // Clients
+  const [clients, setClients] = useState<Client[]>([]);
+  const [showNewClientModal, setShowNewClientModal] = useState(false);
+  const [editClient, setEditClient] = useState<Client | null>(null);
+  const [showEditClientModal, setShowEditClientModal] = useState(false);
+
+  // Overdue reason
+  const [overdueTask, setOverdueTask] = useState<Task | null>(null);
+  const [overdueReasonText, setOverdueReasonText] = useState("");
+  const [overdueReasonSaving, setOverdueReasonSaving] = useState(false);
 
   // Team chat
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -199,10 +217,11 @@ export default function App() {
   // ─── Fetch all data ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     try {
-      const [statsRes, dealsRes, tasksRes, contactsRes, usersRes, workspacesRes, knowledgeRes, activityRes, financialsRes] = await Promise.all([
+      const [statsRes, dealsRes, tasksRes, contactsRes, usersRes, workspacesRes, knowledgeRes, activityRes, financialsRes, clientsRes] = await Promise.all([
         fetch("/api/stats"), fetch("/api/deals"), fetch("/api/tasks"),
         fetch("/api/contacts"), fetch("/api/users"), fetch("/api/workspaces"),
-        fetch("/api/knowledge"), fetch("/api/activity"), fetch("/api/financials")
+        fetch("/api/knowledge"), fetch("/api/activity"), fetch("/api/financials"),
+        fetch("/api/clients")
       ]);
       if (statsRes.ok) setStats(await statsRes.json());
       if (dealsRes.ok) setDeals(await dealsRes.json());
@@ -212,6 +231,7 @@ export default function App() {
       if (workspacesRes.ok) setWorkspaces(await workspacesRes.json());
       if (knowledgeRes.ok) setKnowledge(await knowledgeRes.json());
       if (activityRes.ok) setActivities(await activityRes.json());
+      if (clientsRes.ok) setClients(await clientsRes.json());
       if (financialsRes.ok) setFinancials(await financialsRes.json());
     } catch (err) { console.error("Fetch error:", err); }
   }, []);
@@ -553,6 +573,64 @@ export default function App() {
 
   const deleteDeal = async (id: number) => {
     await fetch(`/api/deals/${id}`, { method: "DELETE" });
+    fetchData();
+  };
+
+  // ─── Overdue Reason ──────────────────────────────────────────────────────────
+  const submitOverdueReason = async () => {
+    if (!overdueTask || !overdueReasonText.trim()) return;
+    setOverdueReasonSaving(true);
+    await fetch(`/api/tasks/${overdueTask.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ overdue_reason: overdueReasonText.trim(), overdue_reason_at: new Date().toISOString() })
+    });
+    setOverdueTask(null);
+    setOverdueReasonText("");
+    setOverdueReasonSaving(false);
+    fetchData();
+  };
+
+  // ─── Client Actions ───────────────────────────────────────────────────────────
+  const handleCreateClient = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    await fetch("/api/clients", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: fd.get("name"), industry: fd.get("industry"),
+        status: fd.get("status"), onboarding_stage: fd.get("onboarding_stage"),
+        contact_person: fd.get("contact_person"), contact_email: fd.get("contact_email"),
+        contact_phone: fd.get("contact_phone"), monthly_value: parseFloat(String(fd.get("monthly_value") || "0")),
+        notes: fd.get("notes"), workspace_id: currentWorkspace?.id
+      })
+    });
+    setShowNewClientModal(false);
+    fetchData();
+  };
+
+  const handleUpdateClient = async (e: React.FormEvent<HTMLFormElement>) => {
+    if (!editClient) return;
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    await fetch(`/api/clients/${editClient.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: fd.get("name"), industry: fd.get("industry"),
+        status: fd.get("status"), onboarding_stage: fd.get("onboarding_stage"),
+        contact_person: fd.get("contact_person"), contact_email: fd.get("contact_email"),
+        contact_phone: fd.get("contact_phone"), monthly_value: parseFloat(String(fd.get("monthly_value") || "0")),
+        notes: fd.get("notes")
+      })
+    });
+    setShowEditClientModal(false);
+    setEditClient(null);
+    fetchData();
+  };
+
+  const deleteClient = async (id: number) => {
+    if (!confirm("Delete this client? This cannot be undone.")) return;
+    await fetch(`/api/clients/${id}`, { method: "DELETE" });
     fetchData();
   };
 
@@ -931,6 +1009,7 @@ export default function App() {
           {perms.tabs.includes("contacts") && <NavItem active={activeTab === "contacts"} onClick={() => { setActiveTab("contacts"); setSidebarOpen(false); }} icon={<Users size={14} />} label="Contacts" />}
           <NavItem active={activeTab === "tasks"} onClick={() => { setActiveTab("tasks"); setSidebarOpen(false); }} icon={<CheckCircle2 size={14} />} label="Tasks" badge={overdueTasks.length > 0 ? overdueTasks.length : undefined} />
           {perms.tabs.includes("analytics") && <NavItem active={activeTab === "analytics"} onClick={() => { setActiveTab("analytics"); setSidebarOpen(false); }} icon={<BarChart2 size={14} />} label="Analytics" />}
+          {perms.tabs.includes("clients") && <NavItem active={activeTab === "clients"} onClick={() => { setActiveTab("clients"); setSidebarOpen(false); }} icon={<Target size={14} />} label="Client Management" />}
           {perms.tabs.includes("knowledge_base") && <NavItem active={activeTab === "knowledge_base"} onClick={() => { setActiveTab("knowledge_base"); setSidebarOpen(false); }} icon={<BookOpen size={14} />} label="Knowledge Base" />}
           {perms.tabs.includes("admin") && (
             <>
@@ -939,6 +1018,28 @@ export default function App() {
             </>
           )}
         </nav>
+
+        {/* Overdue notification in sidebar */}
+        {(() => {
+          const myOverdue = filteredTasks.filter(t => isOverdue(t.due_date, t.status) && !t.overdue_reason);
+          if (myOverdue.length === 0) return null;
+          return (
+            <div className="mx-4 mb-3 p-3" style={{ background: "rgba(139,58,58,0.15)", border: "1px solid rgba(139,58,58,0.3)" }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", letterSpacing: "1px", textTransform: "uppercase", color: "rgba(200,112,112,0.9)", marginBottom: 6 }}>
+                ⚠ {myOverdue.length} overdue task{myOverdue.length > 1 ? "s" : ""}
+              </div>
+              {myOverdue.slice(0, 2).map(t => (
+                <button key={t.id} onClick={() => { setOverdueTask(t); setOverdueReasonText(""); }}
+                  className="w-full text-left mb-1.5 last:mb-0 px-2 py-1.5"
+                  style={{ background: "rgba(139,58,58,0.2)", border: "none", cursor: "pointer", color: "rgba(244,235,208,0.8)", fontSize: "0.7rem", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <div style={{ fontWeight: 600, fontSize: "0.72rem" }}>{t.title}</div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(244,235,208,0.45)", marginTop: 2 }}>Submit reason →</div>
+                </button>
+              ))}
+              {myOverdue.length > 2 && <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(244,235,208,0.35)", marginTop: 4 }}>+{myOverdue.length - 2} more overdue</div>}
+            </div>
+          );
+        })()}
 
         {/* User / bottom */}
         <div className="px-6 py-5" style={{ borderTop: "1px solid rgba(244,235,208,0.07)" }}>
@@ -1328,8 +1429,18 @@ export default function App() {
                               onMouseEnter={e => (e.currentTarget.style.background = "rgba(18,38,32,0.025)")}
                               onMouseLeave={e => (e.currentTarget.style.background = overdue ? "rgba(139,58,58,0.03)" : "")}>
                               <td className="py-3 px-4">
-                                <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--deep-forest)" }}>{task.title}</div>
+                                <div style={{ fontSize: "0.8rem", fontWeight: 600, color: overdue ? "var(--danger)" : "var(--deep-forest)" }}>{task.title}</div>
                                 {task.description && <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", marginTop: 2, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "rgba(18,38,32,0.38)" }}>{task.description}</div>}
+                                {overdue && task.assignee_id === currentUser?.id && !task.overdue_reason && (
+                                  <button onClick={() => { setOverdueTask(task); setOverdueReasonText(""); }}
+                                    className="mt-1 flex items-center gap-1 text-[0.6rem] font-semibold uppercase tracking-wide px-2 py-0.5"
+                                    style={{ color: "var(--danger)", border: "1px solid var(--danger)", background: "rgba(139,58,58,0.06)" }}>
+                                    <AlertTriangle size={9} /> Submit Reason
+                                  </button>
+                                )}
+                                {overdue && task.overdue_reason && (
+                                  <div className="mt-1 text-[0.6rem]" style={{ color: "rgba(18,38,32,0.45)", fontStyle: "italic" }}>Reason: {task.overdue_reason.slice(0, 60)}{task.overdue_reason.length > 60 ? "…" : ""}</div>
+                                )}
                               </td>
                               <td className="py-3 px-4" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.5)" }}>{task.assignee_name || "Unassigned"}</td>
                               <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", color: "rgba(18,38,32,0.4)" }}>{task.deal_title || "—"}</td>
@@ -1362,6 +1473,36 @@ export default function App() {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Ops Manager / Admin: submitted overdue reasons panel */}
+                  {(currentUser?.role === "Operational Manager" || currentUser?.role === "Admin" || currentUser?.role === "Eiden HQ") && (() => {
+                    const reasonedTasks = filteredTasks.filter(t => t.overdue_reason);
+                    if (reasonedTasks.length === 0) return null;
+                    return (
+                      <div className="mt-6 p-4" style={{ border: "1px solid rgba(18,38,32,0.1)", borderLeft: "3px solid var(--warning)", background: "rgba(200,160,60,0.03)" }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <AlertTriangle size={13} style={{ color: "var(--warning)" }} />
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: "var(--warning)" }}>Submitted Overdue Reasons ({reasonedTasks.length})</span>
+                        </div>
+                        <div className="space-y-2">
+                          {reasonedTasks.map(t => (
+                            <div key={t.id} className="p-3" style={{ border: "1px solid rgba(18,38,32,0.07)", background: "white" }}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-[0.78rem]" style={{ color: "var(--deep-forest)" }}>{t.title}</div>
+                                  <div className="text-[0.7rem] mt-0.5" style={{ color: "rgba(18,38,32,0.5)" }}>by {t.assignee_name} · due {t.due_date}</div>
+                                  <div className="mt-1.5 text-[0.72rem] italic" style={{ color: "rgba(18,38,32,0.65)" }}>"{t.overdue_reason}"</div>
+                                </div>
+                                <div className="shrink-0 text-[0.58rem] font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.3)" }}>
+                                  {t.overdue_reason_at ? new Date(t.overdue_reason_at).toLocaleDateString() : ""}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </motion.div>
             )}
@@ -1491,6 +1632,82 @@ export default function App() {
                         <div className="text-[0.75rem] text-[var(--gris)]">No active deals.</div>
                       )}
                     </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+
+            {/* ── Client Management ─────────────────────────────── */}
+            {activeTab === "clients" && (
+              <motion.div key="clients" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
+                {/* Stats */}
+                <div className="shrink-0 grid grid-cols-4 gap-3">
+                  <StatCard icon={<Users size={15} />} label="Total Clients" value={String(clients.filter(c => c.workspace_id === currentWorkspace?.id).length)} color="teal" />
+                  <StatCard icon={<CheckCircle2 size={15} />} label="Active" value={String(clients.filter(c => c.workspace_id === currentWorkspace?.id && c.status === "Active").length)} color="success" />
+                  <StatCard icon={<AlertTriangle size={15} />} label="At Risk" value={String(clients.filter(c => c.workspace_id === currentWorkspace?.id && c.status === "At Risk").length)} color="danger" />
+                  <StatCard icon={<Target size={15} />} label="Onboarding" value={String(clients.filter(c => c.workspace_id === currentWorkspace?.id && c.status === "Onboarding").length)} color="warn" />
+                </div>
+
+                {/* Client table */}
+                <div className="flex-1 eiden-card overflow-hidden flex flex-col min-h-0">
+                  <div className="shrink-0 px-5 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.03)" }}>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>
+                      Client Accounts — {clients.filter(c => c.workspace_id === currentWorkspace?.id).length} total
+                    </span>
+                    {perms.canCreate && (
+                      <button onClick={() => setShowNewClientModal(true)} className="btn-primary" style={{ fontSize: "0.65rem", padding: "5px 12px" }}>+ New Client</button>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-auto">
+                    <table className="w-full text-left" style={{ minWidth: 700 }}>
+                      <thead className="sticky top-0" style={{ background: "rgba(18,38,32,0.04)" }}>
+                        <tr style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
+                          {["Client","Industry","Status","Onboarding Stage","Contact","Monthly Value",""].map(h => (
+                            <th key={h} className="py-2.5 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.35)" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {clients.filter(c => c.workspace_id === currentWorkspace?.id).map(cl => {
+                          const statusColor = cl.status === "Active" ? "var(--success)" : cl.status === "At Risk" ? "var(--danger)" : cl.status === "Onboarding" ? "var(--warning)" : "var(--gris)";
+                          const stageColor = cl.onboarding_stage === "Completed" ? "var(--success)" : cl.onboarding_stage === "Negotiation" ? "var(--warning)" : "rgba(18,38,32,0.4)";
+                          return (
+                            <tr key={cl.id} className="text-[0.78rem] transition-colors" style={{ borderBottom: "1px solid rgba(18,38,32,0.05)", cursor: "default" }}
+                              onMouseEnter={e => (e.currentTarget.style.background = "rgba(18,38,32,0.025)")}
+                              onMouseLeave={e => (e.currentTarget.style.background = "")}>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 flex items-center justify-center text-[0.65rem] font-bold shrink-0" style={{ background: "var(--deep-forest)", color: "var(--silk-creme)" }}>{cl.name[0]}</div>
+                                  <span style={{ fontWeight: 600, color: "var(--deep-forest)" }}>{cl.name}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.5)" }}>{cl.industry || "—"}</td>
+                              <td className="py-3 px-4">
+                                <span className="px-2 py-0.5 text-[0.6rem] font-bold uppercase" style={{ border: `1px solid ${statusColor}`, color: statusColor }}>{cl.status}</span>
+                              </td>
+                              <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: stageColor }}>{cl.onboarding_stage || "—"}</td>
+                              <td className="py-3 px-4">
+                                <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--deep-forest)" }}>{cl.contact_person || "—"}</div>
+                                {cl.contact_email && <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.4)", marginTop: 2 }}>{cl.contact_email}</div>}
+                              </td>
+                              <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", fontWeight: 600, color: "var(--deep-forest)" }}>
+                                ${(cl.monthly_value || 0).toLocaleString()}<span style={{ fontSize: "0.58rem", opacity: 0.45 }}>/mo</span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex gap-1">
+                                  {perms.canCreate && <button onClick={() => { setEditClient({...cl}); setShowEditClientModal(true); }} className="btn-mini" style={{ padding: "3px 7px" }}><Edit3 size={11} /></button>}
+                                  {perms.canDelete && <button onClick={() => deleteClient(cl.id)} className="btn-mini danger" style={{ padding: "3px 7px" }}><Trash2 size={11} /></button>}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {clients.filter(c => c.workspace_id === currentWorkspace?.id).length === 0 && (
+                          <tr><td colSpan={7} className="py-12 text-center" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", color: "rgba(18,38,32,0.3)" }}>No clients yet — add your first client account above.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </motion.div>
@@ -1986,6 +2203,130 @@ export default function App() {
                 {isScheduling ? "Scheduling…" : "Create Meeting"}
               </button>
             </div>
+          </Modal>
+        )}
+
+        {/* Overdue Reason Submission */}
+        {overdueTask && (
+          <Modal title="Task Overdue — Submit Reason" onClose={() => { setOverdueTask(null); setOverdueReasonText(""); }}>
+            <div className="space-y-4">
+              <div className="p-3" style={{ border: "1px solid var(--danger)", background: "rgba(139,58,58,0.05)", borderLeft: "3px solid var(--danger)" }}>
+                <div className="font-semibold text-[0.82rem]" style={{ color: "var(--danger)" }}>{overdueTask.title}</div>
+                <div className="text-[0.7rem] mt-0.5" style={{ color: "rgba(18,38,32,0.5)" }}>Due: {overdueTask.due_date}</div>
+              </div>
+              <Field label="Reason for delay">
+                <textarea className="field-input resize-none" rows={4} placeholder="Explain why this task is overdue…"
+                  value={overdueReasonText} onChange={e => setOverdueReasonText(e.target.value)} />
+              </Field>
+              <button onClick={submitOverdueReason} disabled={overdueReasonSaving || !overdueReasonText.trim()} className="flash-button" style={{ marginBottom: 0 }}>
+                <span>{overdueReasonSaving ? "Submitting…" : "SUBMIT REASON"}</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {/* New Client */}
+        {showNewClientModal && (
+          <Modal title="New Client" onClose={() => setShowNewClientModal(false)}>
+            <form onSubmit={handleCreateClient} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Client Name">
+                  <input name="name" required placeholder="e.g. TechCorp" className="field-input" />
+                </Field>
+                <Field label="Industry">
+                  <select name="industry" className="field-input">
+                    {["Technology","Marketing","Finance","Healthcare","Retail","Real Estate","Education","Other"].map(i => <option key={i}>{i}</option>)}
+                  </select>
+                </Field>
+                <Field label="Status">
+                  <select name="status" className="field-input">
+                    <option>Active</option>
+                    <option>At Risk</option>
+                    <option>Onboarding</option>
+                    <option>Churned</option>
+                  </select>
+                </Field>
+                <Field label="Onboarding Stage">
+                  <select name="onboarding_stage" className="field-input">
+                    <option>Not Started</option>
+                    <option>In Progress</option>
+                    <option>Completed</option>
+                  </select>
+                </Field>
+                <Field label="Contact Person">
+                  <input name="contact_person" placeholder="Full name" className="field-input" />
+                </Field>
+                <Field label="Contact Email">
+                  <input name="contact_email" type="email" placeholder="email@client.com" className="field-input" />
+                </Field>
+                <Field label="Contact Phone">
+                  <input name="contact_phone" placeholder="+1 555 000 0000" className="field-input" />
+                </Field>
+                <Field label="Monthly Value (USD)">
+                  <input name="monthly_value" type="number" placeholder="0" min="0" className="field-input" />
+                </Field>
+              </div>
+              <Field label="Notes">
+                <textarea name="notes" className="field-input resize-none" rows={3} placeholder="Optional notes…" />
+              </Field>
+              <button type="submit" className="flash-button" style={{ marginBottom: 0 }}>
+                <span>ADD CLIENT</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+              </button>
+            </form>
+          </Modal>
+        )}
+
+        {/* Edit Client */}
+        {showEditClientModal && editClient && (
+          <Modal title="Edit Client" onClose={() => { setShowEditClientModal(false); setEditClient(null); }}>
+            <form onSubmit={handleUpdateClient} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Client Name">
+                  <input name="name" required defaultValue={editClient.name} className="field-input" />
+                </Field>
+                <Field label="Industry">
+                  <select name="industry" defaultValue={editClient.industry} className="field-input">
+                    {["Technology","Marketing","Finance","Healthcare","Retail","Real Estate","Education","Other"].map(i => <option key={i}>{i}</option>)}
+                  </select>
+                </Field>
+                <Field label="Status">
+                  <select name="status" defaultValue={editClient.status} className="field-input">
+                    <option>Active</option>
+                    <option>At Risk</option>
+                    <option>Onboarding</option>
+                    <option>Churned</option>
+                  </select>
+                </Field>
+                <Field label="Onboarding Stage">
+                  <select name="onboarding_stage" defaultValue={editClient.onboarding_stage} className="field-input">
+                    <option>Not Started</option>
+                    <option>In Progress</option>
+                    <option>Completed</option>
+                  </select>
+                </Field>
+                <Field label="Contact Person">
+                  <input name="contact_person" defaultValue={editClient.contact_person} className="field-input" />
+                </Field>
+                <Field label="Contact Email">
+                  <input name="contact_email" type="email" defaultValue={editClient.contact_email} className="field-input" />
+                </Field>
+                <Field label="Contact Phone">
+                  <input name="contact_phone" defaultValue={editClient.contact_phone} className="field-input" />
+                </Field>
+                <Field label="Monthly Value (USD)">
+                  <input name="monthly_value" type="number" defaultValue={editClient.monthly_value} min="0" className="field-input" />
+                </Field>
+              </div>
+              <Field label="Notes">
+                <textarea name="notes" defaultValue={editClient.notes ?? ""} className="field-input resize-none" rows={3} />
+              </Field>
+              <button type="submit" className="flash-button" style={{ marginBottom: 0 }}>
+                <span>SAVE CHANGES</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+              </button>
+            </form>
           </Modal>
         )}
 
