@@ -71,24 +71,24 @@ interface ZoomMeeting { id: number; topic: string; start_time: string; duration:
 // canAssignAll  → can assign tasks to any user (not just themselves)
 // ownTasksOnly  → only see tasks assigned to them
 const PERMISSIONS: Record<string, { tabs: string[]; canCreate: boolean; canDelete: boolean; canViewAnalytics: boolean; canAssignAll: boolean; ownTasksOnly: boolean }> = {
-  "Admin":                        { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","admin"], canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Eiden HQ":                     { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],         canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Eiden Global":                  { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],         canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Operational Manager":           { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],         canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Admin Coordinator":             { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                         canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Brand Manager":                 { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                         canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Branding and Strategy Manager": { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                         canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Solution Architect":            { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                         canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Designer":                      { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Video Editor":                  { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Web Developer":                 { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Community Manager":             { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Content Creator":               { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Content Strategy":              { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Marketing Strategy":            { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "DevOps":                        { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Sales":                         { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],         canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
-  "Commercial":                    { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],         canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
+  "Admin":                        { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team","admin"], canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Eiden HQ":                     { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],   canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Eiden Global":                  { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],   canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Operational Manager":           { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],   canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Admin Coordinator":             { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Brand Manager":                 { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Branding and Strategy Manager": { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Solution Architect":            { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Designer":                      { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Video Editor":                  { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Web Developer":                 { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Community Manager":             { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Content Creator":               { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Content Strategy":              { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Marketing Strategy":            { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "DevOps":                        { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Sales":                         { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],  canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
+  "Commercial":                    { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],  canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
 };
 const getPerms = (role?: string | null) => PERMISSIONS[role ?? ""] ?? { tabs: ["dashboard","tasks","knowledge_base"], canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true };
 
@@ -117,7 +117,7 @@ export default function App() {
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(savedSession?.workspace ?? null);
   const [view, setView] = useState<"login" | "register" | "recovery">("login");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "pipeline" | "contacts" | "clients" | "tasks" | "analytics" | "time" | "knowledge_base" | "admin">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "pipeline" | "contacts" | "clients" | "tasks" | "analytics" | "time" | "knowledge_base" | "admin" | "team">("dashboard");
   const [showTfa, setShowTfa] = useState(false);
   const [tfaProgress, setTfaProgress] = useState(0);
 
@@ -225,9 +225,6 @@ export default function App() {
   const [showCreateWsModal, setShowCreateWsModal] = useState(false);
   const [newWsName, setNewWsName] = useState("");
   const [isCreatingWs, setIsCreatingWs] = useState(false);
-
-  // Registration
-  const [regCompany, setRegCompany] = useState("");
 
   // AI Assistant — persistent via Zustand + localStorage
   const { getMessages, addMessage, clearHistory } = useAiChatStore();
@@ -563,7 +560,7 @@ export default function App() {
 
   const handleRegister = async () => {
     setRegError(null);
-    if (!regName || !regEmail || !regUsername || !regPassword || !regCompany || !regRole) {
+    if (!regName || !regEmail || !regUsername || !regPassword || !regRole) {
       setRegError("All fields are required");
       return;
     }
@@ -573,7 +570,7 @@ export default function App() {
       const res = await fetch("/api/users/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: regName, email: regEmail, username: regUsername, password: regPassword, company_name: regCompany, role: regRole, pending: true })
+        body: JSON.stringify({ name: regName, email: regEmail, username: regUsername, password: regPassword, role: regRole, pending: true })
       });
       if (res.ok) {
         setRegStep(2);
@@ -1016,7 +1013,7 @@ export default function App() {
               <div>
                 {/* Step progress */}
                 <div className="flex gap-1.5 mb-12">
-                  {[0, 1, 2].map(i => (
+                  {[0, 1].map(i => (
                     <div key={i} className="flex-1 h-0.5 transition-all" style={{ background: i <= regStep ? "var(--deep-forest)" : "rgba(18,38,32,0.12)", transitionDuration: "0.4s" }} />
                   ))}
                 </div>
@@ -1029,13 +1026,6 @@ export default function App() {
                     <AuthField label="Email">
                       <input type="email" placeholder="name@company.com" className="flash-input" value={regEmail}
                         onChange={e => { setRegEmail(e.target.value); setRegError(null); }} />
-                    </AuthField>
-                    <AuthField label="Company / Organization">
-                      <input type="text" placeholder="Your company name" className="flash-input" value={regCompany}
-                        onChange={e => { setRegCompany(e.target.value); setRegError(null); }} />
-                      <p className="mt-2" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", color: "rgba(18,38,32,0.4)", lineHeight: 1.6 }}>
-                        Your account will be reviewed and a workspace assigned by the Admin before you can log in.
-                      </p>
                     </AuthField>
                     <AuthField label="Your Role">
                       <select className="flash-input" value={regRole} onChange={e => { setRegRole(e.target.value); setRegError(null); }}>
@@ -1070,7 +1060,7 @@ export default function App() {
                       </select>
                     </AuthField>
                     {regError && <div className="px-4 py-3 text-[0.78rem]" style={{ border: "1px solid rgba(139,58,58,0.3)", color: "var(--danger)" }}>{regError}</div>}
-                    <button onClick={() => { if (regName && regEmail && regCompany && regRole) { setRegError(null); setRegStep(1); } else setRegError("Fill in all fields"); }} className="flash-button mt-6">
+                    <button onClick={() => { if (regName && regEmail && regRole) { setRegError(null); setRegStep(1); } else setRegError("Fill in all fields"); }} className="flash-button mt-6">
                       <span>CONTINUE</span>
                       <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                     </button>
@@ -1080,7 +1070,7 @@ export default function App() {
                   <div className="space-y-8">
                     <div className="py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.1)" }}>
                       <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", color: "rgba(18,38,32,0.4)", textTransform: "uppercase", letterSpacing: "1px" }}>
-                        {regCompany} · {regRole}
+                        {regRole}
                       </div>
                     </div>
                     <AuthField label="Username">
@@ -1179,6 +1169,7 @@ export default function App() {
           {perms.tabs.includes("pipeline") && <NavItem active={activeTab === "pipeline"} onClick={() => { setActiveTab("pipeline"); setSidebarOpen(false); }} icon={<TrendingUp size={14} />} label="Pipeline" />}
           {perms.tabs.includes("contacts") && <NavItem active={activeTab === "contacts"} onClick={() => { setActiveTab("contacts"); setSidebarOpen(false); }} icon={<Users size={14} />} label="Contacts" />}
           <NavItem active={activeTab === "tasks"} onClick={() => { setActiveTab("tasks"); setSidebarOpen(false); }} icon={<CheckCircle2 size={14} />} label="Tasks" badge={overdueTasks.length > 0 ? overdueTasks.length : undefined} />
+          {perms.tabs.includes("team") && <NavItem active={activeTab === "team"} onClick={() => { setActiveTab("team"); setSidebarOpen(false); }} icon={<Users size={14} />} label="Team" />}
           {perms.tabs.includes("analytics") && <NavItem active={activeTab === "analytics"} onClick={() => { setActiveTab("analytics"); setSidebarOpen(false); }} icon={<BarChart2 size={14} />} label="Analytics" />}
           {perms.tabs.includes("clients") && <NavItem active={activeTab === "clients"} onClick={() => { setActiveTab("clients"); setSidebarOpen(false); }} icon={<Target size={14} />} label="Client Management" />}
           <NavItem active={activeTab === "time"} onClick={() => { setActiveTab("time"); setSidebarOpen(false); }} icon={<Clock size={14} />} label="Time Tracker" badge={timerRunning ? "●" : undefined} badgeColor="#4ade80" />
@@ -1255,6 +1246,7 @@ export default function App() {
                : activeTab === "pipeline" ? "Pipeline"
                : activeTab === "contacts" ? "Contacts"
                : activeTab === "tasks" ? "Tasks"
+               : activeTab === "team" ? "Team"
                : activeTab === "analytics" ? "Analytics"
                : activeTab === "clients" ? "Clients"
                : activeTab === "time" ? "Time Tracker"
@@ -1298,13 +1290,25 @@ export default function App() {
             {/* ── Dashboard ─────────────────────────────────────── */}
             {activeTab === "dashboard" && (
               <motion.div key="dashboard" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-3 lg:gap-4 overflow-y-auto lg:overflow-hidden">
-                {/* Stats row */}
+                {/* Stats row — role-aware */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 lg:gap-3 shrink-0">
-                  <StatCard icon={<TrendingUp size={16} />} label="Pipeline Value" value={`$${(stats?.pipelineValue || 0).toLocaleString()}`} color="teal" />
-                  <StatCard icon={<Target size={16} />} label="Active Deals" value={String(stats?.activeDeals ?? "—")} color="teal" />
-                  <StatCard icon={<Zap size={16} />} label="Win Rate" value={stats?.winRate ?? "—"} color="success" />
-                  <StatCard icon={<Users size={16} />} label="Active Clients" value={String(stats?.activeClients ?? "—")} color="teal" />
-                  <StatCard icon={<AlertTriangle size={16} />} label="Overdue Tasks" value={String(stats?.overdueTasks ?? 0)} color={stats?.overdueTasks ? "danger" : "muted"} />
+                  {perms.canAssignAll ? (
+                    <>
+                      <StatCard icon={<TrendingUp size={16} />} label="Pipeline Value" value={`$${(stats?.pipelineValue || 0).toLocaleString()}`} color="teal" />
+                      <StatCard icon={<Target size={16} />} label="Active Deals" value={String(stats?.activeDeals ?? "—")} color="teal" />
+                      <StatCard icon={<Zap size={16} />} label="Win Rate" value={stats?.winRate ?? "—"} color="success" />
+                      <StatCard icon={<Users size={16} />} label="Active Clients" value={String(stats?.activeClients ?? "—")} color="teal" />
+                      <StatCard icon={<AlertTriangle size={16} />} label="Overdue Tasks" value={String(stats?.overdueTasks ?? 0)} color={stats?.overdueTasks ? "danger" : "muted"} />
+                    </>
+                  ) : (
+                    <>
+                      <StatCard icon={<CheckCircle2 size={16} />} label="My Tasks" value={String(filteredTasks.filter(t => t.assignee_id === currentUser?.id).length)} color="teal" />
+                      <StatCard icon={<Cpu size={16} />} label="In Progress" value={String(filteredTasks.filter(t => t.assignee_id === currentUser?.id && t.status === "In Progress").length)} color="teal" />
+                      <StatCard icon={<CheckCircle2 size={16} />} label="Completed" value={String(filteredTasks.filter(t => t.assignee_id === currentUser?.id && t.status === "Completed").length)} color="success" />
+                      <StatCard icon={<AlertTriangle size={16} />} label="Overdue" value={String(filteredTasks.filter(t => t.assignee_id === currentUser?.id && isOverdue(t.due_date, t.status)).length)} color={filteredTasks.filter(t => t.assignee_id === currentUser?.id && isOverdue(t.due_date, t.status)).length > 0 ? "danger" : "muted"} />
+                      <StatCard icon={<Clock size={16} />} label="Today's Hours" value={(() => { const todayStr = new Date().toDateString(); const todayMins = timeLogs.filter(l => l.user_id === currentUser?.id && l.end_time && new Date(l.start_time).toDateString() === todayStr).reduce((s, l) => s + (l.duration_minutes || 0), 0); return `${Math.floor(todayMins/60)}h ${todayMins%60}m`; })()} color="teal" />
+                    </>
+                  )}
                 </div>
 
                 {/* AI + Activity row */}
@@ -1452,6 +1456,7 @@ export default function App() {
                     </div>
 
                     {/* Pipeline snapshot */}
+                    {perms.canAssignAll && (
                     <div className="shrink-0 eiden-card p-3 sm:p-4">
                       <div className="mb-3" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Pipeline Snapshot</div>
                       {["Lead", "Proposal", "Negotiation", "Won"].map(stage => {
@@ -1471,6 +1476,7 @@ export default function App() {
                         );
                       })}
                     </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -1751,7 +1757,7 @@ export default function App() {
             {/* ── Time Tracker ─────────────────────────────────── */}
             {activeTab === "time" && (
               <motion.div key="time" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
-                {(() => {
+                {((): React.ReactElement => {
                   const schedule = getTodaySchedule();
                   const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
                   const dayName = dayNames[liveTime.getDay()];
@@ -1949,6 +1955,54 @@ export default function App() {
                         </div>
                       </div>
 
+                      {/* ── My Active Tasks (with priority change) ── */}
+                      <div className="eiden-card overflow-hidden">
+                        <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.02)" }}>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>My Active Tasks — {myTasks.length}</span>
+                          <button onClick={() => setActiveTab("tasks")} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", letterSpacing: "1px", textTransform: "uppercase" }}>View All →</button>
+                        </div>
+                        {myTasks.length === 0 ? (
+                          <div className="px-5 py-8 text-center">
+                            <CheckCircle2 size={28} className="mx-auto mb-3 opacity-15" style={{ color: "var(--deep-forest)" }} />
+                            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.3)" }}>No active tasks — great work!</div>
+                          </div>
+                        ) : (
+                          <div className="divide-y" style={{ borderColor: "rgba(18,38,32,0.05)" }}>
+                            {myTasks.map((task: Task) => {
+                              const taskOverdue = isOverdue(task.due_date, task.status);
+                              return (
+                                <div key={task.id} className="flex items-center gap-3 px-5 py-3"
+                                  style={{ background: taskOverdue ? "rgba(139,58,58,0.025)" : "transparent" }}>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-[0.8rem] font-semibold truncate" style={{ color: taskOverdue ? "var(--danger)" : "var(--deep-forest)" }}>{task.title}</div>
+                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: taskOverdue ? "var(--danger)" : "rgba(18,38,32,0.35)", marginTop: 2 }}>
+                                      Due {task.due_date}{taskOverdue ? " ⚠ overdue" : ""}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <select value={task.priority}
+                                      onChange={async (e: React.ChangeEvent<HTMLSelectElement>) => {
+                                        await fetch(`/api/tasks/${task.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ priority: e.target.value }) });
+                                        fetchData();
+                                      }}
+                                      className="outline-none text-[0.62rem] font-bold uppercase px-2 py-0.5 cursor-pointer"
+                                      style={{ border: `1px solid ${task.priority === "High" ? "var(--danger)" : task.priority === "Medium" ? "var(--warning)" : "rgba(18,38,32,0.2)"}`, color: task.priority === "High" ? "var(--danger)" : task.priority === "Medium" ? "var(--warning)" : "var(--gris)", background: "transparent", fontFamily: "'JetBrains Mono', monospace" }}>
+                                      <option value="Low">Low</option>
+                                      <option value="Medium">Medium</option>
+                                      <option value="High">High</option>
+                                    </select>
+                                    <span className="text-[0.58rem] font-semibold px-2 py-0.5 uppercase"
+                                      style={{ fontFamily: "'JetBrains Mono', monospace", background: task.status === "In Progress" ? "rgba(42,157,143,0.1)" : "rgba(18,38,32,0.05)", color: task.status === "In Progress" ? "#2a9d8f" : "rgba(18,38,32,0.4)", border: `1px solid ${task.status === "In Progress" ? "rgba(42,157,143,0.3)" : "rgba(18,38,32,0.1)"}` }}>
+                                      {task.status}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
                       {/* ── Manager: Team overview ── */}
                       {isManager && (
                         <div className="eiden-card overflow-hidden">
@@ -1994,6 +2048,62 @@ export default function App() {
                     </div>
                   );
                 })()}
+              </motion.div>
+            )}
+
+            {/* ── Team ─────────────────────────────────────────── */}
+            {activeTab === "team" && (
+              <motion.div key="team" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
+                <div className="space-y-4 pb-6">
+                  <div className="eiden-card overflow-hidden">
+                    <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.02)" }}>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>
+                        Eiden Group — {users.filter((u: User) => u.workspace_id === currentWorkspace?.id).length} Members
+                      </span>
+                    </div>
+                    <div className="divide-y" style={{ borderColor: "rgba(18,38,32,0.06)" }}>
+                      {users.filter((u: User) => u.workspace_id === currentWorkspace?.id).map((u: User) => {
+                        const memberTaskCount = tasks.filter((t: Task) => t.assignee_id === u.id && t.status !== "Completed").length;
+                        const memberOverdueCount = tasks.filter((t: Task) => t.assignee_id === u.id && isOverdue(t.due_date, t.status)).length;
+                        const isMe = u.id === currentUser?.id;
+                        return (
+                          <div key={u.id} className="flex items-center gap-4 px-5 py-4" style={{ background: isMe ? "rgba(18,38,32,0.02)" : "transparent" }}>
+                            <div className="w-10 h-10 flex items-center justify-center text-[0.8rem] font-bold shrink-0"
+                              style={{ background: isMe ? "var(--deep-forest)" : "rgba(18,38,32,0.08)", color: isMe ? "var(--silk-creme)" : "var(--deep-forest)" }}>
+                              {(u.name?.[0] ?? "?").toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[0.85rem] font-semibold" style={{ color: "var(--deep-forest)" }}>{u.name}</span>
+                                {isMe && (
+                                  <span className="text-[0.52rem] font-bold px-1.5 py-0.5 uppercase tracking-wide"
+                                    style={{ background: "var(--deep-forest)", color: "var(--silk-creme)", fontFamily: "'JetBrains Mono', monospace" }}>
+                                    You
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-0.5" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", color: "rgba(18,38,32,0.45)" }}>{u.role}</div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {memberTaskCount > 0 && (
+                                <div className="text-center">
+                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", fontWeight: 700, color: "var(--deep-forest)" }}>{memberTaskCount}</div>
+                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.5rem", color: "rgba(18,38,32,0.35)", textTransform: "uppercase", letterSpacing: "1px" }}>active</div>
+                                </div>
+                              )}
+                              {memberOverdueCount > 0 && (
+                                <div className="text-center">
+                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", fontWeight: 700, color: "var(--danger)" }}>{memberOverdueCount}</div>
+                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.5rem", color: "var(--danger)", textTransform: "uppercase", letterSpacing: "1px" }}>overdue</div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </motion.div>
             )}
 
