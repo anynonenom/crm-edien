@@ -1,5 +1,5 @@
 /**
- * Eiden AI CRM — powered by Claude (Anthropic)
+ * Eiden AI BSM — powered by Claude (Anthropic)
  * @license Apache-2.0
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -71,19 +71,24 @@ interface ZoomMeeting { id: number; topic: string; start_time: string; duration:
 // canAssignAll  → can assign tasks to any user (not just themselves)
 // ownTasksOnly  → only see tasks assigned to them
 const PERMISSIONS: Record<string, { tabs: string[]; canCreate: boolean; canDelete: boolean; canViewAnalytics: boolean; canAssignAll: boolean; ownTasksOnly: boolean }> = {
-  "Admin":               { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","admin"], canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Eiden HQ":            { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],    canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Eiden Global":        { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],    canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Operational Manager": { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],    canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Brand Manager":       { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                    canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
-  "Designer":            { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                    canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
-  "Video Editor":        { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                    canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
-  "Web Developer":       { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                    canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
-  "Content Creator":     { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                    canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
-  "Marketing Strategy":  { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                    canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
-  "Sales":               { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],    canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
-  "Commercial":          { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],    canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
-  "Solution Architect":  { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                    canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
+  "Admin":                        { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","admin"], canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Eiden HQ":                     { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],         canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Eiden Global":                  { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],         canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Operational Manager":           { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],         canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Admin Coordinator":             { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                         canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Brand Manager":                 { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                         canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Branding and Strategy Manager": { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                         canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Solution Architect":            { tabs: ["dashboard","tasks","analytics","time","knowledge_base"],                                         canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Designer":                      { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Video Editor":                  { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Web Developer":                 { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Community Manager":             { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Content Creator":               { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Content Strategy":              { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Marketing Strategy":            { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "DevOps":                        { tabs: ["dashboard","tasks","time","knowledge_base"],                                                     canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Sales":                         { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],         canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
+  "Commercial":                    { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base"],         canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
 };
 const getPerms = (role?: string | null) => PERMISSIONS[role ?? ""] ?? { tabs: ["dashboard","tasks","knowledge_base"], canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true };
 
@@ -158,6 +163,10 @@ export default function App() {
   const [overdueTask, setOverdueTask] = useState<Task | null>(null);
   const [overdueReasonText, setOverdueReasonText] = useState("");
   const [overdueReasonSaving, setOverdueReasonSaving] = useState(false);
+
+  // Task detail modal
+  const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
+  const [selectedTaskDetail, setSelectedTaskDetail] = useState<Task | null>(null);
 
   // Time tracker
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
@@ -541,7 +550,7 @@ export default function App() {
             if (useAiChatStore.getState().getMessages(ws.id).length === 0) {
               useAiChatStore.getState().addMessage(ws.id, {
                 role: "assistant",
-                content: `Welcome back, ${user.name}! I'm EIDEN AI, your CRM assistant. I can help you manage tasks, analyze your pipeline, and keep your team on track.\n\nTry asking me:\n• "What tasks are overdue?"\n• "Give me a morning briefing"\n• "What deals are at risk?"\n• "Create a task to review the proposal for Sarah"`
+                content: `Welcome back, ${user.name}! I'm EIDEN AI, your BSM assistant. I can help you manage tasks, analyze your pipeline, and keep your team on track.\n\nTry asking me:\n• "What tasks are overdue?"\n• "Give me a morning briefing"\n• "What deals are at risk?"\n• "Create a task to review the proposal for Sarah"`
               });
             }
           }, 400);
@@ -1031,18 +1040,33 @@ export default function App() {
                     <AuthField label="Your Role">
                       <select className="flash-input" value={regRole} onChange={e => { setRegRole(e.target.value); setRegError(null); }}>
                         <option value="">Select your role...</option>
-                        <option value="Operational Manager">Operational Manager</option>
-                        <option value="Brand Manager">Brand Manager</option>
-                        <option value="Designer">Designer</option>
-                        <option value="Video Editor">Video Editor</option>
-                        <option value="Web Developer">Web Developer</option>
-                        <option value="Content Creator">Content Creator</option>
-                        <option value="Marketing Strategy">Marketing Strategy</option>
-                        <option value="Sales">Sales</option>
-                        <option value="Commercial">Commercial</option>
-                        <option value="Solution Architect">Solution Architect</option>
-                        <option value="Eiden Global">Eiden Global</option>
-                        <option value="Eiden HQ">Eiden HQ</option>
+                        <optgroup label="Management">
+                          <option value="Operational Manager">Operational Manager</option>
+                          <option value="Admin Coordinator">Admin Coordinator</option>
+                          <option value="Brand Manager">Brand Manager</option>
+                          <option value="Branding and Strategy Manager">Branding and Strategy Manager</option>
+                          <option value="Solution Architect">Solution Architect</option>
+                        </optgroup>
+                        <optgroup label="Creative &amp; Design">
+                          <option value="Designer">Designer</option>
+                          <option value="Video Editor">Video Editor</option>
+                          <option value="Web Developer">Web Developer</option>
+                        </optgroup>
+                        <optgroup label="Marketing &amp; Content">
+                          <option value="Community Manager">Community Manager</option>
+                          <option value="Content Creator">Content Creator</option>
+                          <option value="Content Strategy">Content Strategy</option>
+                          <option value="Marketing Strategy">Marketing Strategy</option>
+                        </optgroup>
+                        <optgroup label="Technical &amp; Sales">
+                          <option value="DevOps">DevOps</option>
+                          <option value="Sales">Sales</option>
+                          <option value="Commercial">Commercial</option>
+                        </optgroup>
+                        <optgroup label="Executive">
+                          <option value="Eiden Global">Eiden Global</option>
+                          <option value="Eiden HQ">Eiden HQ</option>
+                        </optgroup>
                       </select>
                     </AuthField>
                     {regError && <div className="px-4 py-3 text-[0.78rem]" style={{ border: "1px solid rgba(139,58,58,0.3)", color: "var(--danger)" }}>{regError}</div>}
@@ -1144,7 +1168,7 @@ export default function App() {
         <div className="flex items-center justify-between gap-3 px-6 py-0" style={{ height: 64, borderBottom: "1px solid rgba(244,235,208,0.08)" }}>
           <div className="flex items-center gap-3">
             <img src="https://eiden-group.com/wp-content/uploads/2025/11/ChatGPT-Image-Nov-25-2025-03_46_55-PM.png" alt="Eiden Group" style={{ height: 38, width: "auto", opacity: 0.92 }} />
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "var(--silk-creme)", opacity: 0.8 }}>Eiden CRM</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "var(--silk-creme)", opacity: 0.8 }}>Eiden BSM</div>
           </div>
           <button className="lg:hidden p-1" style={{ color: "rgba(244,235,208,0.4)", background: "none", border: "none", cursor: "pointer" }} onClick={() => setSidebarOpen(false)}>✕</button>
         </div>
@@ -1249,7 +1273,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             {activeTab === "pipeline" && perms.canCreate && <button onClick={() => setShowNewDealModal(true)} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Deal</button>}
             {activeTab === "contacts" && perms.canCreate && <button onClick={() => setShowNewContactModal(true)} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Contact</button>}
-            {activeTab === "tasks" && <button onClick={() => { setSelectedDealForTask(null); setShowNewTaskModal(true); }} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Task</button>}
+            {activeTab === "tasks" && perms.canCreate && <button onClick={() => { setSelectedDealForTask(null); setShowNewTaskModal(true); }} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Task</button>}
             {activeTab === "knowledge_base" && currentUser?.role === "Admin" && <button onClick={() => { setKbTitle(""); setKbContent(""); setKbCategory("Services"); setShowNewKnowledgeModal(true); }} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Entry</button>}
             {/* Notification bell */}
             <div className="relative">
@@ -1558,9 +1582,10 @@ export default function App() {
               </motion.div>
             )}
 
-            {/* ── Tasks ────────────────────────────────────────── */}
+            {/* ── Tasks (Kanban) ───────────────────────────────── */}
             {activeTab === "tasks" && (
               <motion.div key="tasks" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
+                {/* Stats row */}
                 <div className="shrink-0 grid grid-cols-4 gap-3">
                   <StatCard icon={<Clock size={15} />} label="Pending" value={String(filteredTasks.filter(t => t.status === "Pending").length)} color="warn" />
                   <StatCard icon={<Cpu size={15} />} label="In Progress" value={String(filteredTasks.filter(t => t.status === "In Progress").length)} color="teal" />
@@ -1568,122 +1593,158 @@ export default function App() {
                   <StatCard icon={<AlertTriangle size={15} />} label="Overdue" value={String(overdueTasks.length)} color={overdueTasks.length > 0 ? "danger" : "muted"} />
                 </div>
 
-                {/* AI quick task creation */}
-                <div className="shrink-0 flex gap-3 items-center px-4 py-3" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.1)", borderLeft: "1.5px solid var(--deep-forest)" }}>
-                  <Bot size={14} className="shrink-0" style={{ color: "var(--deep-forest)" }} />
-                  <form className="flex-1 flex gap-2" onSubmit={async e => {
-                    e.preventDefault();
-                    const fd = new FormData(e.currentTarget);
-                    const input = String(fd.get("ai_task") || "").trim();
-                    if (!input) return;
-                    (e.currentTarget as HTMLFormElement).reset();
-                    setActiveTab("dashboard");
-                    await sendAiMessage(input);
-                  }}>
-                    <input name="ai_task" type="text" placeholder="Ask AI to create tasks… e.g. 'high priority task to review proposal for Sarah by Friday'"
-                      className="flex-1 text-[0.8rem] outline-none"
-                      style={{ border: "none", borderBottom: "1.5px solid rgba(18,38,32,0.15)", padding: "7px 0", fontFamily: "'Space Grotesk',sans-serif", color: "var(--deep-forest)", background: "transparent" }} />
-                    <button type="submit" className="btn-primary">Ask AI</button>
-                  </form>
-                </div>
-
-                <div className="flex-1 eiden-card overflow-hidden flex flex-col min-h-0">
-                  <div className="shrink-0 px-5 py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.03)" }}>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>All Tasks — {filteredTasks.length} total</span>
+                {/* AI task creation — managers only */}
+                {perms.canCreate && (
+                  <div className="shrink-0 flex gap-3 items-center px-4 py-3" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.1)", borderLeft: "1.5px solid var(--deep-forest)" }}>
+                    <Bot size={14} className="shrink-0" style={{ color: "var(--deep-forest)" }} />
+                    <form className="flex-1 flex gap-2" onSubmit={async e => {
+                      e.preventDefault();
+                      const fd = new FormData(e.currentTarget);
+                      const input = String(fd.get("ai_task") || "").trim();
+                      if (!input) return;
+                      (e.currentTarget as HTMLFormElement).reset();
+                      setActiveTab("dashboard");
+                      await sendAiMessage(input);
+                    }}>
+                      <input name="ai_task" type="text" placeholder="Ask AI to create tasks… e.g. 'high priority task for Sarah by Friday'"
+                        className="flex-1 text-[0.8rem] outline-none"
+                        style={{ border: "none", borderBottom: "1.5px solid rgba(18,38,32,0.15)", padding: "7px 0", fontFamily: "'Space Grotesk',sans-serif", color: "var(--deep-forest)", background: "transparent" }} />
+                      <button type="submit" className="btn-primary">Ask AI</button>
+                    </form>
                   </div>
-                  <div className="flex-1 overflow-auto">
-                    <table className="w-full text-left min-w-[700px]">
-                      <thead className="sticky top-0" style={{ background: "rgba(18,38,32,0.04)" }}>
-                        <tr style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
-                          {["Task","Assignee","Deal","Due Date","Priority","Status","Actions"].map(h => (
-                            <th key={h} className="py-2.5 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.35)" }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredTasks.map(task => {
-                          const overdue = isOverdue(task.due_date, task.status);
-                          return (
-                            <tr key={task.id} className="text-[0.78rem] transition-colors"
-                              style={{ borderBottom: "1px solid rgba(18,38,32,0.05)", background: overdue ? "rgba(139,58,58,0.03)" : "" }}
-                              onMouseEnter={e => (e.currentTarget.style.background = "rgba(18,38,32,0.025)")}
-                              onMouseLeave={e => (e.currentTarget.style.background = overdue ? "rgba(139,58,58,0.03)" : "")}>
-                              <td className="py-3 px-4">
-                                <div style={{ fontSize: "0.8rem", fontWeight: 600, color: overdue ? "var(--danger)" : "var(--deep-forest)" }}>{task.title}</div>
-                                {task.description && <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", marginTop: 2, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "rgba(18,38,32,0.38)" }}>{task.description}</div>}
+                )}
+
+                {/* Kanban board */}
+                <div className="flex-1 min-h-0 grid grid-cols-3 gap-3 overflow-hidden">
+                  {(["Pending","In Progress","Completed"] as const).map(colStatus => {
+                    const colTasks = filteredTasks.filter(t => t.status === colStatus);
+                    const colAccent = colStatus === "Pending" ? "var(--warning)" : colStatus === "In Progress" ? "#2a9d8f" : "var(--success)";
+                    return (
+                      <div key={colStatus} className="flex flex-col min-h-0 overflow-hidden"
+                        style={{ background: "rgba(18,38,32,0.015)", border: "1px solid rgba(18,38,32,0.08)" }}
+                        onDragOver={perms.canCreate ? e => e.preventDefault() : undefined}
+                        onDrop={perms.canCreate ? async e => {
+                          e.preventDefault();
+                          const taskId = Number(e.dataTransfer.getData("taskId"));
+                          if (taskId) await updateTaskStatus(taskId, colStatus);
+                        } : undefined}>
+                        {/* Column header */}
+                        <div className="shrink-0 flex items-center justify-between px-4 py-3"
+                          style={{ borderBottom: `2px solid ${colAccent}`, background: "var(--pure-white)" }}>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: colAccent }}>{colStatus}</span>
+                          <span className="text-[0.62rem] font-bold px-2 py-0.5" style={{ background: colAccent + "22", color: colAccent, fontFamily: "'JetBrains Mono', monospace", border: `1px solid ${colAccent}44` }}>{colTasks.length}</span>
+                        </div>
+                        {/* Cards */}
+                        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                          {colTasks.map(task => {
+                            const overdue = isOverdue(task.due_date, task.status);
+                            return (
+                              <div key={task.id}
+                                draggable={perms.canCreate}
+                                onDragStart={perms.canCreate ? e => { e.dataTransfer.setData("taskId", task.id.toString()); e.dataTransfer.effectAllowed = "move"; } : undefined}
+                                onClick={() => { setSelectedTaskDetail({ ...task }); setShowTaskDetailModal(true); }}
+                                className="group relative select-none"
+                                style={{
+                                  background: "var(--pure-white)",
+                                  border: `1px solid ${overdue ? "rgba(139,58,58,0.25)" : "rgba(18,38,32,0.08)"}`,
+                                  borderLeft: `3px solid ${overdue ? "var(--danger)" : colAccent}`,
+                                  padding: "11px 13px",
+                                  cursor: perms.canCreate ? "grab" : "pointer",
+                                  transition: "box-shadow 0.15s, transform 0.1s",
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 3px 10px rgba(18,38,32,0.1)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                                onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}>
+                                {/* Title */}
+                                <div style={{ fontSize: "0.8rem", fontWeight: 600, lineHeight: 1.3, marginBottom: 5, color: overdue ? "var(--danger)" : "var(--deep-forest)", paddingRight: perms.canCreate ? 36 : 0 }}>
+                                  {task.title}
+                                </div>
+                                {/* Description preview */}
+                                {task.description && (
+                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.38)", marginBottom: 7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {task.description}
+                                  </div>
+                                )}
+                                {/* Meta */}
+                                <div className="flex items-center justify-between gap-2 flex-wrap mt-1">
+                                  <span style={{ fontSize: "0.67rem", color: "rgba(18,38,32,0.5)", fontFamily: "'Space Grotesk', sans-serif" }}>{task.assignee_name || "Unassigned"}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-1.5 py-0.5 text-[0.52rem] font-bold uppercase border ${priorityColor(task.priority)}`}>{task.priority}</span>
+                                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.56rem", color: overdue ? "var(--danger)" : "rgba(18,38,32,0.32)" }}>
+                                      {task.due_date}{overdue ? " ⚠" : ""}
+                                    </span>
+                                  </div>
+                                </div>
+                                {/* Overdue: submit reason button */}
                                 {overdue && task.assignee_id === currentUser?.id && !task.overdue_reason && (
-                                  <button onClick={() => { setOverdueTask(task); setOverdueReasonText(""); }}
-                                    className="mt-1 flex items-center gap-1 text-[0.6rem] font-semibold uppercase tracking-wide px-2 py-0.5"
-                                    style={{ color: "var(--danger)", border: "1px solid var(--danger)", background: "rgba(139,58,58,0.06)" }}>
-                                    <AlertTriangle size={9} /> Submit Reason
+                                  <button onClick={e => { e.stopPropagation(); setOverdueTask(task); setOverdueReasonText(""); }}
+                                    className="mt-2 w-full flex items-center justify-center gap-1 text-[0.57rem] font-semibold uppercase tracking-wide px-2 py-1"
+                                    style={{ color: "var(--danger)", border: "1px solid var(--danger)", background: "rgba(139,58,58,0.06)", cursor: "pointer" }}>
+                                    <AlertTriangle size={8} /> Submit Overdue Reason
                                   </button>
                                 )}
+                                {/* Overdue: reason preview */}
                                 {overdue && task.overdue_reason && (
-                                  <div className="mt-1 text-[0.6rem]" style={{ color: "rgba(18,38,32,0.45)", fontStyle: "italic" }}>Reason: {task.overdue_reason.slice(0, 60)}{task.overdue_reason.length > 60 ? "…" : ""}</div>
+                                  <div className="mt-2 text-[0.57rem] italic px-2 py-1" style={{ color: "rgba(18,38,32,0.45)", background: "rgba(18,38,32,0.03)", borderTop: "1px solid rgba(18,38,32,0.06)" }}>
+                                    Reason: {task.overdue_reason.slice(0, 55)}{task.overdue_reason.length > 55 ? "…" : ""}
+                                  </div>
                                 )}
-                              </td>
-                              <td className="py-3 px-4" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.5)" }}>{task.assignee_name || "Unassigned"}</td>
-                              <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", color: "rgba(18,38,32,0.4)" }}>{task.deal_title || "—"}</td>
-                              <td className="py-3 px-4">
-                                <span className="font-medium" style={{ color: overdue ? "var(--danger)" : "var(--gris)" }}>
-                                  {task.due_date || "—"}{overdue && " ⚠"}
-                                </span>
-                              </td>
-                              <td className="py-3 px-4">
-                                <span className={`px-2 py-0.5 text-[0.6rem] font-bold uppercase border ${priorityColor(task.priority)}`}>{task.priority}</span>
-                              </td>
-                              <td className="py-3 px-4">
-                                <select value={task.status} onChange={e => updateTaskStatus(task.id, e.target.value)}
-                                  className="text-[0.72rem] outline-none cursor-pointer"
-                                  style={{ border: "none", borderBottom: "1px solid rgba(18,38,32,0.15)", padding: "4px 0", fontFamily: "'Space Grotesk',sans-serif", color: "var(--deep-forest)", background: "transparent" }}>
-                                  <option>Pending</option>
-                                  <option>In Progress</option>
-                                  <option>Completed</option>
-                                </select>
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="flex gap-2">
-                                  <button onClick={() => { setEditTask({ ...task }); setShowEditTaskModal(true); }} style={{ color: "var(--deep-forest)" }} className="hover:opacity-70 transition-opacity"><Edit3 size={13} /></button>
-                                  {perms.canDelete && <button onClick={() => deleteTask(task.id)} style={{ color: "var(--gris)" }} className="hover:text-[var(--danger)] transition-colors"><Trash2 size={13} /></button>}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Ops Manager / Admin: submitted overdue reasons panel */}
-                  {(currentUser?.role === "Operational Manager" || currentUser?.role === "Admin" || currentUser?.role === "Eiden HQ") && (() => {
-                    const reasonedTasks = filteredTasks.filter(t => t.overdue_reason);
-                    if (reasonedTasks.length === 0) return null;
-                    return (
-                      <div className="mt-6 p-4" style={{ border: "1px solid rgba(18,38,32,0.1)", borderLeft: "3px solid var(--warning)", background: "rgba(200,160,60,0.03)" }}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <AlertTriangle size={13} style={{ color: "var(--warning)" }} />
-                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: "var(--warning)" }}>Submitted Overdue Reasons ({reasonedTasks.length})</span>
-                        </div>
-                        <div className="space-y-2">
-                          {reasonedTasks.map(t => (
-                            <div key={t.id} className="p-3" style={{ border: "1px solid rgba(18,38,32,0.07)", background: "white" }}>
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-semibold text-[0.78rem]" style={{ color: "var(--deep-forest)" }}>{t.title}</div>
-                                  <div className="text-[0.7rem] mt-0.5" style={{ color: "rgba(18,38,32,0.5)" }}>by {t.assignee_name} · due {t.due_date}</div>
-                                  <div className="mt-1.5 text-[0.72rem] italic" style={{ color: "rgba(18,38,32,0.65)" }}>"{t.overdue_reason}"</div>
-                                </div>
-                                <div className="shrink-0 text-[0.58rem] font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.3)" }}>
-                                  {t.overdue_reason_at ? new Date(t.overdue_reason_at).toLocaleDateString() : ""}
-                                </div>
+                                {/* Manager: hover actions */}
+                                {perms.canCreate && (
+                                  <div className="absolute top-2 right-2 hidden group-hover:flex gap-1">
+                                    <button onClick={e => { e.stopPropagation(); setEditTask({ ...task }); setShowEditTaskModal(true); }}
+                                      style={{ color: "var(--deep-forest)", background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.12)", padding: "3px 5px", cursor: "pointer" }}
+                                      className="hover:opacity-70 transition-opacity"><Edit3 size={10} /></button>
+                                    {perms.canDelete && (
+                                      <button onClick={e => { e.stopPropagation(); deleteTask(task.id); }}
+                                        style={{ color: "var(--gris)", background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.12)", padding: "3px 5px", cursor: "pointer" }}
+                                        className="hover:text-[var(--danger)] transition-colors"><Trash2 size={10} /></button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
+                            );
+                          })}
+                          {colTasks.length === 0 && (
+                            <div className="flex items-center justify-center py-8 text-[0.62rem]"
+                              style={{ color: "rgba(18,38,32,0.22)", fontFamily: "'JetBrains Mono', monospace", border: "1.5px dashed rgba(18,38,32,0.1)", margin: "4px" }}>
+                              {perms.canCreate ? "Drag tasks here" : "No tasks"}
                             </div>
-                          ))}
+                          )}
                         </div>
                       </div>
                     );
-                  })()}
+                  })}
                 </div>
+
+                {/* Managers: submitted overdue reasons panel */}
+                {(["Admin","Eiden HQ","Eiden Global","Operational Manager","Admin Coordinator","Brand Manager","Branding and Strategy Manager","Solution Architect"].includes(currentUser?.role || "")) && (() => {
+                  const reasonedTasks = filteredTasks.filter(t => t.overdue_reason);
+                  if (reasonedTasks.length === 0) return null;
+                  return (
+                    <div className="shrink-0 p-4" style={{ border: "1px solid rgba(18,38,32,0.1)", borderLeft: "3px solid var(--warning)", background: "rgba(200,160,60,0.03)" }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertTriangle size={13} style={{ color: "var(--warning)" }} />
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: "var(--warning)" }}>Submitted Overdue Reasons ({reasonedTasks.length})</span>
+                      </div>
+                      <div className="space-y-2">
+                        {reasonedTasks.map(t => (
+                          <div key={t.id} className="p-3" style={{ border: "1px solid rgba(18,38,32,0.07)", background: "white" }}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-[0.78rem]" style={{ color: "var(--deep-forest)" }}>{t.title}</div>
+                                <div className="text-[0.7rem] mt-0.5" style={{ color: "rgba(18,38,32,0.5)" }}>by {t.assignee_name} · due {t.due_date}</div>
+                                <div className="mt-1.5 text-[0.72rem] italic" style={{ color: "rgba(18,38,32,0.65)" }}>"{t.overdue_reason}"</div>
+                              </div>
+                              <div className="shrink-0 text-[0.58rem] font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.3)" }}>
+                                {t.overdue_reason_at ? new Date(t.overdue_reason_at).toLocaleDateString() : ""}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </motion.div>
             )}
 
@@ -1706,7 +1767,7 @@ export default function App() {
                   const todayStr = liveTime.toDateString();
                   const todayLogs = timeLogs.filter(l => l.user_id === currentUser?.id && l.end_time && new Date(l.start_time).toDateString() === todayStr);
                   const todayMins = todayLogs.reduce((s, l) => s + (l.duration_minutes || 0), 0) + (timerRunning ? Math.floor(timerElapsed / 60) : 0);
-                  const isManager = ["Admin","Eiden HQ","Operational Manager","Eiden Global"].includes(currentUser?.role || "");
+                  const isManager = ["Admin","Eiden HQ","Operational Manager","Eiden Global","Admin Coordinator","Brand Manager","Branding and Strategy Manager","Solution Architect"].includes(currentUser?.role || "");
                   const pad2 = (n: number) => String(n).padStart(2, "0");
                   const timeStr = `${pad2(liveTime.getHours())}:${pad2(liveTime.getMinutes())}:${pad2(liveTime.getSeconds())}`;
                   const dateStr = liveTime.toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -2232,7 +2293,7 @@ export default function App() {
 
                   {/* ── Time Tracker Analytics (Admin/Eiden HQ/Ops Manager see all; others see own) ── */}
                   {(() => {
-                    const isManager = ["Admin","Eiden HQ","Operational Manager","Eiden Global"].includes(currentUser?.role || "");
+                    const isManager = ["Admin","Eiden HQ","Operational Manager","Eiden Global","Admin Coordinator","Brand Manager","Branding and Strategy Manager","Solution Architect"].includes(currentUser?.role || "");
                     const relevantLogs = isManager
                       ? timeLogs.filter(l => l.workspace_id === currentWorkspace?.id && l.end_time)
                       : timeLogs.filter(l => l.user_id === currentUser?.id && l.end_time);
@@ -2588,7 +2649,7 @@ export default function App() {
                                   fetchAdminData();
                                 }} className="text-[0.7rem] outline-none px-2 py-1 font-semibold"
                                   style={{ border: "none", borderBottom: "1px solid rgba(18,38,32,0.15)", background: "transparent", color: "var(--deep-forest)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}>
-                                  {["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Brand Manager", "Designer", "Video Editor", "Web Developer", "Content Creator", "Marketing Strategy", "Sales", "Commercial", "Solution Architect"].map(r => (
+                                  {["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Admin Coordinator", "Brand Manager", "Branding and Strategy Manager", "Solution Architect", "Designer", "Video Editor", "Web Developer", "Community Manager", "Content Creator", "Content Strategy", "Marketing Strategy", "DevOps", "Sales", "Commercial"].map(r => (
                                     <option key={r} value={r}>{r}</option>
                                   ))}
                                 </select>
@@ -2721,6 +2782,78 @@ export default function App() {
               </div>
               <button type="submit" className="flash-button mb-0">Create Task</button>
             </form>
+          </Modal>
+        )}
+
+        {/* Task Detail */}
+        {showTaskDetailModal && selectedTaskDetail && (
+          <Modal title="Task Details" onClose={() => { setShowTaskDetailModal(false); setSelectedTaskDetail(null); }}>
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-start gap-3 flex-wrap">
+                  <div style={{ fontSize: "1rem", fontWeight: 700, color: isOverdue(selectedTaskDetail.due_date, selectedTaskDetail.status) ? "var(--danger)" : "var(--deep-forest)", lineHeight: 1.3, flex: 1 }}>
+                    {selectedTaskDetail.title}
+                  </div>
+                  {isOverdue(selectedTaskDetail.due_date, selectedTaskDetail.status) && (
+                    <span className="text-[0.58rem] font-bold px-2 py-0.5 uppercase shrink-0" style={{ background: "rgba(139,58,58,0.1)", color: "var(--danger)", border: "1px solid var(--danger)" }}>OVERDUE</span>
+                  )}
+                </div>
+                {selectedTaskDetail.description && (
+                  <div className="mt-2 text-[0.78rem]" style={{ color: "rgba(18,38,32,0.55)", lineHeight: 1.65 }}>{selectedTaskDetail.description}</div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Assignee", value: selectedTaskDetail.assignee_name || "Unassigned" },
+                  { label: "Due Date", value: selectedTaskDetail.due_date, danger: isOverdue(selectedTaskDetail.due_date, selectedTaskDetail.status) },
+                  { label: "Status", value: selectedTaskDetail.status },
+                  { label: "Priority", value: selectedTaskDetail.priority },
+                ].map(item => (
+                  <div key={item.label} className="p-3" style={{ background: "rgba(18,38,32,0.025)", border: "1px solid rgba(18,38,32,0.06)" }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.38)", marginBottom: 5 }}>{item.label}</div>
+                    {item.label === "Priority" ? (
+                      <span className={`px-2 py-0.5 text-[0.6rem] font-bold uppercase border ${priorityColor(selectedTaskDetail.priority)}`}>{item.value}</span>
+                    ) : (
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: (item as any).danger ? "var(--danger)" : "var(--deep-forest)" }}>{item.value}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {selectedTaskDetail.deal_title && (
+                <div className="p-3" style={{ background: "rgba(18,38,32,0.025)", border: "1px solid rgba(18,38,32,0.06)" }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.38)", marginBottom: 5 }}>Related Deal</div>
+                  <div style={{ fontSize: "0.82rem", color: "var(--deep-forest)" }}>{selectedTaskDetail.deal_title}</div>
+                </div>
+              )}
+              {selectedTaskDetail.overdue_reason && (
+                <div className="p-3" style={{ background: "rgba(139,58,58,0.04)", border: "1px solid rgba(139,58,58,0.15)", borderLeft: "3px solid var(--danger)" }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "var(--danger)", marginBottom: 5 }}>Overdue Reason</div>
+                  <div className="italic text-[0.78rem]" style={{ color: "rgba(18,38,32,0.65)" }}>"{selectedTaskDetail.overdue_reason}"</div>
+                  {selectedTaskDetail.overdue_reason_at && (
+                    <div className="mt-1 text-[0.6rem]" style={{ color: "rgba(18,38,32,0.35)", fontFamily: "'JetBrains Mono', monospace" }}>
+                      {new Date(selectedTaskDetail.overdue_reason_at).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Overdue reason submit — for the assigned employee */}
+              {isOverdue(selectedTaskDetail.due_date, selectedTaskDetail.status) && selectedTaskDetail.assignee_id === currentUser?.id && !selectedTaskDetail.overdue_reason && (
+                <button
+                  onClick={() => { setShowTaskDetailModal(false); setOverdueTask(selectedTaskDetail); setOverdueReasonText(""); setSelectedTaskDetail(null); }}
+                  className="flash-button mb-0"
+                  style={{ borderColor: "var(--danger)", color: "var(--danger)", width: "100%" }}>
+                  Submit Overdue Reason
+                </button>
+              )}
+              {/* Edit — managers only */}
+              {perms.canCreate && (
+                <button
+                  onClick={() => { setShowTaskDetailModal(false); setEditTask({ ...selectedTaskDetail }); setShowEditTaskModal(true); setSelectedTaskDetail(null); }}
+                  className="flash-button mb-0" style={{ width: "100%" }}>
+                  Edit Task
+                </button>
+              )}
+            </div>
           </Modal>
         )}
 
