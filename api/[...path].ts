@@ -201,23 +201,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ id: user.id, name: user.name, role: user.role, workspace_id: user.workspace_id });
       }
       if (r1 === "register" && method === "POST") {
-        const { name, email, username, password, company_name, role: requestedRole } = req.body;
-        if (!name || !email || !username || !password || !company_name || !requestedRole) return res.status(400).json({ error: "Missing required fields" });
+        const { name, email, username, password, role: requestedRole } = req.body;
+        if (!name || !email || !username || !password || !requestedRole) return res.status(400).json({ error: "Missing required fields" });
         const { data: exists } = await supabase.from("users").select("id").or(`username.eq.${username},email.eq.${email}`).maybeSingle();
         if (exists) return res.status(409).json({ error: "Username or email already taken" });
-        const { data: existingWs } = await supabase.from("workspaces").select("id, name").ilike("name", company_name).maybeSingle();
-        let workspace_id: number, role: string;
-        if (existingWs) {
-          workspace_id = existingWs.id;
-          role = requestedRole === "Admin" ? requestedRole : requestedRole;
-        } else {
-          const { data: newWs } = await supabase.from("workspaces").insert({ name: company_name }).select().single();
-          workspace_id = newWs!.id; role = "Admin";
-        }
+        // All new registrations are assigned to the first/default workspace and set as pending (no workspace_id) until Admin approves
+        const { data: defaultWs } = await supabase.from("workspaces").select("id").order("id").limit(1).maybeSingle();
+        const workspace_id = defaultWs?.id ?? null;
         const hashed = await bcrypt.hash(password, 10);
-        const { data } = await supabase.from("users").insert({ name, email, username, password: hashed, role, workspace_id }).select().single();
-        await logActivity(data?.id, `Registered: ${name}`, `${company_name} (${role})`, "auth");
-        return res.json({ id: data?.id, role, workspace_id });
+        const { data } = await supabase.from("users").insert({ name, email, username, password: hashed, role: requestedRole, workspace_id }).select().single();
+        await logActivity(data?.id, `Registered: ${name}`, `Role: ${requestedRole} — pending approval`, "auth");
+        return res.json({ id: data?.id, role: requestedRole, workspace_id });
       }
       if (r1 && r1 !== "login" && r1 !== "register") {
         if (method === "PATCH") {
