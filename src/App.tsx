@@ -79,14 +79,15 @@ const PERMISSIONS: Record<string, { tabs: string[]; canCreate: boolean; canDelet
   "Brand Manager":                 { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
   "Branding and Strategy Manager": { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
   "Solution Architect":            { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Designer":                      { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Video Editor":                  { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Web Developer":                 { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Community Manager":             { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Content Creator":               { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Content Strategy":              { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Marketing Strategy":            { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "DevOps":                        { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Designer":                      { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Video Editor":                  { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Web Developer":                 { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Community Manager":             { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Content Creator":               { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Content Strategy":              { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Marketing Strategy":            { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "DevOps":                        { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Intern":                        { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
   "Sales":                         { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],  canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
   "Commercial":                    { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],  canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
 };
@@ -170,6 +171,13 @@ export default function App() {
 
   // Employee task analytics modal
   const [selectedEmployeeAnalytics, setSelectedEmployeeAnalytics] = useState<User | null>(null);
+
+  // Analytics sub-tab
+  const [analyticsSection, setAnalyticsSection] = useState<"tasks" | "pipeline" | "deals" | "contacts">("tasks");
+
+  // Deadline edit modal (Admin Coordinator)
+  const [deadlineEditTask, setDeadlineEditTask] = useState<Task | null>(null);
+  const [deadlineEditValue, setDeadlineEditValue] = useState("");
 
   // Time tracker
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
@@ -617,6 +625,17 @@ export default function App() {
 
   const deleteTask = async (id: number) => {
     await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    fetchData();
+  };
+
+  const saveDeadlineEdit = async () => {
+    if (!deadlineEditTask || !deadlineEditValue) return;
+    await fetch(`/api/tasks/${deadlineEditTask.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ due_date: deadlineEditValue })
+    });
+    setDeadlineEditTask(null);
     fetchData();
   };
 
@@ -1205,8 +1224,39 @@ export default function App() {
           )}
         </nav>
 
-        {/* Overdue notification in sidebar */}
-        {(() => {
+        {/* Admin Coordinator — all workspace overdue tasks with deadline editing */}
+        {currentUser?.role === "Admin Coordinator" && (() => {
+          const allOverdue = tasks.filter(t => t.workspace_id === currentWorkspace?.id && isOverdue(t.due_date, t.status));
+          if (allOverdue.length === 0) return null;
+          return (
+            <div className="mx-4 mb-3" style={{ background: "rgba(80,40,10,0.18)", border: "1px solid rgba(200,140,60,0.35)" }}>
+              <div className="px-3 py-2" style={{ borderBottom: "1px solid rgba(200,140,60,0.2)" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.56rem", letterSpacing: "1px", textTransform: "uppercase", color: "rgba(240,180,80,0.9)", fontWeight: 700 }}>
+                  ⏰ {allOverdue.length} Overdue — Edit Deadlines
+                </div>
+              </div>
+              <div className="overflow-y-auto" style={{ maxHeight: 200 }}>
+                {allOverdue.map(t => (
+                  <div key={t.id} className="px-3 py-2" style={{ borderBottom: "1px solid rgba(200,140,60,0.12)" }}>
+                    <div style={{ fontSize: "0.68rem", fontWeight: 600, color: "rgba(244,235,208,0.85)", lineHeight: 1.3, marginBottom: 2 }}>{t.title}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(244,235,208,0.4)", marginBottom: 5 }}>
+                      {t.assignee_name} · due {t.due_date}
+                      {t.overdue_reason && <span style={{ color: "rgba(240,180,80,0.7)" }}> · reason submitted</span>}
+                    </div>
+                    <button onClick={() => { setDeadlineEditTask(t); setDeadlineEditValue(t.due_date); }}
+                      className="text-left px-2 py-1 w-full"
+                      style={{ background: "rgba(200,140,60,0.2)", border: "1px solid rgba(200,140,60,0.35)", color: "rgba(240,180,80,0.9)", fontSize: "0.58rem", fontFamily: "'JetBrains Mono', monospace", cursor: "pointer", letterSpacing: "0.5px" }}>
+                      ✏ Edit Deadline
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Overdue notification in sidebar — own tasks for other roles */}
+        {currentUser?.role !== "Admin Coordinator" && (() => {
           const myOverdue = filteredTasks.filter(t => isOverdue(t.due_date, t.status) && !t.overdue_reason);
           if (myOverdue.length === 0) return null;
           return (
@@ -1802,12 +1852,117 @@ export default function App() {
               </motion.div>
             )}
 
-            {/* ── Employee Task Analytics ──────────────────────── */}
+            {/* ── Task Analytics (role-aware) ───────────────────── */}
             {activeTab === "time" && (
               <motion.div key="time" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
                 {((): React.ReactElement => {
+                  const isManager = ["Admin","Eiden HQ","Operational Manager","Eiden Global","Admin Coordinator","Brand Manager","Branding and Strategy Manager","Solution Architect"].includes(currentUser?.role || "");
                   const wsUsers = users.filter(u => u.workspace_id === currentWorkspace?.id);
                   const allWsTasks = tasks.filter(t => t.workspace_id === currentWorkspace?.id);
+
+                  if (!isManager) {
+                    // ── Employee: own task analytics ──
+                    const myTasks = allWsTasks.filter(t => t.assignee_id === currentUser?.id);
+                    const pending = myTasks.filter(t => t.status === "Pending");
+                    const inProgress = myTasks.filter(t => t.status === "In Progress");
+                    const completed = myTasks.filter(t => t.status === "Completed");
+                    const overdue = myTasks.filter(t => isOverdue(t.due_date, t.status));
+                    const completionRate = myTasks.length > 0 ? Math.round((completed.length / myTasks.length) * 100) : 0;
+                    return (
+                      <div className="space-y-5 pb-6">
+                        {/* Header */}
+                        <div className="eiden-card overflow-hidden">
+                          <div style={{ background: "var(--deep-forest)", padding: "28px 36px" }}>
+                            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", letterSpacing: "2px", textTransform: "uppercase", color: "rgba(244,235,208,0.45)", marginBottom: 6 }}>My Task Analytics</div>
+                            <div style={{ fontSize: "1.4rem", fontWeight: 300, color: "var(--silk-creme)", lineHeight: 1.2 }}>{currentUser?.name}</div>
+                            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(244,235,208,0.35)", marginTop: 4 }}>{currentUser?.role}</div>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 divide-x" style={{ borderColor: "rgba(18,38,32,0.07)", borderTop: "1px solid rgba(18,38,32,0.07)" }}>
+                            {[
+                              { label: "Total", value: myTasks.length, color: "var(--deep-forest)" },
+                              { label: "Active", value: inProgress.length, color: "#2a9d8f" },
+                              { label: "Completed", value: completed.length, color: "var(--success)" },
+                              { label: "Overdue", value: overdue.length, color: overdue.length > 0 ? "var(--danger)" : "var(--gris)" },
+                            ].map(s => (
+                              <div key={s.label} className="p-4 text-center">
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.38)", marginBottom: 5 }}>{s.label}</div>
+                                <div style={{ fontSize: "1.8rem", fontWeight: 300, color: s.color, lineHeight: 1 }}>{s.value}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Completion rate */}
+                        <div className="eiden-card p-5">
+                          <div className="flex justify-between items-center mb-3">
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Completion Rate</span>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "1.2rem", fontWeight: 300, color: completionRate >= 75 ? "var(--success)" : completionRate >= 40 ? "var(--warning)" : "var(--danger)" }}>{completionRate}%</span>
+                          </div>
+                          <div style={{ height: 8, background: "rgba(18,38,32,0.07)", borderRadius: 4 }}>
+                            <motion.div initial={{ width: 0 }} animate={{ width: `${completionRate}%` }}
+                              style={{ height: "100%", background: completionRate >= 75 ? "var(--success)" : completionRate >= 40 ? "var(--warning)" : "var(--danger)", borderRadius: 4 }} />
+                          </div>
+                          <div className="flex justify-between mt-2">
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.3)" }}>0%</span>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.3)" }}>100%</span>
+                          </div>
+                        </div>
+
+                        {/* Status breakdown */}
+                        <div className="eiden-card p-5">
+                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)", marginBottom: 16 }}>Tasks by Status</div>
+                          <div className="space-y-4">
+                            {[
+                              { label: "Pending", count: pending.length, color: "var(--warning)" },
+                              { label: "In Progress", count: inProgress.length, color: "#2a9d8f" },
+                              { label: "Completed", count: completed.length, color: "var(--success)" },
+                              { label: "Overdue", count: overdue.length, color: "var(--danger)" },
+                            ].map(s => (
+                              <div key={s.label}>
+                                <div className="flex justify-between mb-1.5">
+                                  <span style={{ fontSize: "0.78rem", fontWeight: 500, color: s.color }}>{s.label}</span>
+                                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.7rem", fontWeight: 700, color: s.color }}>{s.count}</span>
+                                </div>
+                                <div style={{ height: 4, background: "rgba(18,38,32,0.06)", borderRadius: 2 }}>
+                                  <motion.div initial={{ width: 0 }} animate={{ width: myTasks.length > 0 ? `${(s.count / myTasks.length) * 100}%` : "0%" }}
+                                    style={{ height: "100%", background: s.color, borderRadius: 2, minWidth: s.count > 0 ? 4 : 0 }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Task list */}
+                        {myTasks.length > 0 && (
+                          <div className="eiden-card overflow-hidden">
+                            <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.02)" }}>
+                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>All My Tasks ({myTasks.length})</span>
+                            </div>
+                            <div className="divide-y" style={{ borderColor: "rgba(18,38,32,0.05)" }}>
+                              {myTasks.map((t: Task): React.ReactElement => {
+                                const od = isOverdue(t.due_date, t.status);
+                                const statusColor = t.status === "Completed" ? "var(--success)" : t.status === "In Progress" ? "#2a9d8f" : "var(--warning)";
+                                return (
+                                  <div key={t.id} className="flex items-center gap-3 px-5 py-3">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-medium text-[0.8rem] truncate" style={{ color: od ? "var(--danger)" : "var(--deep-forest)" }}>{t.title}</div>
+                                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)", marginTop: 2 }}>Due {t.due_date}{od ? " ⚠ overdue" : ""}</div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span className={`px-1.5 py-0.5 text-[0.5rem] font-bold uppercase border ${priorityColor(t.priority)}`}>{t.priority}</span>
+                                      <span className="px-1.5 py-0.5 text-[0.5rem] font-bold uppercase" style={{ color: statusColor, border: `1px solid ${statusColor}22`, background: `${statusColor}11` }}>{t.status}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // ── Manager: all employees analytics ──
                   const totalTasks = allWsTasks.length;
                   const totalCompleted = allWsTasks.filter(t => t.status === "Completed").length;
                   const totalOverdue = allWsTasks.filter(t => isOverdue(t.due_date, t.status)).length;
@@ -1817,10 +1972,9 @@ export default function App() {
                       {/* Header */}
                       <div className="eiden-card overflow-hidden">
                         <div style={{ background: "var(--deep-forest)", padding: "28px 36px" }}>
-                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", letterSpacing: "2px", textTransform: "uppercase", color: "rgba(244,235,208,0.45)", marginBottom: 8 }}>Task Analytics — All Employees</div>
+                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", letterSpacing: "2px", textTransform: "uppercase", color: "rgba(244,235,208,0.45)", marginBottom: 8 }}>Task Analytics — All Staff</div>
                           <div style={{ fontSize: "1.5rem", fontWeight: 300, color: "var(--silk-creme)", lineHeight: 1.2 }}>Click any employee card to view their full task breakdown</div>
                         </div>
-                        {/* Summary bar */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 divide-x" style={{ borderColor: "rgba(18,38,32,0.07)", borderTop: "1px solid rgba(18,38,32,0.07)" }}>
                           {[
                             { label: "Total Tasks", value: totalTasks, color: "var(--deep-forest)" },
@@ -1836,7 +1990,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Employee cards grid — all employees, all without exceptions */}
+                      {/* Employee cards grid */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {wsUsers.map((u: User): React.ReactElement => {
                           const empTasks = allWsTasks.filter(t => t.assignee_id === u.id);
@@ -1852,7 +2006,6 @@ export default function App() {
                               style={{ cursor: "pointer", border: "1px solid rgba(18,38,32,0.08)", outline: "none" }}
                               onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(18,38,32,0.12)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
                               onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}>
-                              {/* Card header */}
                               <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
                                 <div className="w-10 h-10 flex items-center justify-center text-[0.85rem] font-bold shrink-0"
                                   style={{ background: overdue > 0 ? "rgba(139,58,58,0.12)" : "var(--deep-forest)", color: overdue > 0 ? "var(--danger)" : "var(--silk-creme)" }}>
@@ -1864,11 +2017,10 @@ export default function App() {
                                 </div>
                                 {overdue > 0 && (
                                   <span className="shrink-0 flex items-center gap-1 text-[0.58rem] font-bold px-2 py-0.5" style={{ color: "var(--danger)", border: "1px solid var(--danger)", background: "rgba(139,58,58,0.06)" }}>
-                                    <AlertTriangle size={9} /> {overdue} overdue
+                                    <AlertTriangle size={9} /> {overdue}
                                   </span>
                                 )}
                               </div>
-                              {/* Stats */}
                               <div className="px-5 py-4 space-y-3">
                                 <div className="flex items-center justify-between gap-2">
                                   <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", textTransform: "uppercase", letterSpacing: "1px", color: "rgba(18,38,32,0.4)" }}>Completion Rate</span>
@@ -1878,7 +2030,7 @@ export default function App() {
                                   <motion.div initial={{ width: 0 }} animate={{ width: `${completionRate}%` }}
                                     style={{ height: "100%", background: completionRate >= 75 ? "var(--success)" : completionRate >= 40 ? "var(--warning)" : "var(--danger)", borderRadius: 2 }} />
                                 </div>
-                                <div className="grid grid-cols-4 gap-2 mt-1">
+                                <div className="grid grid-cols-4 gap-2">
                                   {[
                                     { label: "Total", value: total, color: "var(--deep-forest)" },
                                     { label: "Pending", value: pending, color: "var(--warning)" },
@@ -1891,13 +2043,13 @@ export default function App() {
                                     </div>
                                   ))}
                                 </div>
-                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.3)", textAlign: "right", marginTop: 4 }}>Click to view details →</div>
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.3)", textAlign: "right" }}>Click for details →</div>
                               </div>
                             </button>
                           );
                         })}
                         {wsUsers.length === 0 && (
-                          <div className="col-span-3 py-16 text-center" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", color: "rgba(18,38,32,0.3)" }}>No team members found in this workspace.</div>
+                          <div className="col-span-3 py-16 text-center" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", color: "rgba(18,38,32,0.3)" }}>No team members found.</div>
                         )}
                       </div>
                     </div>
@@ -1964,379 +2116,599 @@ export default function App() {
 
             {/* ── Analytics ────────────────────────────────────── */}
             {activeTab === "analytics" && (
-              <motion.div key="analytics" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
+              <motion.div key="analytics" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-0 overflow-hidden">
+                {/* Sub-tabs */}
+                <div className="shrink-0 flex gap-0" style={{ borderBottom: "2px solid rgba(18,38,32,0.08)", background: "var(--pure-white)", paddingLeft: 0 }}>
+                  {([
+                    { key: "tasks", label: "Tasks" },
+                    { key: "pipeline", label: "Pipeline" },
+                    { key: "deals", label: "Deals" },
+                    { key: "contacts", label: "Contacts" },
+                  ] as const).map(s => (
+                    <button key={s.key} onClick={() => setAnalyticsSection(s.key)}
+                      style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "2px", padding: "10px 20px", background: "none", cursor: "pointer", transition: "all 0.2s", borderBottom: analyticsSection === s.key ? "1.5px solid var(--deep-forest)" : "1.5px solid transparent", borderTop: "none", borderLeft: "none", borderRight: "none", color: analyticsSection === s.key ? "var(--deep-forest)" : "rgba(18,38,32,0.4)", marginBottom: -1 }}>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex-1 overflow-y-auto px-0 py-4">
+                {/* ── Tasks sub-tab ── */}
+                {analyticsSection === "tasks" && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-4">
-                  {/* Revenue */}
-                  <div className="eiden-card p-6">
-                    <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Revenue Overview</div>
-                    <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Won vs Pending revenue</div>
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div className="p-3" style={{ borderLeft: "3px solid var(--success)" }}>
-                        <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)] mb-1">Won Revenue</div>
-                        <div style={{ fontSize: "1.8rem", fontWeight: 300, color: "var(--success)", lineHeight: 1 }}>${(financials?.totalRevenue || 0).toLocaleString()}</div>
-                      </div>
-                      <div className="p-3" style={{ borderLeft: "1.5px solid var(--deep-forest)" }}>
-                        <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)] mb-1">Pipeline</div>
-                        <div style={{ fontSize: "1.8rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>${(financials?.pendingRevenue || 0).toLocaleString()}</div>
-                      </div>
-                    </div>
-                    {financials?.monthly && financials.monthly.length > 0 && (
-                      <div>
-                        <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)] mb-3">Monthly Won Revenue</div>
-                        <div className="h-28 flex items-end gap-2">
-                          {financials.monthly.map((m: any, i: number) => {
-                            const maxVal = Math.max(...financials.monthly.map((x: any) => x.total), 1);
-                            return (
-                              <div key={i} className="flex-1 relative group flex flex-col items-center justify-end h-full">
-                                <div className="opacity-80 hover:opacity-100 transition-opacity w-full"
-                                  style={{ height: `${(m.total / maxVal) * 100}%`, minHeight: 4, background: "var(--deep-forest)" }} />
-                                <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[0.58rem] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity font-semibold" style={{ color: "var(--deep-forest)" }}>
-                                  ${m.total.toLocaleString()}
+                  {/* ── Workspace Task Summary ── */}
+                  {perms.canAssignAll ? (
+                    <>
+                      {/* Manager view: workspace-wide stats */}
+                      {(() => {
+                        const wsTasks = tasks;
+                        const total = wsTasks.length;
+                        const completed = wsTasks.filter(t => t.status === "Completed").length;
+                        const inProgress = wsTasks.filter(t => t.status === "In Progress").length;
+                        const overdue = wsTasks.filter(t => isOverdue(t.due_date, t.status)).length;
+                        const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+                        return (
+                          <div className="eiden-card p-6 lg:col-span-2">
+                            <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Workspace Task Summary</div>
+                            <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>All tasks across the team</div>
+                            <div className="grid grid-cols-4 gap-3">
+                              {[
+                                { label: "Total Tasks", value: total, color: "var(--deep-forest)" },
+                                { label: "Completed", value: completed, color: "var(--success)" },
+                                { label: "In Progress", value: inProgress, color: "#2a9d8f" },
+                                { label: "Overdue", value: overdue, color: overdue > 0 ? "var(--danger)" : "var(--gris)" },
+                              ].map(s => (
+                                <div key={s.label} className="p-3" style={{ borderLeft: `3px solid ${s.color}` }}>
+                                  <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">{s.label}</div>
+                                  <div style={{ fontSize: "2rem", fontWeight: 300, color: s.color, lineHeight: 1 }}>{s.value}</div>
                                 </div>
-                                <div className="text-center mt-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.35)" }}>{m.month?.slice(5) || i + 1}</div>
+                              ))}
+                            </div>
+                            <div className="mt-4">
+                              <div className="flex justify-between text-[0.65rem] mb-1" style={{ color: "rgba(18,38,32,0.45)" }}>
+                                <span>Completion Rate</span>
+                                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, color: "var(--deep-forest)" }}>{completionRate}%</span>
+                              </div>
+                              <div className="h-2" style={{ background: "rgba(18,38,32,0.07)" }}>
+                                <motion.div initial={{ width: 0 }} animate={{ width: `${completionRate}%` }} className="h-full" style={{ background: "var(--deep-forest)" }} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Team Workload — clickable cards */}
+                      <div className="eiden-card p-6 lg:col-span-2">
+                        <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Team Workload</div>
+                        <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Click a member to see their full task breakdown</div>
+                        <div className="grid grid-cols-1 gap-2">
+                          {users.map(u => {
+                            const uTasks = tasks.filter(t => t.assignee_id === u.id);
+                            const pending = uTasks.filter(t => t.status === "Pending").length;
+                            const inProg = uTasks.filter(t => t.status === "In Progress").length;
+                            const done = uTasks.filter(t => t.status === "Completed").length;
+                            const ov = uTasks.filter(t => isOverdue(t.due_date, t.status)).length;
+                            const rate = uTasks.length > 0 ? Math.round((done / uTasks.length) * 100) : 0;
+                            return (
+                              <div key={u.id} className="p-3 cursor-pointer transition-all hover:shadow-sm"
+                                style={{ border: "1px solid rgba(18,38,32,0.08)", borderLeft: `3px solid ${ov > 0 ? "var(--danger)" : "var(--deep-forest)"}` }}
+                                onClick={() => setSelectedEmployeeAnalytics(u)}>
+                                <div className="flex items-center justify-between mb-2">
+                                  <div>
+                                    <div className="font-semibold text-[0.82rem]" style={{ color: "var(--deep-forest)" }}>{u.name}</div>
+                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.38)" }}>{u.role}</div>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    {ov > 0 && (
+                                      <span className="text-[0.62rem] font-bold flex items-center gap-1" style={{ color: "var(--danger)" }}>
+                                        <AlertTriangle size={9} /> {ov} overdue
+                                      </span>
+                                    )}
+                                    <div className="text-right">
+                                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", fontWeight: 700, color: "var(--deep-forest)" }}>{rate}%</div>
+                                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.5rem", color: "rgba(18,38,32,0.35)", textTransform: "uppercase" }}>done</div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex gap-3 text-[0.65rem] font-semibold mb-2">
+                                  <span style={{ color: "var(--warning)" }}>{pending} pending</span>
+                                  <span style={{ color: "#2a9d8f" }}>{inProg} active</span>
+                                  <span style={{ color: "var(--success)" }}>{done} done</span>
+                                  <span style={{ color: "rgba(18,38,32,0.35)" }}>{uTasks.length} total</span>
+                                </div>
+                                <div className="h-1" style={{ background: "rgba(18,38,32,0.07)" }}>
+                                  <div className="h-full" style={{ width: `${rate}%`, background: ov > 0 ? "var(--danger)" : "var(--deep-forest)", minWidth: done > 0 ? 4 : 0 }} />
+                                </div>
                               </div>
                             );
                           })}
                         </div>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Pipeline distribution */}
-                  <div className="eiden-card p-6">
-                    <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Pipeline Distribution</div>
-                    <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Deal stages breakdown</div>
-                    <div className="space-y-4">
-                      {["Lead", "Proposal", "Negotiation", "Won", "Lost"].map(stage => {
-                        const stageDl = filteredDeals.filter(d => d.stage === stage);
-                        const pct = filteredDeals.length > 0 ? (stageDl.length / filteredDeals.length) * 100 : 0;
-                        const val = stageDl.reduce((s, d) => s + d.value, 0);
-                        const barColor = stage === "Won" ? "var(--success)" : stage === "Lost" ? "var(--danger)" : "var(--deep-forest)";
-                        return (
-                          <div key={stage}>
-                            <div className="flex justify-between text-[0.72rem] mb-1.5">
-                              <span className="font-semibold" style={{ color: barColor }}>{stage}</span>
-                              <span className="text-[var(--gris)]">{stageDl.length} deals · ${val.toLocaleString()}</span>
-                            </div>
-                            <div style={{ height: 2, background: "rgba(18,38,32,0.08)", marginTop: 4 }}>
-                              <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} className="h-full" style={{ background: barColor }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Team workload */}
-                  <div className="eiden-card p-6">
-                    <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Team Workload</div>
-                    <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Tasks per team member</div>
-                    <div className="space-y-3">
-                      {users.map(u => {
-                        const userTasks = tasks.filter(t => t.assignee_id === u.id);
-                        const pending = userTasks.filter(t => t.status === "Pending").length;
-                        const inProgress = userTasks.filter(t => t.status === "In Progress").length;
-                        const completed = userTasks.filter(t => t.status === "Completed").length;
-                        const overdue = userTasks.filter(t => isOverdue(t.due_date, t.status)).length;
-                        return (
-                          <div key={u.id} className="p-3" style={{ border: "1px solid rgba(18,38,32,0.08)", borderLeft: "1.5px solid var(--deep-forest)" }}>
-                            <div className="flex justify-between mb-1.5">
-                              <div>
-                                <div className="font-semibold text-[0.82rem]" style={{ color: "var(--deep-forest)" }}>{u.name}</div>
-                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.35)" }}>{u.role}</div>
-                              </div>
-                              {overdue > 0 && (
-                                <span className="text-[0.65rem] font-bold flex items-center gap-1" style={{ color: "var(--danger)" }}>
-                                  <AlertTriangle size={10} /> {overdue} overdue
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex gap-3 text-[0.68rem] font-semibold">
-                              <span style={{ color: "var(--warning)" }}>{pending} pending</span>
-                              <span style={{ color: "var(--deep-forest)" }}>{inProgress} active</span>
-                              <span style={{ color: "var(--success)" }}>{completed} done</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Risk overview */}
-                  <div className="eiden-card p-6">
-                    <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Deal Risk Overview</div>
-                    <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Active deals sorted by risk</div>
-                    <div className="space-y-3">
-                      {filteredDeals.filter(d => d.stage !== "Won" && d.stage !== "Lost")
-                        .sort((a, b) => b.risk_score - a.risk_score).slice(0, 6).map(d => {
-                          const riskColor = d.risk_score > 60 ? "var(--danger)" : d.risk_score > 30 ? "var(--warning)" : "var(--success)";
-                          return (
-                            <div key={d.id} className="flex items-center gap-3 text-[0.75rem]">
-                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 600, textAlign: "right", flexShrink: 0, width: 36, color: riskColor }}>{d.risk_score}%</span>
-                              <div className="flex-1">
-                                <div className="font-medium truncate" style={{ color: "var(--deep-forest)" }}>{d.title}</div>
-                                <div className="h-1.5 mt-1" style={{ background: "rgba(18,38,32,0.06)" }}>
-                                  <div className="h-full" style={{ width: `${d.risk_score}%`, background: riskColor }} />
-                                </div>
-                              </div>
-                              <span className="text-[var(--gris)] text-[0.65rem] shrink-0">${d.value.toLocaleString()}</span>
-                            </div>
-                          );
-                        })}
-                      {filteredDeals.filter(d => d.stage !== "Won" && d.stage !== "Lost").length === 0 && (
-                        <div className="text-[0.75rem] text-[var(--gris)]">No active deals.</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ── Tasks Analytics ── */}
-                  <div className="eiden-card p-6">
-                    <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>My Tasks Overview</div>
-                    <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Your personal task breakdown</div>
-                    {(() => {
-                      const myTasks = tasks.filter(t => t.assignee_id === currentUser?.id);
-                      const byStatus = ["Pending","In Progress","Completed"].map(s => ({ label: s, count: myTasks.filter(t => t.status === s).length }));
-                      const byPriority = ["High","Medium","Low"].map(p => ({ label: p, count: myTasks.filter(t => t.priority === p).length, color: p === "High" ? "var(--danger)" : p === "Medium" ? "var(--warning)" : "var(--gris)" }));
-                      const overdueCount = myTasks.filter(t => isOverdue(t.due_date, t.status)).length;
-                      const completionRate = myTasks.length > 0 ? Math.round((myTasks.filter(t => t.status === "Completed").length / myTasks.length) * 100) : 0;
-                      return (
+                      {/* Priority Distribution */}
+                      <div className="eiden-card p-6">
+                        <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Priority Distribution</div>
+                        <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Tasks by priority level</div>
                         <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="p-3" style={{ borderLeft: "3px solid var(--deep-forest)" }}>
-                              <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Total Assigned</div>
-                              <div style={{ fontSize: "2rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>{myTasks.length}</div>
-                            </div>
-                            <div className="p-3" style={{ borderLeft: `3px solid ${overdueCount > 0 ? "var(--danger)" : "var(--success)"}` }}>
-                              <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Completion Rate</div>
-                              <div style={{ fontSize: "2rem", fontWeight: 300, color: overdueCount > 0 ? "var(--danger)" : "var(--success)", lineHeight: 1 }}>{completionRate}%</div>
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-2">By Status</div>
-                            <div className="space-y-2">
-                              {byStatus.map(s => (
-                                <div key={s.label} className="flex items-center gap-3">
-                                  <span className="text-[0.72rem] font-medium w-20" style={{ color: "var(--deep-forest)" }}>{s.label}</span>
-                                  <div className="flex-1 h-1.5" style={{ background: "rgba(18,38,32,0.07)" }}>
-                                    <div className="h-full" style={{ width: myTasks.length > 0 ? `${(s.count/myTasks.length)*100}%` : "0%", background: "var(--deep-forest)", minWidth: s.count > 0 ? 4 : 0 }} />
-                                  </div>
-                                  <span className="text-[0.68rem] font-bold w-4 text-right" style={{ color: "var(--gris)" }}>{s.count}</span>
+                          {[{ p: "High", color: "var(--danger)" }, { p: "Medium", color: "var(--warning)" }, { p: "Low", color: "var(--gris)" }].map(({ p, color }) => {
+                            const cnt = tasks.filter(t => t.priority === p).length;
+                            const pct = tasks.length > 0 ? (cnt / tasks.length) * 100 : 0;
+                            return (
+                              <div key={p}>
+                                <div className="flex justify-between text-[0.72rem] mb-1.5">
+                                  <span className="font-semibold" style={{ color }}>{p}</span>
+                                  <span className="text-[var(--gris)]">{cnt} tasks · {Math.round(pct)}%</span>
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-2">By Priority</div>
-                            <div className="flex gap-3">
-                              {byPriority.map(p => (
-                                <div key={p.label} className="flex-1 p-2 text-center" style={{ border: `1px solid ${p.color}`, color: p.color }}>
-                                  <div style={{ fontSize: "1.4rem", fontWeight: 300, lineHeight: 1 }}>{p.count}</div>
-                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", marginTop: 3 }}>{p.label}</div>
+                                <div style={{ height: 2, background: "rgba(18,38,32,0.08)" }}>
+                                  <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} className="h-full" style={{ background: color }} />
                                 </div>
-                              ))}
-                            </div>
-                          </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* ── Contacts Analytics (if has access) ── */}
-                  {perms.tabs.includes("contacts") && (
-                    <div className="eiden-card p-6">
-                      <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Contacts Overview</div>
-                      <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Status & source breakdown</div>
-                      <div className="space-y-4">
-                        <div>
-                          <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-2">By Status</div>
-                          <div className="space-y-2">
-                            {["Active","Prospect","Inactive"].map(s => {
-                              const cnt = filteredContacts.filter(c => c.status === s).length;
-                              const pct = filteredContacts.length > 0 ? (cnt / filteredContacts.length) * 100 : 0;
-                              const col = s === "Active" ? "var(--success)" : s === "Prospect" ? "var(--warning)" : "var(--gris)";
-                              return (
-                                <div key={s} className="flex items-center gap-3">
-                                  <span className="text-[0.72rem] font-medium w-20" style={{ color: col }}>{s}</span>
-                                  <div className="flex-1 h-1.5" style={{ background: "rgba(18,38,32,0.07)" }}>
-                                    <div className="h-full" style={{ width: `${pct}%`, background: col, minWidth: cnt > 0 ? 4 : 0 }} />
-                                  </div>
-                                  <span className="text-[0.68rem] font-bold w-4 text-right" style={{ color: "var(--gris)" }}>{cnt}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-2">By Source</div>
-                          <div className="space-y-2">
-                            {Array.from(new Set(filteredContacts.map(c => c.source).filter(Boolean))).slice(0,5).map(src => {
-                              const cnt = filteredContacts.filter(c => c.source === src).length;
-                              const pct = filteredContacts.length > 0 ? (cnt / filteredContacts.length) * 100 : 0;
-                              return (
-                                <div key={String(src)} className="flex items-center gap-3">
-                                  <span className="text-[0.72rem] w-24 truncate" style={{ color: "var(--deep-forest)" }}>{src}</span>
-                                  <div className="flex-1 h-1.5" style={{ background: "rgba(18,38,32,0.07)" }}>
-                                    <div className="h-full" style={{ width: `${pct}%`, background: "var(--deep-forest)" }} />
-                                  </div>
-                                  <span className="text-[0.68rem] font-bold w-4 text-right" style={{ color: "var(--gris)" }}>{cnt}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        <div className="p-3" style={{ borderLeft: "3px solid var(--deep-forest)" }}>
-                          <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Total LTV</div>
-                          <div style={{ fontSize: "1.6rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>
-                            ${filteredContacts.reduce((s, c) => s + (c.ltv || 0), 0).toLocaleString()}
-                          </div>
+                        <div className="mt-5 flex gap-3">
+                          {[{ p: "High", color: "var(--danger)" }, { p: "Medium", color: "var(--warning)" }, { p: "Low", color: "var(--gris)" }].map(({ p, color }) => (
+                            <div key={p} className="flex-1 p-3 text-center" style={{ border: `1px solid ${color}`, color }}>
+                              <div style={{ fontSize: "1.8rem", fontWeight: 300, lineHeight: 1 }}>{tasks.filter(t => t.priority === p).length}</div>
+                              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", marginTop: 4, textTransform: "uppercase" }}>{p}</div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    </div>
-                  )}
 
-                  {/* ── Client Analytics (if has access) ── */}
-                  {perms.tabs.includes("clients") && (
-                    <div className="eiden-card p-6">
-                      <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Client Portfolio</div>
-                      <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Revenue & status distribution</div>
-                      {(() => {
-                        const wsClients = clients.filter(c => c.workspace_id === currentWorkspace?.id);
-                        const totalMRR = wsClients.filter(c => c.status === "Active").reduce((s, c) => s + (c.monthly_value || 0), 0);
-                        const byIndustry = Array.from(new Set(wsClients.map(c => c.industry).filter(Boolean)));
-                        return (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="p-3" style={{ borderLeft: "3px solid var(--success)" }}>
-                                <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Monthly Revenue</div>
-                                <div style={{ fontSize: "1.5rem", fontWeight: 300, color: "var(--success)", lineHeight: 1 }}>${totalMRR.toLocaleString()}</div>
-                              </div>
-                              <div className="p-3" style={{ borderLeft: "1.5px solid var(--deep-forest)" }}>
-                                <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Active Clients</div>
-                                <div style={{ fontSize: "1.5rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>{wsClients.filter(c => c.status === "Active").length}</div>
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-2">By Status</div>
-                              {["Active","At Risk","Onboarding","Churned"].map(s => {
-                                const cnt = wsClients.filter(c => c.status === s).length;
-                                const pct = wsClients.length > 0 ? (cnt / wsClients.length) * 100 : 0;
-                                const col = s === "Active" ? "var(--success)" : s === "At Risk" ? "var(--danger)" : s === "Onboarding" ? "var(--warning)" : "var(--gris)";
+                      {/* Overdue Tasks Summary */}
+                      <div className="eiden-card p-6">
+                        <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Overdue Tasks</div>
+                        <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Tasks past their deadline</div>
+                        {(() => {
+                          const overdueTasks = tasks.filter(t => isOverdue(t.due_date, t.status)).sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+                          if (overdueTasks.length === 0) return <div className="text-[0.75rem] text-[var(--gris)]">No overdue tasks.</div>;
+                          return (
+                            <div className="space-y-2">
+                              {overdueTasks.slice(0, 8).map(t => {
+                                const assignee = users.find(u => u.id === t.assignee_id);
+                                const daysOver = Math.floor((Date.now() - new Date(t.due_date).getTime()) / 86400000);
                                 return (
-                                  <div key={s} className="flex items-center gap-3 mb-2">
-                                    <span className="text-[0.72rem] font-medium w-20" style={{ color: col }}>{s}</span>
-                                    <div className="flex-1 h-1.5" style={{ background: "rgba(18,38,32,0.07)" }}>
-                                      <div className="h-full" style={{ width: `${pct}%`, background: col, minWidth: cnt > 0 ? 4 : 0 }} />
+                                  <div key={t.id} className="p-2" style={{ border: "1px solid rgba(18,38,32,0.08)", borderLeft: "3px solid var(--danger)" }}>
+                                    <div className="flex justify-between">
+                                      <div className="font-medium text-[0.78rem] truncate flex-1 mr-2" style={{ color: "var(--deep-forest)" }}>{t.title}</div>
+                                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 700, color: "var(--danger)", whiteSpace: "nowrap" }}>{daysOver}d</span>
                                     </div>
-                                    <span className="text-[0.68rem] font-bold w-4 text-right" style={{ color: "var(--gris)" }}>{cnt}</span>
+                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)", marginTop: 2 }}>{assignee?.name || "Unassigned"} · {t.priority}</div>
                                   </div>
                                 );
                               })}
+                              {overdueTasks.length > 8 && (
+                                <div className="text-center text-[0.65rem]" style={{ color: "var(--danger)" }}>+{overdueTasks.length - 8} more overdue</div>
+                              )}
                             </div>
-                            {byIndustry.length > 0 && (
-                              <div>
-                                <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-2">By Industry</div>
-                                {byIndustry.slice(0,5).map(ind => {
-                                  const cnt = wsClients.filter(c => c.industry === ind).length;
-                                  const pct = wsClients.length > 0 ? (cnt / wsClients.length) * 100 : 0;
+                          );
+                        })()}
+                      </div>
+                    </>
+                  ) : (
+                    /* Employee view: own stats only */
+                    <>
+                      {(() => {
+                        const myTasks = tasks.filter(t => t.assignee_id === currentUser?.id);
+                        const overdueCount = myTasks.filter(t => isOverdue(t.due_date, t.status)).length;
+                        const completionRate = myTasks.length > 0 ? Math.round((myTasks.filter(t => t.status === "Completed").length / myTasks.length) * 100) : 0;
+                        const byStatus = ["Pending","In Progress","Completed"].map(s => ({ label: s, count: myTasks.filter(t => t.status === s).length }));
+                        const byPriority = [
+                          { label: "High", count: myTasks.filter(t => t.priority === "High").length, color: "var(--danger)" },
+                          { label: "Medium", count: myTasks.filter(t => t.priority === "Medium").length, color: "var(--warning)" },
+                          { label: "Low", count: myTasks.filter(t => t.priority === "Low").length, color: "var(--gris)" },
+                        ];
+                        return (
+                          <>
+                            <div className="eiden-card p-6">
+                              <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>My Task Summary</div>
+                              <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Your personal task breakdown</div>
+                              <div className="grid grid-cols-2 gap-3 mb-4">
+                                <div className="p-3" style={{ borderLeft: "3px solid var(--deep-forest)" }}>
+                                  <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Total Assigned</div>
+                                  <div style={{ fontSize: "2rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>{myTasks.length}</div>
+                                </div>
+                                <div className="p-3" style={{ borderLeft: `3px solid ${overdueCount > 0 ? "var(--danger)" : "var(--success)"}` }}>
+                                  <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Completion Rate</div>
+                                  <div style={{ fontSize: "2rem", fontWeight: 300, color: overdueCount > 0 ? "var(--danger)" : "var(--success)", lineHeight: 1 }}>{completionRate}%</div>
+                                </div>
+                              </div>
+                              <div className="mt-3">
+                                <div className="h-2 mb-1" style={{ background: "rgba(18,38,32,0.07)" }}>
+                                  <motion.div initial={{ width: 0 }} animate={{ width: `${completionRate}%` }} className="h-full" style={{ background: overdueCount > 0 ? "var(--danger)" : "var(--success)" }} />
+                                </div>
+                                <div className="text-[0.6rem]" style={{ color: "rgba(18,38,32,0.35)", fontFamily: "'JetBrains Mono', monospace" }}>{completionRate}% completed</div>
+                              </div>
+                            </div>
+                            <div className="eiden-card p-6">
+                              <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Status Breakdown</div>
+                              <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Tasks by current status</div>
+                              <div className="space-y-3">
+                                {byStatus.map(s => (
+                                  <div key={s.label} className="flex items-center gap-3">
+                                    <span className="text-[0.72rem] font-medium w-20" style={{ color: "var(--deep-forest)" }}>{s.label}</span>
+                                    <div className="flex-1 h-1.5" style={{ background: "rgba(18,38,32,0.07)" }}>
+                                      <div className="h-full" style={{ width: myTasks.length > 0 ? `${(s.count/myTasks.length)*100}%` : "0%", background: "var(--deep-forest)", minWidth: s.count > 0 ? 4 : 0 }} />
+                                    </div>
+                                    <span className="text-[0.68rem] font-bold w-4 text-right" style={{ color: "var(--gris)" }}>{s.count}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="mt-5">
+                                <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-3">By Priority</div>
+                                <div className="flex gap-3">
+                                  {byPriority.map(p => (
+                                    <div key={p.label} className="flex-1 p-2 text-center" style={{ border: `1px solid ${p.color}`, color: p.color }}>
+                                      <div style={{ fontSize: "1.5rem", fontWeight: 300, lineHeight: 1 }}>{p.count}</div>
+                                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", marginTop: 3, textTransform: "uppercase" }}>{p.label}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                            {overdueCount > 0 && (
+                              <div className="eiden-card p-6 lg:col-span-2">
+                                <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "var(--danger)" }}>Overdue Tasks</div>
+                                <div className="mb-4" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Tasks that have passed their deadline</div>
+                                <div className="space-y-2">
+                                  {myTasks.filter(t => isOverdue(t.due_date, t.status)).map(t => {
+                                    const daysOver = Math.floor((Date.now() - new Date(t.due_date).getTime()) / 86400000);
+                                    return (
+                                      <div key={t.id} className="flex items-center justify-between p-2" style={{ border: "1px solid rgba(18,38,32,0.08)", borderLeft: "3px solid var(--danger)" }}>
+                                        <div>
+                                          <div className="font-medium text-[0.8rem]" style={{ color: "var(--deep-forest)" }}>{t.title}</div>
+                                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)" }}>{t.priority} · Due {t.due_date}</div>
+                                        </div>
+                                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: 700, color: "var(--danger)" }}>{daysOver}d overdue</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            <div className="eiden-card p-6 lg:col-span-2">
+                              <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>All My Tasks</div>
+                              <div className="mb-4" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Complete task list</div>
+                              <div className="space-y-2">
+                                {myTasks.length === 0 ? (
+                                  <div className="text-[0.75rem] text-[var(--gris)]">No tasks assigned to you.</div>
+                                ) : myTasks.map(t => {
+                                  const ov = isOverdue(t.due_date, t.status);
+                                  const prioColor = t.priority === "High" ? "var(--danger)" : t.priority === "Medium" ? "var(--warning)" : "var(--gris)";
                                   return (
-                                    <div key={String(ind)} className="flex items-center gap-3 mb-2">
-                                      <span className="text-[0.72rem] w-24 truncate" style={{ color: "var(--deep-forest)" }}>{ind}</span>
+                                    <div key={t.id} className="flex items-center gap-3 p-2" style={{ border: "1px solid rgba(18,38,32,0.07)", borderLeft: `2px solid ${ov ? "var(--danger)" : prioColor}` }}>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-medium text-[0.78rem] truncate" style={{ color: "var(--deep-forest)" }}>{t.title}</div>
+                                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.38)", marginTop: 1 }}>Due {t.due_date} · {t.priority}</div>
+                                      </div>
+                                      <span className="text-[0.62rem] font-semibold px-2 py-0.5" style={{ background: ov ? "rgba(220,53,69,0.08)" : "rgba(18,38,32,0.06)", color: ov ? "var(--danger)" : "var(--deep-forest)" }}>{ov ? "Overdue" : t.status}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </>
+                  )}
+
+                </div>
+                )}
+
+                {/* ── Pipeline sub-tab ── */}
+                {analyticsSection === "pipeline" && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-4">
+                    {/* Revenue Overview */}
+                    <div className="eiden-card p-6">
+                      <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Revenue Overview</div>
+                      <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Won vs Pending revenue breakdown</div>
+                      <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div className="p-3" style={{ borderLeft: "3px solid var(--success)" }}>
+                          <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)] mb-1">Won Revenue</div>
+                          <div style={{ fontSize: "1.8rem", fontWeight: 300, color: "var(--success)", lineHeight: 1 }}>${(financials?.totalRevenue || 0).toLocaleString()}</div>
+                        </div>
+                        <div className="p-3" style={{ borderLeft: "1.5px solid var(--deep-forest)" }}>
+                          <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)] mb-1">Pipeline</div>
+                          <div style={{ fontSize: "1.8rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>${(financials?.pendingRevenue || 0).toLocaleString()}</div>
+                        </div>
+                      </div>
+                      {financials?.monthly && financials.monthly.length > 0 && (
+                        <div>
+                          <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)] mb-3">Monthly Won Revenue</div>
+                          <div className="h-28 flex items-end gap-2">
+                            {financials.monthly.map((m: any, i: number) => {
+                              const maxVal = Math.max(...financials.monthly.map((x: any) => x.total), 1);
+                              return (
+                                <div key={i} className="flex-1 relative group flex flex-col items-center justify-end h-full">
+                                  <div className="opacity-80 hover:opacity-100 transition-opacity w-full"
+                                    style={{ height: `${(m.total / maxVal) * 100}%`, minHeight: 4, background: "var(--deep-forest)" }} />
+                                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[0.58rem] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity font-semibold" style={{ color: "var(--deep-forest)" }}>
+                                    ${m.total.toLocaleString()}
+                                  </div>
+                                  <div className="text-center mt-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.35)" }}>{m.month?.slice(5) || i + 1}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pipeline Stage Distribution */}
+                    <div className="eiden-card p-6">
+                      <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Pipeline Distribution</div>
+                      <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Deal stages breakdown</div>
+                      <div className="space-y-4">
+                        {["Lead", "Proposal", "Negotiation", "Won", "Lost"].map(stage => {
+                          const stageDl = filteredDeals.filter(d => d.stage === stage);
+                          const pct = filteredDeals.length > 0 ? (stageDl.length / filteredDeals.length) * 100 : 0;
+                          const val = stageDl.reduce((s, d) => s + d.value, 0);
+                          const barColor = stage === "Won" ? "var(--success)" : stage === "Lost" ? "var(--danger)" : "var(--deep-forest)";
+                          return (
+                            <div key={stage}>
+                              <div className="flex justify-between text-[0.72rem] mb-1.5">
+                                <span className="font-semibold" style={{ color: barColor }}>{stage}</span>
+                                <span className="text-[var(--gris)]">{stageDl.length} deals · ${val.toLocaleString()}</span>
+                              </div>
+                              <div style={{ height: 2, background: "rgba(18,38,32,0.08)", marginTop: 4 }}>
+                                <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} className="h-full" style={{ background: barColor }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Win Rate & Conversion */}
+                    <div className="eiden-card p-6">
+                      <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Win Rate & Conversion</div>
+                      <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Won vs Lost ratio analysis</div>
+                      {(() => {
+                        const won = filteredDeals.filter(d => d.stage === "Won").length;
+                        const lost = filteredDeals.filter(d => d.stage === "Lost").length;
+                        const total = filteredDeals.length;
+                        const winRate = (won + lost) > 0 ? Math.round((won / (won + lost)) * 100) : 0;
+                        const avgDeal = won > 0 ? Math.round(filteredDeals.filter(d => d.stage === "Won").reduce((s, d) => s + d.value, 0) / won) : 0;
+                        const avgProbability = filteredDeals.filter(d => d.stage !== "Won" && d.stage !== "Lost").length > 0
+                          ? Math.round(filteredDeals.filter(d => d.stage !== "Won" && d.stage !== "Lost").reduce((s, d) => s + d.win_probability, 0) / filteredDeals.filter(d => d.stage !== "Won" && d.stage !== "Lost").length)
+                          : 0;
+                        return (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-3 gap-3">
+                              {[
+                                { label: "Win Rate", value: `${winRate}%`, color: winRate >= 50 ? "var(--success)" : "var(--warning)" },
+                                { label: "Avg Deal", value: `$${avgDeal.toLocaleString()}`, color: "var(--deep-forest)" },
+                                { label: "Avg Probability", value: `${avgProbability}%`, color: "#2a9d8f" },
+                              ].map(s => (
+                                <div key={s.label} className="text-center p-3" style={{ border: "1px solid rgba(18,38,32,0.08)" }}>
+                                  <div style={{ fontSize: "1.4rem", fontWeight: 300, color: s.color, lineHeight: 1 }}>{s.value}</div>
+                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1px", color: "rgba(18,38,32,0.4)", marginTop: 4 }}>{s.label}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <div>
+                              <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-2">Won vs Lost</div>
+                              <div className="flex gap-2 h-6">
+                                {(won + lost) > 0 ? (
+                                  <>
+                                    <div style={{ width: `${(won/(won+lost))*100}%`, background: "var(--success)", minWidth: 4 }} title={`Won: ${won}`} />
+                                    <div style={{ width: `${(lost/(won+lost))*100}%`, background: "var(--danger)", minWidth: 4 }} title={`Lost: ${lost}`} />
+                                  </>
+                                ) : <div style={{ width: "100%", background: "rgba(18,38,32,0.06)" }} />}
+                              </div>
+                              <div className="flex justify-between mt-1">
+                                <span className="text-[0.6rem] font-semibold" style={{ color: "var(--success)" }}>Won: {won}</span>
+                                <span className="text-[0.6rem] font-semibold" style={{ color: "var(--danger)" }}>Lost: {lost}</span>
+                              </div>
+                            </div>
+                            <div className="p-3" style={{ borderLeft: "3px solid var(--deep-forest)" }}>
+                              <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Total Pipeline</div>
+                              <div style={{ fontSize: "1.5rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>{total} deals</div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Client Portfolio */}
+                    {perms.tabs.includes("clients") && (
+                      <div className="eiden-card p-6">
+                        <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Client Portfolio</div>
+                        <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Revenue & status distribution</div>
+                        {(() => {
+                          const wsClients = clients.filter(c => c.workspace_id === currentWorkspace?.id);
+                          const totalMRR = wsClients.filter(c => c.status === "Active").reduce((s, c) => s + (c.monthly_value || 0), 0);
+                          return (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="p-3" style={{ borderLeft: "3px solid var(--success)" }}>
+                                  <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Monthly Revenue</div>
+                                  <div style={{ fontSize: "1.5rem", fontWeight: 300, color: "var(--success)", lineHeight: 1 }}>${totalMRR.toLocaleString()}</div>
+                                </div>
+                                <div className="p-3" style={{ borderLeft: "1.5px solid var(--deep-forest)" }}>
+                                  <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Active Clients</div>
+                                  <div style={{ fontSize: "1.5rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>{wsClients.filter(c => c.status === "Active").length}</div>
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-2">By Status</div>
+                                {["Active","At Risk","Onboarding","Churned"].map(s => {
+                                  const cnt = wsClients.filter(c => c.status === s).length;
+                                  const pct = wsClients.length > 0 ? (cnt / wsClients.length) * 100 : 0;
+                                  const col = s === "Active" ? "var(--success)" : s === "At Risk" ? "var(--danger)" : s === "Onboarding" ? "var(--warning)" : "var(--gris)";
+                                  return (
+                                    <div key={s} className="flex items-center gap-3 mb-2">
+                                      <span className="text-[0.72rem] font-medium w-20" style={{ color: col }}>{s}</span>
                                       <div className="flex-1 h-1.5" style={{ background: "rgba(18,38,32,0.07)" }}>
-                                        <div className="h-full" style={{ width: `${pct}%`, background: "var(--deep-forest)" }} />
+                                        <div className="h-full" style={{ width: `${pct}%`, background: col, minWidth: cnt > 0 ? 4 : 0 }} />
                                       </div>
                                       <span className="text-[0.68rem] font-bold w-4 text-right" style={{ color: "var(--gris)" }}>{cnt}</span>
                                     </div>
                                   );
                                 })}
                               </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-
-                  {/* ── Time Tracker Analytics (Admin/Eiden HQ/Ops Manager see all; others see own) ── */}
-                  {(() => {
-                    const isManager = ["Admin","Eiden HQ","Operational Manager","Eiden Global","Admin Coordinator","Brand Manager","Branding and Strategy Manager","Solution Architect"].includes(currentUser?.role || "");
-                    const relevantLogs = isManager
-                      ? timeLogs.filter(l => l.workspace_id === currentWorkspace?.id && l.end_time)
-                      : timeLogs.filter(l => l.user_id === currentUser?.id && l.end_time);
-                    const todayStr = new Date().toDateString();
-                    const todayLogs = relevantLogs.filter(l => new Date(l.start_time).toDateString() === todayStr);
-                    const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-                    const weekLogs = relevantLogs.filter(l => new Date(l.start_time) >= weekStart);
-                    const todayMins = todayLogs.reduce((s, l) => s + (l.duration_minutes || 0), 0);
-                    const weekMins = weekLogs.reduce((s, l) => s + (l.duration_minutes || 0), 0);
-                    const fmtTime = (mins: number) => `${Math.floor(mins/60)}h ${mins%60}m`;
-                    return (
-                      <div className="eiden-card p-6 lg:col-span-2">
-                        <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>
-                          {isManager ? "Team Time Tracker" : "My Time Log"}
-                        </div>
-                        <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>
-                          {isManager ? "All employee time entries" : "Your tracked hours"}
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-                          <div className="p-3" style={{ borderLeft: "3px solid var(--deep-forest)" }}>
-                            <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Today</div>
-                            <div style={{ fontSize: "1.4rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>{fmtTime(todayMins)}</div>
-                          </div>
-                          <div className="p-3" style={{ borderLeft: "1.5px solid var(--deep-forest)" }}>
-                            <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">This Week</div>
-                            <div style={{ fontSize: "1.4rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>{fmtTime(weekMins)}</div>
-                          </div>
-                          <div className="p-3" style={{ borderLeft: "1.5px solid var(--deep-forest)" }}>
-                            <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Entries</div>
-                            <div style={{ fontSize: "1.4rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>{relevantLogs.length}</div>
-                          </div>
-                          {isManager && (
-                            <div className="p-3" style={{ borderLeft: "1.5px solid var(--deep-forest)" }}>
-                              <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Active Now</div>
-                              <div style={{ fontSize: "1.4rem", fontWeight: 300, color: timerRunning ? "var(--success)" : "var(--gris)", lineHeight: 1 }}>
-                                {timerRunning ? "1" : "0"}
-                              </div>
                             </div>
-                          )}
-                        </div>
-                        {isManager ? (
-                          <div className="space-y-2">
-                            <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-2">By Employee (This Week)</div>
-                            {users.filter(u => u.workspace_id === currentWorkspace?.id).map(u => {
-                              const uMins = weekLogs.filter(l => l.user_id === u.id).reduce((s, l) => s + (l.duration_minutes || 0), 0);
-                              const maxMins = Math.max(...users.map(ux => weekLogs.filter(l => l.user_id === ux.id).reduce((s, l) => s + (l.duration_minutes || 0), 0)), 1);
-                              return (
-                                <div key={u.id} className="flex items-center gap-3">
-                                  <div className="w-24 shrink-0">
-                                    <div className="text-[0.72rem] font-medium truncate" style={{ color: "var(--deep-forest)" }}>{u.name.split(" ")[0]}</div>
-                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.3)" }}>{fmtTime(uMins)}</div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Deals sub-tab ── */}
+                {analyticsSection === "deals" && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-4">
+                    {/* Deal Risk Overview */}
+                    <div className="eiden-card p-6">
+                      <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Deal Risk Overview</div>
+                      <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Active deals sorted by risk score</div>
+                      <div className="space-y-3">
+                        {filteredDeals.filter(d => d.stage !== "Won" && d.stage !== "Lost")
+                          .sort((a, b) => b.risk_score - a.risk_score).map(d => {
+                            const riskColor = d.risk_score > 60 ? "var(--danger)" : d.risk_score > 30 ? "var(--warning)" : "var(--success)";
+                            return (
+                              <div key={d.id} className="p-3" style={{ border: "1px solid rgba(18,38,32,0.08)", borderLeft: `3px solid ${riskColor}` }}>
+                                <div className="flex items-center gap-3 mb-2">
+                                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", fontWeight: 700, color: riskColor, width: 36 }}>{d.risk_score}%</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-[0.8rem] truncate" style={{ color: "var(--deep-forest)" }}>{d.title}</div>
+                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)", marginTop: 1 }}>{d.contact_name} · {d.stage}</div>
                                   </div>
-                                  <div className="flex-1 h-2" style={{ background: "rgba(18,38,32,0.06)" }}>
-                                    <motion.div initial={{ width: 0 }} animate={{ width: `${(uMins/maxMins)*100}%` }} className="h-full" style={{ background: "var(--deep-forest)" }} />
+                                  <span className="text-[0.72rem] font-bold shrink-0" style={{ color: "var(--deep-forest)" }}>${d.value.toLocaleString()}</span>
+                                </div>
+                                <div style={{ height: 4, background: "rgba(18,38,32,0.06)", borderRadius: 2 }}>
+                                  <div style={{ height: "100%", width: `${d.risk_score}%`, background: riskColor, borderRadius: 2 }} />
+                                </div>
+                                <div className="flex justify-between mt-1">
+                                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", color: "rgba(18,38,32,0.3)" }}>Win Prob: {d.win_probability}%</span>
+                                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", color: riskColor }}>Risk: {d.risk_score > 60 ? "High" : d.risk_score > 30 ? "Medium" : "Low"}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        {filteredDeals.filter(d => d.stage !== "Won" && d.stage !== "Lost").length === 0 && (
+                          <div className="py-8 text-center" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", color: "rgba(18,38,32,0.3)" }}>No active deals.</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* All Deals List */}
+                    <div className="eiden-card p-6">
+                      <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>All Deals</div>
+                      <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Complete deals list — {filteredDeals.length} total</div>
+                      <div className="space-y-2 max-h-80 overflow-y-auto">
+                        {filteredDeals.sort((a, b) => b.value - a.value).map(d => {
+                          const stageCol = d.stage === "Won" ? "var(--success)" : d.stage === "Lost" ? "var(--danger)" : d.stage === "Negotiation" ? "var(--warning)" : "var(--deep-forest)";
+                          return (
+                            <div key={d.id} className="flex items-center gap-3 py-2" style={{ borderBottom: "1px solid rgba(18,38,32,0.05)" }}>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-[0.78rem] truncate" style={{ color: "var(--deep-forest)" }}>{d.title}</div>
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)", marginTop: 1 }}>{d.contact_name}</div>
+                              </div>
+                              <span className="text-[0.6rem] font-bold px-2 py-0.5" style={{ color: stageCol, border: `1px solid ${stageCol}33`, background: `${stageCol}11` }}>{d.stage}</span>
+                              <span className="text-[0.72rem] font-bold shrink-0" style={{ color: "var(--deep-forest)" }}>${d.value.toLocaleString()}</span>
+                            </div>
+                          );
+                        })}
+                        {filteredDeals.length === 0 && <div className="py-8 text-center" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", color: "rgba(18,38,32,0.3)" }}>No deals yet.</div>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Contacts sub-tab ── */}
+                {analyticsSection === "contacts" && perms.tabs.includes("contacts") && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-4">
+                    {/* Contacts Status */}
+                    <div className="eiden-card p-6">
+                      <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Contacts Overview</div>
+                      <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Status & source breakdown — {filteredContacts.length} total</div>
+                      <div className="space-y-4">
+                        <div>
+                          <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-3">By Status</div>
+                          <div className="space-y-3">
+                            {["Active","Prospect","Inactive"].map(s => {
+                              const cnt = filteredContacts.filter(c => c.status === s).length;
+                              const pct = filteredContacts.length > 0 ? (cnt / filteredContacts.length) * 100 : 0;
+                              const col = s === "Active" ? "var(--success)" : s === "Prospect" ? "var(--warning)" : "var(--gris)";
+                              return (
+                                <div key={s}>
+                                  <div className="flex justify-between mb-1.5">
+                                    <span className="text-[0.75rem] font-semibold" style={{ color: col }}>{s}</span>
+                                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", fontWeight: 700, color: col }}>{cnt}</span>
+                                  </div>
+                                  <div style={{ height: 4, background: "rgba(18,38,32,0.07)", borderRadius: 2 }}>
+                                    <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} style={{ height: "100%", background: col, borderRadius: 2, minWidth: cnt > 0 ? 4 : 0 }} />
                                   </div>
                                 </div>
                               );
                             })}
                           </div>
-                        ) : (
-                          <div className="space-y-2 max-h-48 overflow-y-auto">
-                            <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-2">Recent Entries</div>
-                            {relevantLogs.slice(0, 10).map(log => (
-                              <div key={log.id} className="flex items-center justify-between gap-3 py-2" style={{ borderBottom: "1px solid rgba(18,38,32,0.05)" }}>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-[0.75rem] font-medium truncate" style={{ color: "var(--deep-forest)" }}>{log.task_title || "No task"}</div>
-                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(18,38,32,0.35)" }}>
-                                    {new Date(log.start_time).toLocaleDateString()} · {fmtTime(log.duration_minutes || 0)}
-                                  </div>
-                                </div>
-                                <span className="shrink-0 text-[0.65rem] font-bold" style={{ color: "var(--deep-forest)" }}>{fmtTime(log.duration_minutes || 0)}</span>
-                              </div>
-                            ))}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mt-2">
+                          <div className="p-3" style={{ borderLeft: "3px solid var(--deep-forest)" }}>
+                            <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Total LTV</div>
+                            <div style={{ fontSize: "1.4rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>${filteredContacts.reduce((s, c) => s + (c.ltv || 0), 0).toLocaleString()}</div>
                           </div>
-                        )}
+                          <div className="p-3" style={{ borderLeft: "1.5px solid var(--success)" }}>
+                            <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Active</div>
+                            <div style={{ fontSize: "1.4rem", fontWeight: 300, color: "var(--success)", lineHeight: 1 }}>{filteredContacts.filter(c => c.status === "Active").length}</div>
+                          </div>
+                        </div>
                       </div>
-                    );
-                  })()}
+                    </div>
+
+                    {/* Contacts by Source */}
+                    <div className="eiden-card p-6">
+                      <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Contacts by Source</div>
+                      <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Acquisition channel breakdown</div>
+                      <div className="space-y-3">
+                        {Array.from(new Set(filteredContacts.map(c => c.source).filter(Boolean))).map(src => {
+                          const cnt = filteredContacts.filter(c => c.source === src).length;
+                          const pct = filteredContacts.length > 0 ? (cnt / filteredContacts.length) * 100 : 0;
+                          return (
+                            <div key={String(src)}>
+                              <div className="flex justify-between mb-1.5">
+                                <span className="text-[0.75rem] font-medium" style={{ color: "var(--deep-forest)" }}>{src}</span>
+                                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", fontWeight: 700, color: "var(--deep-forest)" }}>{cnt}</span>
+                              </div>
+                              <div style={{ height: 4, background: "rgba(18,38,32,0.07)", borderRadius: 2 }}>
+                                <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} style={{ height: "100%", background: "var(--deep-forest)", borderRadius: 2 }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {filteredContacts.length === 0 && <div className="py-8 text-center" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", color: "rgba(18,38,32,0.3)" }}>No contacts yet.</div>}
+                      </div>
+                    </div>
+
+                    {/* Contacts list */}
+                    <div className="eiden-card p-6 lg:col-span-2">
+                      <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>All Contacts</div>
+                      <div className="mb-4" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>Top contacts by LTV</div>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {[...filteredContacts].sort((a, b) => (b.ltv || 0) - (a.ltv || 0)).map(c => {
+                          const statusColor = c.status === "Active" ? "var(--success)" : c.status === "Prospect" ? "var(--warning)" : "var(--gris)";
+                          return (
+                            <div key={c.id} className="flex items-center gap-4 py-2" style={{ borderBottom: "1px solid rgba(18,38,32,0.05)" }}>
+                              <div className="w-8 h-8 flex items-center justify-center text-[0.7rem] font-bold shrink-0" style={{ background: "var(--deep-forest)", color: "var(--silk-creme)" }}>{c.name?.[0] ?? "?"}</div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-[0.78rem] truncate" style={{ color: "var(--deep-forest)" }}>{c.name}</div>
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)", marginTop: 1 }}>{c.company} · {c.source}</div>
+                              </div>
+                              <span className="text-[0.6rem] font-bold px-1.5 py-0.5" style={{ color: statusColor, border: `1px solid ${statusColor}33` }}>{c.status}</span>
+                              <span className="text-[0.72rem] font-bold shrink-0" style={{ color: "var(--deep-forest)" }}>${(c.ltv || 0).toLocaleString()}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {analyticsSection === "contacts" && !perms.tabs.includes("contacts") && (
+                  <div className="flex items-center justify-center h-40" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", color: "rgba(18,38,32,0.3)" }}>You don't have access to contacts data.</div>
+                )}
 
                 </div>
               </motion.div>
@@ -3213,6 +3585,39 @@ export default function App() {
                 </div>
               );
             })()}
+          </Modal>
+        )}
+
+        {/* Deadline Edit Modal */}
+        {deadlineEditTask && (
+          <Modal title="Edit Task Deadline" onClose={() => setDeadlineEditTask(null)}>
+            <div className="space-y-4">
+              <div>
+                <div className="text-[0.7rem] font-semibold mb-1" style={{ color: "var(--deep-forest)" }}>Task</div>
+                <div className="text-[0.85rem] font-medium" style={{ color: "var(--deep-forest)" }}>{deadlineEditTask.title}</div>
+                <div className="text-[0.65rem] mt-0.5" style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.4)" }}>Current deadline: {deadlineEditTask.due_date}</div>
+              </div>
+              {deadlineEditTask.overdue_reason && (
+                <div className="p-3" style={{ background: "rgba(220,53,69,0.04)", border: "1px solid rgba(220,53,69,0.15)", borderLeft: "3px solid var(--danger)" }}>
+                  <div className="text-[0.6rem] font-bold uppercase tracking-wide mb-1" style={{ color: "var(--danger)" }}>Employee's Reason</div>
+                  <div className="text-[0.78rem]" style={{ color: "var(--deep-forest)" }}>{deadlineEditTask.overdue_reason}</div>
+                </div>
+              )}
+              <div>
+                <label className="block text-[0.65rem] font-bold uppercase tracking-wider mb-1.5" style={{ color: "rgba(18,38,32,0.5)" }}>New Deadline</label>
+                <input type="date" value={deadlineEditValue}
+                  onChange={e => setDeadlineEditValue(e.target.value)}
+                  className="flash-input" style={{ width: "100%" }} />
+              </div>
+              <div className="flex gap-3">
+                <button onClick={saveDeadlineEdit} className="flash-button flex-1">
+                  <span>SAVE DEADLINE</span>
+                </button>
+                <button onClick={() => setDeadlineEditTask(null)} className="flash-button flex-1" style={{ background: "rgba(18,38,32,0.05)", color: "var(--deep-forest)" }}>
+                  <span>CANCEL</span>
+                </button>
+              </div>
+            </div>
           </Modal>
         )}
 
