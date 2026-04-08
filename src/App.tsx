@@ -79,14 +79,14 @@ const PERMISSIONS: Record<string, { tabs: string[]; canCreate: boolean; canDelet
   "Brand Manager":                 { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
   "Branding and Strategy Manager": { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
   "Solution Architect":            { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Designer":                      { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Video Editor":                  { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Web Developer":                 { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Community Manager":             { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Content Creator":               { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Content Strategy":              { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Marketing Strategy":            { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "DevOps":                        { tabs: ["dashboard","tasks","time","knowledge_base","team","clients"],                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Designer":                      { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Video Editor":                  { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Web Developer":                 { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Community Manager":             { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Content Creator":               { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Content Strategy":              { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Marketing Strategy":            { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "DevOps":                        { tabs: ["dashboard","tasks","knowledge_base","team"],                                                    canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
   "Sales":                         { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],  canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
   "Commercial":                    { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],  canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
 };
@@ -167,6 +167,9 @@ export default function App() {
   // Task detail modal
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<Task | null>(null);
+
+  // Employee task analytics modal
+  const [selectedEmployeeAnalytics, setSelectedEmployeeAnalytics] = useState<User | null>(null);
 
   // Time tracker
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
@@ -589,6 +592,26 @@ export default function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status })
     });
+    fetchData();
+  };
+
+  // Employee drags own task — updates status and notifies team chat (visible to Aya and all managers)
+  const updateTaskStatusByEmployee = async (id: number, status: string, taskTitle: string) => {
+    await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    });
+    if (currentUser && currentWorkspace) {
+      const msg = `📋 ${currentUser.name} moved "${taskTitle}" → ${status}`;
+      await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspace_id: currentWorkspace.id, user_id: currentUser.id, user_name: currentUser.name, text: msg })
+      });
+      setChatMessages(prev => [...prev, { id: Date.now(), user: currentUser.name, text: msg, created_at: new Date().toISOString() }]);
+      setNotifications(prev => [...prev, { id: Date.now(), type: "task" as const, title: "Task Moved", body: msg, at: Date.now() }]);
+    }
     fetchData();
   };
 
@@ -1172,7 +1195,7 @@ export default function App() {
           {perms.tabs.includes("team") && <NavItem active={activeTab === "team"} onClick={() => { setActiveTab("team"); setSidebarOpen(false); }} icon={<Users size={14} />} label="Team" />}
           {perms.tabs.includes("analytics") && <NavItem active={activeTab === "analytics"} onClick={() => { setActiveTab("analytics"); setSidebarOpen(false); }} icon={<BarChart2 size={14} />} label="Analytics" />}
           {perms.tabs.includes("clients") && <NavItem active={activeTab === "clients"} onClick={() => { setActiveTab("clients"); setSidebarOpen(false); }} icon={<Target size={14} />} label="Client Management" />}
-          <NavItem active={activeTab === "time"} onClick={() => { setActiveTab("time"); setSidebarOpen(false); }} icon={<Clock size={14} />} label="Time Tracker" badge={timerRunning ? "●" : undefined} badgeColor="#4ade80" />
+          {perms.tabs.includes("time") && <NavItem active={activeTab === "time"} onClick={() => { setActiveTab("time"); setSidebarOpen(false); }} icon={<BarChart2 size={14} />} label="Task Analytics" />}
           {perms.tabs.includes("knowledge_base") && <NavItem active={activeTab === "knowledge_base"} onClick={() => { setActiveTab("knowledge_base"); setSidebarOpen(false); }} icon={<BookOpen size={14} />} label="Knowledge Base" />}
           {perms.tabs.includes("admin") && (
             <>
@@ -1249,7 +1272,7 @@ export default function App() {
                : activeTab === "team" ? "Team"
                : activeTab === "analytics" ? "Analytics"
                : activeTab === "clients" ? "Clients"
-               : activeTab === "time" ? "Time Tracker"
+               : activeTab === "time" ? "Task Analytics"
                : activeTab === "knowledge_base" ? "Knowledge Base"
                : activeTab === "admin" ? "Admin"
                : ""}
@@ -1628,12 +1651,19 @@ export default function App() {
                     return (
                       <div key={colStatus} className="flex flex-col min-h-0 overflow-hidden"
                         style={{ background: "rgba(18,38,32,0.015)", border: "1px solid rgba(18,38,32,0.08)" }}
-                        onDragOver={perms.canCreate ? e => e.preventDefault() : undefined}
-                        onDrop={perms.canCreate ? async e => {
+                        onDragOver={e => e.preventDefault()}
+                        onDrop={async e => {
                           e.preventDefault();
                           const taskId = Number(e.dataTransfer.getData("taskId"));
-                          if (taskId) await updateTaskStatus(taskId, colStatus);
-                        } : undefined}>
+                          if (!taskId) return;
+                          const draggedTask = filteredTasks.find(t => t.id === taskId);
+                          if (!draggedTask) return;
+                          if (perms.canCreate) {
+                            await updateTaskStatus(taskId, colStatus);
+                          } else if (draggedTask.assignee_id === currentUser?.id) {
+                            await updateTaskStatusByEmployee(taskId, colStatus, draggedTask.title);
+                          }
+                        }}>
                         {/* Column header */}
                         <div className="shrink-0 flex items-center justify-between px-4 py-3"
                           style={{ borderBottom: `2px solid ${colAccent}`, background: "var(--pure-white)" }}>
@@ -1646,8 +1676,8 @@ export default function App() {
                             const overdue = isOverdue(task.due_date, task.status);
                             return (
                               <div key={task.id}
-                                draggable={perms.canCreate}
-                                onDragStart={perms.canCreate ? e => { e.dataTransfer.setData("taskId", task.id.toString()); e.dataTransfer.effectAllowed = "move"; } : undefined}
+                                draggable={perms.canCreate || task.assignee_id === currentUser?.id}
+                                onDragStart={perms.canCreate || task.assignee_id === currentUser?.id ? e => { e.dataTransfer.setData("taskId", task.id.toString()); e.dataTransfer.effectAllowed = "move"; } : undefined}
                                 onClick={() => { setSelectedTaskDetail({ ...task }); setShowTaskDetailModal(true); }}
                                 className="group relative select-none"
                                 style={{
@@ -1655,7 +1685,7 @@ export default function App() {
                                   border: `1px solid ${overdue ? "rgba(139,58,58,0.25)" : "rgba(18,38,32,0.08)"}`,
                                   borderLeft: `3px solid ${overdue ? "var(--danger)" : colAccent}`,
                                   padding: "11px 13px",
-                                  cursor: perms.canCreate ? "grab" : "pointer",
+                                  cursor: perms.canCreate || task.assignee_id === currentUser?.id ? "grab" : "pointer",
                                   transition: "box-shadow 0.15s, transform 0.1s",
                                 }}
                                 onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 3px 10px rgba(18,38,32,0.1)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
@@ -1674,8 +1704,8 @@ export default function App() {
                                 <div className="flex items-center justify-between gap-2 flex-wrap mt-1">
                                   <span style={{ fontSize: "0.67rem", color: "rgba(18,38,32,0.5)", fontFamily: "'Space Grotesk', sans-serif" }}>{task.assignee_name || "Unassigned"}</span>
                                   <div className="flex items-center gap-1.5">
-                                    {/* Priority — editable for own tasks (all roles), read-only otherwise */}
-                                    {task.assignee_id === currentUser?.id || perms.canCreate ? (
+                                    {/* Priority — editable for managers only, read-only badge for employees */}
+                                    {perms.canCreate ? (
                                       <select
                                         value={task.priority}
                                         onClick={(e: React.MouseEvent) => e.stopPropagation()}
@@ -1731,7 +1761,7 @@ export default function App() {
                           {colTasks.length === 0 && (
                             <div className="flex items-center justify-center py-8 text-[0.62rem]"
                               style={{ color: "rgba(18,38,32,0.22)", fontFamily: "'JetBrains Mono', monospace", border: "1.5px dashed rgba(18,38,32,0.1)", margin: "4px" }}>
-                              {perms.canCreate ? "Drag tasks here" : "No tasks"}
+                              {perms.canCreate ? "Drag tasks here" : "Drag your task here"}
                             </div>
                           )}
                         </div>
@@ -1772,297 +1802,104 @@ export default function App() {
               </motion.div>
             )}
 
-            {/* ── Time Tracker ─────────────────────────────────── */}
+            {/* ── Employee Task Analytics ──────────────────────── */}
             {activeTab === "time" && (
               <motion.div key="time" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
                 {((): React.ReactElement => {
-                  const schedule = getTodaySchedule();
-                  const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-                  const dayName = dayNames[liveTime.getDay()];
-                  const isWeekend = schedule === null;
-                  const nowMins = liveTime.getHours() * 60 + liveTime.getMinutes();
-                  const shiftStartMins = schedule ? schedule.start * 60 : 0;
-                  const shiftEndMins = schedule ? schedule.end * 60 : 0;
-                  const isInShift = !isWeekend && nowMins >= shiftStartMins && nowMins < shiftEndMins;
-                  const shiftTotalMins = schedule ? (schedule.end - schedule.start) * 60 : 0;
-                  const shiftElapsedMins = isInShift ? nowMins - shiftStartMins : (nowMins >= shiftEndMins && !isWeekend ? shiftTotalMins : 0);
-                  const shiftPct = shiftTotalMins > 0 ? Math.min(100, (shiftElapsedMins / shiftTotalMins) * 100) : 0;
-                  const myTasks = filteredTasks.filter(t => t.assignee_id === currentUser?.id && t.status !== "Completed");
-                  const todayStr = liveTime.toDateString();
-                  const todayLogs = timeLogs.filter(l => l.user_id === currentUser?.id && l.end_time && new Date(l.start_time).toDateString() === todayStr);
-                  const todayMins = todayLogs.reduce((s, l) => s + (l.duration_minutes || 0), 0) + (timerRunning ? Math.floor(timerElapsed / 60) : 0);
-                  const isManager = ["Admin","Eiden HQ","Operational Manager","Eiden Global","Admin Coordinator","Brand Manager","Branding and Strategy Manager","Solution Architect"].includes(currentUser?.role || "");
-                  const pad2 = (n: number) => String(n).padStart(2, "0");
-                  const timeStr = `${pad2(liveTime.getHours())}:${pad2(liveTime.getMinutes())}:${pad2(liveTime.getSeconds())}`;
-                  const dateStr = liveTime.toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-                  const fmtMins = (m: number) => `${Math.floor(m/60)}h ${m%60}m`;
+                  const wsUsers = users.filter(u => u.workspace_id === currentWorkspace?.id);
+                  const allWsTasks = tasks.filter(t => t.workspace_id === currentWorkspace?.id);
+                  const totalTasks = allWsTasks.length;
+                  const totalCompleted = allWsTasks.filter(t => t.status === "Completed").length;
+                  const totalOverdue = allWsTasks.filter(t => isOverdue(t.due_date, t.status)).length;
+                  const totalInProgress = allWsTasks.filter(t => t.status === "In Progress").length;
                   return (
                     <div className="space-y-5 pb-6">
-                      {/* ── Header card: clock + clock-in ── */}
+                      {/* Header */}
                       <div className="eiden-card overflow-hidden">
-                        <div style={{ background: "var(--deep-forest)", padding: "32px 40px" }}>
-                          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-                            {/* Left: Clock */}
-                            <div>
-                              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "3.6rem", fontWeight: 700, color: "var(--silk-creme)", letterSpacing: "2px", lineHeight: 1 }}>
-                                {timeStr}
-                              </div>
-                              <div className="mt-2" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", color: "rgba(244,235,208,0.4)", letterSpacing: "1.5px", textTransform: "uppercase" }}>
-                                {dateStr}
-                              </div>
-                              {/* Status badge */}
-                              <div className="mt-3 flex items-center gap-2">
-                                {isWeekend ? (
-                                  <span className="flex items-center gap-1.5 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider" style={{ background: "rgba(244,235,208,0.08)", color: "rgba(244,235,208,0.4)", border: "1px solid rgba(244,235,208,0.12)" }}>Weekend — No Shift</span>
-                                ) : timerRunning ? (
-                                  <>
-                                    <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#4ade80" }} />
-                                    <span className="px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider" style={{ background: "rgba(74,222,128,0.15)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.3)" }}>Working · {formatElapsed(timerElapsed)}</span>
-                                  </>
-                                ) : isInShift ? (
-                                  <>
-                                    <span className="w-2 h-2 rounded-full" style={{ background: "rgba(244,235,208,0.25)" }} />
-                                    <span className="px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider" style={{ background: "rgba(244,235,208,0.06)", color: "rgba(244,235,208,0.5)", border: "1px solid rgba(244,235,208,0.12)" }}>Not Clocked In</span>
-                                  </>
-                                ) : (
-                                  <span className="px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider" style={{ background: "rgba(244,235,208,0.04)", color: "rgba(244,235,208,0.3)", border: "1px solid rgba(244,235,208,0.08)" }}>
-                                    {nowMins < shiftStartMins ? `Shift starts at ${schedule?.start}:00` : "Shift ended"}
+                        <div style={{ background: "var(--deep-forest)", padding: "28px 36px" }}>
+                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", letterSpacing: "2px", textTransform: "uppercase", color: "rgba(244,235,208,0.45)", marginBottom: 8 }}>Task Analytics — All Employees</div>
+                          <div style={{ fontSize: "1.5rem", fontWeight: 300, color: "var(--silk-creme)", lineHeight: 1.2 }}>Click any employee card to view their full task breakdown</div>
+                        </div>
+                        {/* Summary bar */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x" style={{ borderColor: "rgba(18,38,32,0.07)", borderTop: "1px solid rgba(18,38,32,0.07)" }}>
+                          {[
+                            { label: "Total Tasks", value: totalTasks, color: "var(--deep-forest)" },
+                            { label: "In Progress", value: totalInProgress, color: "#2a9d8f" },
+                            { label: "Completed", value: totalCompleted, color: "var(--success)" },
+                            { label: "Overdue", value: totalOverdue, color: totalOverdue > 0 ? "var(--danger)" : "var(--gris)" },
+                          ].map(s => (
+                            <div key={s.label} className="p-4 text-center">
+                              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.38)", marginBottom: 5 }}>{s.label}</div>
+                              <div style={{ fontSize: "1.8rem", fontWeight: 300, color: s.color, lineHeight: 1 }}>{s.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Employee cards grid — all employees, all without exceptions */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {wsUsers.map((u: User): React.ReactElement => {
+                          const empTasks = allWsTasks.filter(t => t.assignee_id === u.id);
+                          const pending = empTasks.filter(t => t.status === "Pending").length;
+                          const inProgress = empTasks.filter(t => t.status === "In Progress").length;
+                          const completed = empTasks.filter(t => t.status === "Completed").length;
+                          const overdue = empTasks.filter(t => isOverdue(t.due_date, t.status)).length;
+                          const total = empTasks.length;
+                          const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+                          return (
+                            <button key={u.id} onClick={() => setSelectedEmployeeAnalytics(u)}
+                              className="eiden-card text-left w-full transition-all"
+                              style={{ cursor: "pointer", border: "1px solid rgba(18,38,32,0.08)", outline: "none" }}
+                              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(18,38,32,0.12)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                              onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}>
+                              {/* Card header */}
+                              <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
+                                <div className="w-10 h-10 flex items-center justify-center text-[0.85rem] font-bold shrink-0"
+                                  style={{ background: overdue > 0 ? "rgba(139,58,58,0.12)" : "var(--deep-forest)", color: overdue > 0 ? "var(--danger)" : "var(--silk-creme)" }}>
+                                  {(u.name?.[0] ?? "?").toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-[0.88rem] truncate" style={{ color: "var(--deep-forest)" }}>{u.name}</div>
+                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(18,38,32,0.4)", marginTop: 1 }}>{u.role}</div>
+                                </div>
+                                {overdue > 0 && (
+                                  <span className="shrink-0 flex items-center gap-1 text-[0.58rem] font-bold px-2 py-0.5" style={{ color: "var(--danger)", border: "1px solid var(--danger)", background: "rgba(139,58,58,0.06)" }}>
+                                    <AlertTriangle size={9} /> {overdue} overdue
                                   </span>
                                 )}
                               </div>
-                            </div>
-                            {/* Right: Clock-in panel */}
-                            {!isWeekend && (
-                              <div className="flex flex-col gap-3 lg:min-w-[260px]">
-                                <select value={timerTaskId} onChange={e => setTimerTaskId(e.target.value === "" ? "" : Number(e.target.value))}
-                                  disabled={timerRunning}
-                                  className="outline-none px-3 py-2 text-[0.75rem]"
-                                  style={{ background: "rgba(244,235,208,0.07)", border: "1px solid rgba(244,235,208,0.15)", color: timerRunning ? "rgba(244,235,208,0.35)" : "rgba(244,235,208,0.75)", fontFamily: "'Space Grotesk',sans-serif", cursor: timerRunning ? "default" : "pointer" }}>
-                                  <option value="" style={{ background: "#122620" }}>— No specific task —</option>
-                                  {myTasks.map(t => <option key={t.id} value={t.id} style={{ background: "#122620" }}>{t.title.slice(0,40)}</option>)}
-                                </select>
-                                {timerRunning ? (
-                                  <button onClick={stopTimer}
-                                    className="py-3 text-[0.82rem] font-bold uppercase tracking-wider transition-all"
-                                    style={{ background: "rgba(139,58,58,0.4)", border: "2px solid rgba(220,100,100,0.5)", color: "rgba(255,180,180,0.9)", cursor: "pointer", letterSpacing: "2px" }}>
-                                    ■ &nbsp; CLOCK OUT
-                                  </button>
-                                ) : (
-                                  <button onClick={startTimer}
-                                    className="py-3 text-[0.82rem] font-bold uppercase tracking-wider transition-all"
-                                    style={{ background: "rgba(74,222,128,0.2)", border: "2px solid rgba(74,222,128,0.4)", color: "#4ade80", cursor: "pointer", letterSpacing: "2px" }}>
-                                    ▶ &nbsp; CLOCK IN
-                                  </button>
-                                )}
+                              {/* Stats */}
+                              <div className="px-5 py-4 space-y-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", textTransform: "uppercase", letterSpacing: "1px", color: "rgba(18,38,32,0.4)" }}>Completion Rate</span>
+                                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 700, color: completionRate >= 75 ? "var(--success)" : completionRate >= 40 ? "var(--warning)" : "var(--danger)" }}>{completionRate}%</span>
+                                </div>
+                                <div style={{ height: 4, background: "rgba(18,38,32,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                                  <motion.div initial={{ width: 0 }} animate={{ width: `${completionRate}%` }}
+                                    style={{ height: "100%", background: completionRate >= 75 ? "var(--success)" : completionRate >= 40 ? "var(--warning)" : "var(--danger)", borderRadius: 2 }} />
+                                </div>
+                                <div className="grid grid-cols-4 gap-2 mt-1">
+                                  {[
+                                    { label: "Total", value: total, color: "var(--deep-forest)" },
+                                    { label: "Pending", value: pending, color: "var(--warning)" },
+                                    { label: "Active", value: inProgress, color: "#2a9d8f" },
+                                    { label: "Done", value: completed, color: "var(--success)" },
+                                  ].map(s => (
+                                    <div key={s.label} className="text-center p-1.5" style={{ border: "1px solid rgba(18,38,32,0.07)" }}>
+                                      <div style={{ fontSize: "1.1rem", fontWeight: 300, color: s.color, lineHeight: 1 }}>{s.value}</div>
+                                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.48rem", textTransform: "uppercase", letterSpacing: "1px", color: "rgba(18,38,32,0.35)", marginTop: 2 }}>{s.label}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.3)", textAlign: "right", marginTop: 4 }}>Click to view details →</div>
                               </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Shift progress bar */}
-                        {!isWeekend && (
-                          <div className="px-8 py-4" style={{ background: "rgba(18,38,32,0.03)", borderTop: "1px solid rgba(18,38,32,0.06)" }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.4)", textTransform: "uppercase", letterSpacing: "1.5px" }}>
-                                Today's Shift — {schedule?.start}:00 → {schedule?.end}:00
-                              </span>
-                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.4)" }}>
-                                {fmtMins(shiftElapsedMins)} / {fmtMins(shiftTotalMins)}
-                              </span>
-                            </div>
-                            <div style={{ height: 6, background: "rgba(18,38,32,0.08)", borderRadius: 3, overflow: "hidden" }}>
-                              <motion.div animate={{ width: `${shiftPct}%` }} transition={{ duration: 1, ease: "linear" }}
-                                style={{ height: "100%", background: shiftPct >= 100 ? "var(--success)" : "var(--deep-forest)", borderRadius: 3 }} />
-                            </div>
-                            <div className="flex justify-between mt-1">
-                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.3)" }}>{schedule?.start}:00</span>
-                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.3)" }}>{schedule?.end}:00</span>
-                            </div>
-                          </div>
+                            </button>
+                          );
+                        })}
+                        {wsUsers.length === 0 && (
+                          <div className="col-span-3 py-16 text-center" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", color: "rgba(18,38,32,0.3)" }}>No team members found in this workspace.</div>
                         )}
                       </div>
-
-                      {/* ── Stats row ── */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {[
-                          { label: "Today", value: fmtMins(todayMins), accent: timerRunning },
-                          { label: "This Week", value: fmtMins(timeLogs.filter(l => l.user_id === currentUser?.id && l.end_time && new Date(l.start_time) >= (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); d.setHours(0,0,0,0); return d; })()).reduce((s, l) => s + (l.duration_minutes||0), 0)), accent: false },
-                          { label: "Entries Today", value: String(todayLogs.length + (timerRunning ? 1 : 0)), accent: false },
-                          { label: "Status", value: timerRunning ? "Working" : isWeekend ? "Weekend" : isInShift ? "Available" : "Off Shift", accent: timerRunning },
-                        ].map(s => (
-                          <div key={s.label} className="eiden-card p-4">
-                            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.4)", marginBottom: 6 }}>{s.label}</div>
-                            <div style={{ fontSize: "1.3rem", fontWeight: 300, color: s.accent ? "var(--success)" : "var(--deep-forest)", lineHeight: 1 }}>{s.value}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                        {/* ── Today's entries ── */}
-                        <div className="eiden-card overflow-hidden">
-                          <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.02)" }}>
-                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Today's Entries</span>
-                          </div>
-                          {timerRunning && (
-                            <div className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.05)", background: "rgba(74,222,128,0.04)" }}>
-                              <span className="w-2 h-2 rounded-full animate-pulse shrink-0" style={{ background: "#4ade80" }} />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-[0.78rem] font-semibold" style={{ color: "var(--deep-forest)" }}>
-                                  {filteredTasks.find(t => t.id === Number(timerTaskId))?.title || "No specific task"}
-                                </div>
-                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.4)", marginTop: 2 }}>
-                                  Started {timerStart ? `${pad2(timerStart.getHours())}:${pad2(timerStart.getMinutes())}` : "—"} · In progress
-                                </div>
-                              </div>
-                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem", fontWeight: 700, color: "#4ade80" }}>{formatElapsed(timerElapsed)}</span>
-                            </div>
-                          )}
-                          {todayLogs.length === 0 && !timerRunning ? (
-                            <div className="px-5 py-8 text-center">
-                              <Clock size={28} className="mx-auto mb-3 opacity-15" style={{ color: "var(--deep-forest)" }} />
-                              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.3)" }}>No time logged today</div>
-                            </div>
-                          ) : (
-                            <div className="divide-y" style={{ borderColor: "rgba(18,38,32,0.05)" }}>
-                              {[...todayLogs].reverse().map(log => (
-                                <div key={log.id} className="flex items-center gap-3 px-5 py-3">
-                                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--deep-forest)", opacity: 0.25 }} />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-[0.78rem] font-medium truncate" style={{ color: "var(--deep-forest)" }}>{log.task_title || "No specific task"}</div>
-                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(18,38,32,0.35)", marginTop: 1 }}>
-                                      {new Date(log.start_time).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})} → {log.end_time ? new Date(log.end_time).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}) : "—"}
-                                    </div>
-                                  </div>
-                                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 600, color: "var(--deep-forest)", flexShrink: 0 }}>{fmtMins(log.duration_minutes||0)}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* ── Schedule info / recent history ── */}
-                        <div className="eiden-card overflow-hidden">
-                          <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.02)" }}>
-                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Weekly Schedule</span>
-                          </div>
-                          <div className="divide-y" style={{ borderColor: "rgba(18,38,32,0.05)" }}>
-                            {[1,2,3,4,5,6,0].map(d => {
-                              const sch = WORK_SCHEDULE[d];
-                              const names = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-                              const isToday = liveTime.getDay() === d;
-                              return (
-                                <div key={d} className="flex items-center gap-4 px-5 py-2.5">
-                                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: isToday ? 700 : 400, color: isToday ? "var(--deep-forest)" : "rgba(18,38,32,0.4)", width: 32 }}>{names[d]}</span>
-                                  {sch ? (
-                                    <>
-                                      <div style={{ flex: 1, height: 4, background: "rgba(18,38,32,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                                        <div style={{ height: "100%", marginLeft: `${((sch.start-8)/14)*100}%`, width: `${((sch.end-sch.start)/14)*100}%`, background: isToday ? "var(--deep-forest)" : "rgba(18,38,32,0.2)", borderRadius: 2 }} />
-                                      </div>
-                                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: isToday ? "var(--deep-forest)" : "rgba(18,38,32,0.4)", width: 80, textAlign: "right" }}>{sch.start}:00 – {sch.end}:00</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div style={{ flex: 1 }} />
-                                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.2)" }}>Weekend</span>
-                                    </>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* ── My Active Tasks (with priority change) ── */}
-                      <div className="eiden-card overflow-hidden">
-                        <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.02)" }}>
-                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>My Active Tasks — {myTasks.length}</span>
-                          <button onClick={() => setActiveTab("tasks")} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", letterSpacing: "1px", textTransform: "uppercase" }}>View All →</button>
-                        </div>
-                        {myTasks.length === 0 ? (
-                          <div className="px-5 py-8 text-center">
-                            <CheckCircle2 size={28} className="mx-auto mb-3 opacity-15" style={{ color: "var(--deep-forest)" }} />
-                            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.3)" }}>No active tasks — great work!</div>
-                          </div>
-                        ) : (
-                          <div className="divide-y" style={{ borderColor: "rgba(18,38,32,0.05)" }}>
-                            {myTasks.map((task: Task) => {
-                              const taskOverdue = isOverdue(task.due_date, task.status);
-                              return (
-                                <div key={task.id} className="flex items-center gap-3 px-5 py-3"
-                                  style={{ background: taskOverdue ? "rgba(139,58,58,0.025)" : "transparent" }}>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-[0.8rem] font-semibold truncate" style={{ color: taskOverdue ? "var(--danger)" : "var(--deep-forest)" }}>{task.title}</div>
-                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: taskOverdue ? "var(--danger)" : "rgba(18,38,32,0.35)", marginTop: 2 }}>
-                                      Due {task.due_date}{taskOverdue ? " ⚠ overdue" : ""}
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    <select value={task.priority}
-                                      onChange={async (e: React.ChangeEvent<HTMLSelectElement>) => {
-                                        await fetch(`/api/tasks/${task.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ priority: e.target.value }) });
-                                        fetchData();
-                                      }}
-                                      className="outline-none text-[0.62rem] font-bold uppercase px-2 py-0.5 cursor-pointer"
-                                      style={{ border: `1px solid ${task.priority === "High" ? "var(--danger)" : task.priority === "Medium" ? "var(--warning)" : "rgba(18,38,32,0.2)"}`, color: task.priority === "High" ? "var(--danger)" : task.priority === "Medium" ? "var(--warning)" : "var(--gris)", background: "transparent", fontFamily: "'JetBrains Mono', monospace" }}>
-                                      <option value="Low">Low</option>
-                                      <option value="Medium">Medium</option>
-                                      <option value="High">High</option>
-                                    </select>
-                                    <span className="text-[0.58rem] font-semibold px-2 py-0.5 uppercase"
-                                      style={{ fontFamily: "'JetBrains Mono', monospace", background: task.status === "In Progress" ? "rgba(42,157,143,0.1)" : "rgba(18,38,32,0.05)", color: task.status === "In Progress" ? "#2a9d8f" : "rgba(18,38,32,0.4)", border: `1px solid ${task.status === "In Progress" ? "rgba(42,157,143,0.3)" : "rgba(18,38,32,0.1)"}` }}>
-                                      {task.status}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* ── Manager: Team overview ── */}
-                      {isManager && (
-                        <div className="eiden-card overflow-hidden">
-                          <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.02)" }}>
-                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Team Time Overview</span>
-                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.3)" }}>{liveTime.toLocaleDateString()}</span>
-                          </div>
-                          <div className="divide-y" style={{ borderColor: "rgba(18,38,32,0.05)" }}>
-                            {users.filter(u => u.workspace_id === currentWorkspace?.id).map(u => {
-                              const uTodayLogs = timeLogs.filter(l => l.user_id === u.id && l.end_time && new Date(l.start_time).toDateString() === todayStr);
-                              const uTodayMins = uTodayLogs.reduce((s, l) => s + (l.duration_minutes||0), 0);
-                              const uWeekLogs = timeLogs.filter(l => l.user_id === u.id && l.end_time && new Date(l.start_time) >= (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); d.setHours(0,0,0,0); return d; })());
-                              const uWeekMins = uWeekLogs.reduce((s, l) => s + (l.duration_minutes||0), 0);
-                              const isClockedIn = u.id === currentUser?.id && timerRunning;
-                              return (
-                                <div key={u.id} className="flex items-center gap-4 px-5 py-3">
-                                  <div className="flex items-center gap-2.5 w-40 shrink-0">
-                                    <div className="w-7 h-7 flex items-center justify-center text-[0.65rem] font-bold shrink-0" style={{ background: "var(--deep-forest)", color: "var(--silk-creme)" }}>{u.name[0]}</div>
-                                    <div>
-                                      <div className="text-[0.78rem] font-semibold" style={{ color: "var(--deep-forest)" }}>{u.name.split(" ")[0]}</div>
-                                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.35)" }}>{u.role}</div>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${isClockedIn ? "animate-pulse" : ""}`} style={{ background: isClockedIn ? "#4ade80" : "rgba(18,38,32,0.15)" }} />
-                                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: isClockedIn ? "var(--success)" : "rgba(18,38,32,0.3)" }}>{isClockedIn ? "Working" : "—"}</span>
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div style={{ height: 4, background: "rgba(18,38,32,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                                      <div style={{ height: "100%", width: `${Math.min(100, (uTodayMins/(7*60))*100)}%`, background: uTodayMins > 0 ? "var(--deep-forest)" : "transparent", borderRadius: 2 }} />
-                                    </div>
-                                  </div>
-                                  <div className="text-right shrink-0" style={{ width: 100 }}>
-                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: 600, color: "var(--deep-forest)" }}>{fmtMins(uTodayMins)}</div>
-                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.3)" }}>wk: {fmtMins(uWeekMins)}</div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   );
                 })()}
@@ -2901,10 +2738,10 @@ export default function App() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Due Date"><input name="due_date" type="date" required className="field-input" /></Field>
-                <Field label="Related Deal">
+                <Field label="Client / Company">
                   <select name="related_deal_id" defaultValue={selectedDealForTask?.id || ""} className="field-input">
                     <option value="">None</option>
-                    {deals.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
+                    {clients.filter(c => c.workspace_id === currentWorkspace?.id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </Field>
               </div>
@@ -2947,12 +2784,18 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              {selectedTaskDetail.deal_title && (
-                <div className="p-3" style={{ background: "rgba(18,38,32,0.025)", border: "1px solid rgba(18,38,32,0.06)" }}>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.38)", marginBottom: 5 }}>Related Deal</div>
-                  <div style={{ fontSize: "0.82rem", color: "var(--deep-forest)" }}>{selectedTaskDetail.deal_title}</div>
-                </div>
-              )}
+              {(selectedTaskDetail.related_deal_id || selectedTaskDetail.deal_title) && (() => {
+                const deal = deals.find(d => d.id === selectedTaskDetail.related_deal_id);
+                const contact = deal ? contacts.find(c => c.id === deal.contact_id) : null;
+                const clientDisplay = contact?.company || contact?.name || deal?.contact_name || selectedTaskDetail.deal_title;
+                if (!clientDisplay) return null;
+                return (
+                  <div className="p-3" style={{ background: "rgba(18,38,32,0.025)", border: "1px solid rgba(18,38,32,0.06)" }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.38)", marginBottom: 5 }}>Client / Company</div>
+                    <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--deep-forest)" }}>{clientDisplay}</div>
+                  </div>
+                );
+              })()}
               {selectedTaskDetail.overdue_reason && (
                 <div className="p-3" style={{ background: "rgba(139,58,58,0.04)", border: "1px solid rgba(139,58,58,0.15)", borderLeft: "3px solid var(--danger)" }}>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "var(--danger)", marginBottom: 5 }}>Overdue Reason</div>
@@ -3267,6 +3110,109 @@ export default function App() {
                 <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
               </button>
             </form>
+          </Modal>
+        )}
+
+        {/* Employee Task Analytics Detail Modal */}
+        {selectedEmployeeAnalytics && (
+          <Modal title={`${selectedEmployeeAnalytics.name} — Task Details`} onClose={() => setSelectedEmployeeAnalytics(null)}>
+            {((): React.ReactElement => {
+              const empTasks = tasks.filter(t => t.assignee_id === selectedEmployeeAnalytics.id);
+              const pending = empTasks.filter(t => t.status === "Pending");
+              const inProgress = empTasks.filter(t => t.status === "In Progress");
+              const completed = empTasks.filter(t => t.status === "Completed");
+              const overdue = empTasks.filter(t => isOverdue(t.due_date, t.status));
+              const completionRate = empTasks.length > 0 ? Math.round((completed.length / empTasks.length) * 100) : 0;
+              return (
+                <div className="space-y-4">
+                  {/* Role badge */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 flex items-center justify-center text-[1rem] font-bold" style={{ background: "var(--deep-forest)", color: "var(--silk-creme)" }}>
+                      {(selectedEmployeeAnalytics.name?.[0] ?? "?").toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-[0.92rem]" style={{ color: "var(--deep-forest)" }}>{selectedEmployeeAnalytics.name}</div>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.4)" }}>{selectedEmployeeAnalytics.role}</div>
+                    </div>
+                  </div>
+
+                  {/* Summary stats */}
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { label: "Total", value: empTasks.length, color: "var(--deep-forest)" },
+                      { label: "Pending", value: pending.length, color: "var(--warning)" },
+                      { label: "Active", value: inProgress.length, color: "#2a9d8f" },
+                      { label: "Done", value: completed.length, color: "var(--success)" },
+                    ].map(s => (
+                      <div key={s.label} className="text-center p-3" style={{ border: "1px solid rgba(18,38,32,0.08)" }}>
+                        <div style={{ fontSize: "1.6rem", fontWeight: 300, color: s.color, lineHeight: 1 }}>{s.value}</div>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1px", color: "rgba(18,38,32,0.35)", marginTop: 4 }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Completion rate bar */}
+                  <div>
+                    <div className="flex justify-between mb-1.5">
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "1px", color: "rgba(18,38,32,0.45)" }}>Completion Rate</span>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: 700, color: completionRate >= 75 ? "var(--success)" : completionRate >= 40 ? "var(--warning)" : "var(--danger)" }}>{completionRate}%</span>
+                    </div>
+                    <div style={{ height: 6, background: "rgba(18,38,32,0.07)", borderRadius: 3 }}>
+                      <div style={{ height: "100%", width: `${completionRate}%`, background: completionRate >= 75 ? "var(--success)" : completionRate >= 40 ? "var(--warning)" : "var(--danger)", borderRadius: 3 }} />
+                    </div>
+                  </div>
+
+                  {/* Overdue tasks */}
+                  {overdue.length > 0 && (
+                    <div style={{ border: "1px solid rgba(139,58,58,0.3)", borderLeft: "3px solid var(--danger)", background: "rgba(139,58,58,0.03)" }}>
+                      <div className="px-4 py-2.5" style={{ borderBottom: "1px solid rgba(139,58,58,0.15)" }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "1px", color: "var(--danger)", fontWeight: 700 }}>⚠ {overdue.length} Overdue Task{overdue.length > 1 ? "s" : ""}</span>
+                      </div>
+                      {overdue.map(t => (
+                        <div key={t.id} className="px-4 py-2.5" style={{ borderBottom: "1px solid rgba(139,58,58,0.08)" }}>
+                          <div className="font-semibold text-[0.78rem]" style={{ color: "var(--danger)" }}>{t.title}</div>
+                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)", marginTop: 2 }}>Due {t.due_date} {t.overdue_reason ? `· Reason: ${t.overdue_reason.slice(0,60)}` : "· No reason submitted"}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* All tasks list */}
+                  {empTasks.length > 0 && (
+                    <div className="eiden-card overflow-hidden">
+                      <div className="px-4 py-2.5" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.02)" }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "1px", color: "rgba(18,38,32,0.45)", fontWeight: 600 }}>All Tasks ({empTasks.length})</span>
+                      </div>
+                      <div className="max-h-64 overflow-y-auto divide-y" style={{ borderColor: "rgba(18,38,32,0.05)" }}>
+                        {empTasks.map(t => {
+                          const taskOverdue = isOverdue(t.due_date, t.status);
+                          const statusColor = t.status === "Completed" ? "var(--success)" : t.status === "In Progress" ? "#2a9d8f" : "var(--warning)";
+                          return (
+                            <div key={t.id} className="flex items-center gap-3 px-4 py-2.5">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-[0.78rem] truncate" style={{ color: taskOverdue ? "var(--danger)" : "var(--deep-forest)" }}>{t.title}</div>
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.56rem", color: "rgba(18,38,32,0.38)", marginTop: 1 }}>Due {t.due_date}{taskOverdue ? " ⚠" : ""}</div>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className={`px-1.5 py-0.5 text-[0.48rem] font-bold uppercase border ${priorityColor(t.priority)}`}>{t.priority}</span>
+                                <span className="px-1.5 py-0.5 text-[0.5rem] font-bold uppercase" style={{ color: statusColor, border: `1px solid ${statusColor}`, background: `${statusColor}11` }}>{t.status}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {empTasks.length === 0 && (
+                    <div className="py-8 text-center" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", color: "rgba(18,38,32,0.3)" }}>No tasks assigned to this employee.</div>
+                  )}
+
+                  <button onClick={() => setSelectedEmployeeAnalytics(null)} className="flash-button" style={{ marginBottom: 0, width: "100%" }}>
+                    <span>CLOSE</span>
+                  </button>
+                </div>
+              );
+            })()}
           </Modal>
         )}
 
