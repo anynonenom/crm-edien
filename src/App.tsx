@@ -1622,7 +1622,7 @@ export default function App() {
 
                 {/* Kanban board */}
                 <div className="flex-1 min-h-0 grid grid-cols-3 gap-3 overflow-hidden">
-                  {(["Pending","In Progress","Completed"] as const).map(colStatus => {
+                  {(["Pending","In Progress","Completed"] as const).map((colStatus): React.ReactElement => {
                     const colTasks = filteredTasks.filter(t => t.status === colStatus);
                     const colAccent = colStatus === "Pending" ? "var(--warning)" : colStatus === "In Progress" ? "#2a9d8f" : "var(--success)";
                     return (
@@ -1642,7 +1642,7 @@ export default function App() {
                         </div>
                         {/* Cards */}
                         <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                          {colTasks.map(task => {
+                          {colTasks.map((task: Task): React.ReactElement => {
                             const overdue = isOverdue(task.due_date, task.status);
                             return (
                               <div key={task.id}
@@ -1674,7 +1674,25 @@ export default function App() {
                                 <div className="flex items-center justify-between gap-2 flex-wrap mt-1">
                                   <span style={{ fontSize: "0.67rem", color: "rgba(18,38,32,0.5)", fontFamily: "'Space Grotesk', sans-serif" }}>{task.assignee_name || "Unassigned"}</span>
                                   <div className="flex items-center gap-1.5">
-                                    <span className={`px-1.5 py-0.5 text-[0.52rem] font-bold uppercase border ${priorityColor(task.priority)}`}>{task.priority}</span>
+                                    {/* Priority — editable for own tasks (all roles), read-only otherwise */}
+                                    {task.assignee_id === currentUser?.id || perms.canCreate ? (
+                                      <select
+                                        value={task.priority}
+                                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                        onChange={async (e: React.ChangeEvent<HTMLSelectElement>) => {
+                                          e.stopPropagation();
+                                          await fetch(`/api/tasks/${task.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ priority: e.target.value }) });
+                                          fetchData();
+                                        }}
+                                        className={`px-1.5 py-0.5 text-[0.52rem] font-bold uppercase border cursor-pointer outline-none ${priorityColor(task.priority)}`}
+                                        style={{ background: "transparent", fontFamily: "'JetBrains Mono', monospace" }}>
+                                        <option value="Low">Low</option>
+                                        <option value="Medium">Medium</option>
+                                        <option value="High">High</option>
+                                      </select>
+                                    ) : (
+                                      <span className={`px-1.5 py-0.5 text-[0.52rem] font-bold uppercase border ${priorityColor(task.priority)}`}>{task.priority}</span>
+                                    )}
                                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.56rem", color: overdue ? "var(--danger)" : "rgba(18,38,32,0.32)" }}>
                                       {task.due_date}{overdue ? " ⚠" : ""}
                                     </span>
