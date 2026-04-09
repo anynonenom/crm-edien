@@ -1125,7 +1125,7 @@ export default function App() {
                   </button>
                   <span style={{ color: "rgba(18,38,32,0.2)", fontSize: "0.65rem" }}>·</span>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.25)", textTransform: "uppercase", letterSpacing: "1px" }}>
-                    Eiden Group CRM
+                    Eiden Group BMS
                   </div>
                 </div>
               </div>
@@ -1268,13 +1268,8 @@ export default function App() {
         <rect width="100%" height="100%" filter="url(#noiseFilter)" />
       </svg>
 
-      {/* ── Mobile sidebar overlay ── */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* ── Sidebar ── */}
-      <div className={`fixed lg:static inset-y-0 left-0 z-50 shrink-0 flex flex-col transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+      {/* ── Sidebar — desktop only ── */}
+      <div className="hidden lg:flex flex-col shrink-0"
         style={{ width: 220, background: "var(--deep-forest)", minHeight: "100vh" }}>
         {/* Brand */}
         <div className="flex items-center justify-between gap-3 px-6 py-0" style={{ height: 64, borderBottom: "1px solid rgba(244,235,208,0.08)" }}>
@@ -1282,7 +1277,6 @@ export default function App() {
             <img src="https://eiden-group.com/wp-content/uploads/2025/11/ChatGPT-Image-Nov-25-2025-03_46_55-PM.png" alt="Eiden Group" style={{ height: 38, width: "auto", opacity: 0.92 }} />
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "var(--silk-creme)", opacity: 0.8 }}>Eiden BSM</div>
           </div>
-          <button className="lg:hidden p-1" style={{ color: "rgba(244,235,208,0.4)", background: "none", border: "none", cursor: "pointer" }} onClick={() => setSidebarOpen(false)}>✕</button>
         </div>
 
         {/* Nav */}
@@ -1388,12 +1382,6 @@ export default function App() {
         {/* Top bar */}
         <div className="shrink-0 flex items-center justify-between px-4 lg:px-8" style={{ height: 64, background: "var(--pure-white)", borderBottom: "1px solid rgba(18,38,32,0.08)" }}>
           <div className="flex items-center gap-3">
-            {/* Hamburger */}
-            <button className="lg:hidden flex flex-col gap-1.5 p-1 mr-1" onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", cursor: "pointer" }}>
-              <span className="block w-5 h-0.5" style={{ background: "var(--deep-forest)" }} />
-              <span className="block w-5 h-0.5" style={{ background: "var(--deep-forest)" }} />
-              <span className="block w-5 h-0.5" style={{ background: "var(--deep-forest)" }} />
-            </button>
             <h1 style={{ fontSize: "0.95rem", fontWeight: 700, letterSpacing: "-0.3px", color: "var(--deep-forest)", textTransform: "uppercase" }}>
               {activeTab === "dashboard" ? "Dashboard"
                : activeTab === "pipeline" ? "Pipeline"
@@ -1438,7 +1426,7 @@ export default function App() {
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 overflow-hidden px-3 sm:px-5 lg:px-8 py-4 lg:py-6" style={{ background: "var(--silk-creme)" }}>
+        <div className="flex-1 overflow-hidden px-3 sm:px-5 lg:px-8 py-4 lg:py-6 pb-20 lg:pb-6" style={{ background: "var(--silk-creme)" }}>
           <AnimatePresence mode="wait">
             {/* ── Dashboard ─────────────────────────────────────── */}
             {activeTab === "dashboard" && (
@@ -3778,6 +3766,47 @@ export default function App() {
           </Modal>
         )}
       </AnimatePresence>
+
+      {/* ── Mobile bottom nav ── */}
+      {(() => {
+        const navItems = [
+          { key: "dashboard", icon: <ActivityIcon size={20} />, label: "Home" },
+          ...(perms.tabs.includes("pipeline") ? [{ key: "pipeline", icon: <TrendingUp size={20} />, label: "Pipeline" }] : []),
+          { key: "tasks", icon: <CheckCircle2 size={20} />, label: "Tasks", badge: overdueTasks.length > 0 ? overdueTasks.length : 0 },
+          ...(perms.tabs.includes("analytics") ? [{ key: "analytics", icon: <BarChart2 size={20} />, label: "Analytics" }] : []),
+          ...(perms.tabs.includes("contacts") ? [{ key: "contacts", icon: <Users size={20} />, label: "Contacts" }] : []),
+          ...(perms.tabs.includes("clients") ? [{ key: "clients", icon: <Target size={20} />, label: "Clients" }] : []),
+          ...(perms.tabs.includes("team") ? [{ key: "team", icon: <Users size={20} />, label: "Team" }] : []),
+          ...(perms.tabs.includes("time") ? [{ key: "time", icon: <Clock size={20} />, label: "Time" }] : []),
+          ...(perms.tabs.includes("knowledge_base") ? [{ key: "knowledge_base", icon: <BookOpen size={20} />, label: "Docs" }] : []),
+          ...(perms.tabs.includes("admin") ? [{ key: "admin", icon: <Shield size={20} />, label: "Admin" }] : []),
+        ] as { key: string; icon: React.ReactNode; label: string; badge?: number }[];
+        return (
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 flex overflow-x-auto" style={{ background: "var(--deep-forest)", borderTop: "1px solid rgba(244,235,208,0.1)", height: 62, WebkitOverflowScrolling: "touch" }}>
+            {navItems.map(item => {
+              const active = activeTab === item.key;
+              return (
+                <button key={item.key} onClick={() => setActiveTab(item.key as typeof activeTab)}
+                  className="flex flex-col items-center justify-center gap-1 relative flex-shrink-0"
+                  style={{ minWidth: 64, padding: "0 10px", background: "none", border: "none", cursor: "pointer", color: active ? "var(--silk-creme)" : "rgba(244,235,208,0.38)", borderTop: active ? "2px solid var(--silk-creme)" : "2px solid transparent", transition: "color 0.15s" }}>
+                  {item.icon}
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", letterSpacing: "0.3px", fontWeight: active ? 700 : 400 }}>{item.label}</span>
+                  {(item.badge ?? 0) > 0 && (
+                    <span className="absolute top-1.5 right-2 w-4 h-4 flex items-center justify-center rounded-full text-[0.5rem] font-bold" style={{ background: "var(--danger)", color: "white" }}>{item.badge}</span>
+                  )}
+                </button>
+              );
+            })}
+            {/* Profile shortcut */}
+            <button onClick={() => setShowProfileModal(true)}
+              className="flex flex-col items-center justify-center gap-1 flex-shrink-0 ml-auto"
+              style={{ minWidth: 64, padding: "0 10px", background: "none", border: "none", cursor: "pointer", color: "rgba(244,235,208,0.38)", borderTop: "2px solid transparent" }}>
+              <Settings size={20} />
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem" }}>Profile</span>
+            </button>
+          </div>
+        );
+      })()}
 
       {/* Notification toasts — top-right stacked */}
       <div className="fixed top-[72px] right-3 sm:right-5 z-[9999] flex flex-col gap-2" style={{ maxWidth: 360, width: "calc(100vw - 24px)", pointerEvents: "none" }}>
