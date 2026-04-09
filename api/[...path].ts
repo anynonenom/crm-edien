@@ -109,7 +109,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (r1) {
         if (method === "PATCH") {
           const { title, description, assignee_id, related_deal_id, due_date, status, priority, overdue_reason, overdue_reason_at } = req.body;
-          const updates: any = { title, description, assignee_id, related_deal_id, due_date, status, priority };
+          // Only update fields that were explicitly provided (prevents undefined from nullifying existing values)
+          const updates: any = {};
+          if (title !== undefined) updates.title = title;
+          if (description !== undefined) updates.description = description;
+          if (assignee_id !== undefined) updates.assignee_id = assignee_id;
+          if (related_deal_id !== undefined) updates.related_deal_id = related_deal_id;
+          if (due_date !== undefined) updates.due_date = due_date;
+          if (status !== undefined) updates.status = status;
+          if (priority !== undefined) updates.priority = priority;
           if (overdue_reason !== undefined) updates.overdue_reason = overdue_reason;
           if (overdue_reason_at !== undefined) updates.overdue_reason_at = overdue_reason_at;
           await supabase.from("tasks").update(updates).eq("id", r1);
@@ -549,14 +557,13 @@ When a user wants to create or update data, respond with a JSON action block:
       const { count } = await supabase.from("users").select("*", { count: "exact", head: true });
       if (count && count > 0) return res.json({ message: "Already seeded", skipped: true });
       const { data: ws } = await supabase.from("workspaces").insert({ name: "Eiden Group" }).select().single();
-      const defaultPass = await bcrypt.hash("admin123", 10);
+      const adminPass = await bcrypt.hash("E!den@Gr0up#2026", 10);
+      const defaultPass = await bcrypt.hash("Eid3nGrp#" + Math.random().toString(36).slice(2, 10), 10);
       const wsId = ws?.id;
       await supabase.from("users").insert([
-        { name: "Oualid Laati",       email: "oualid@eiden.group",     role: "Admin",               workspace_id: wsId, username: "oualid",      password: defaultPass },
-        { name: "Najlaa Zkaili",      email: "najlaa@eiden.group",     role: "Operational Manager", workspace_id: wsId, username: "najlaa",      password: defaultPass },
-        { name: "Hassan Elkhadiri",   email: "hassan@eiden.group",     role: "Brand Manager",       workspace_id: wsId, username: "hassan",      password: defaultPass },
-        { name: "Maryam Ha",          email: "maryam@eiden.group",     role: "Marketing Strategy",  workspace_id: wsId, username: "maryam",      password: defaultPass },
-        { name: "Abdelhakim Akhidar", email: "abdelhakim@eiden.group", role: "Web / IT Developer",  workspace_id: wsId, username: "abdelhakim",  password: defaultPass },
+        { name: "Oualid Laati",       email: "oualid@eiden.group",     role: "Admin",         workspace_id: wsId, username: "CEOAdmin",    password: adminPass },
+        { name: "Hassan Elkhadiri",   email: "hassan@eiden.group",     role: "Brand Manager", workspace_id: wsId, username: "hassan",      password: defaultPass },
+        { name: "Abdelhakim Akhidar", email: "abdelhakim@eiden.group", role: "Web Developer", workspace_id: wsId, username: "abdelhakim",  password: defaultPass },
       ]);
       await supabase.from("activity_log").insert({ user_id: null, action: "System initialized", related_to: "Eiden AI CRM", type: "system" });
       return res.json({ message: "Seeded successfully", workspace_id: wsId });

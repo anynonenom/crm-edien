@@ -232,6 +232,7 @@ export default function App() {
   // Admin panel
   const [adminData, setAdminData] = useState<{ workspaces: any[]; users: any[] } | null>(null);
   const [adminSection, setAdminSection] = useState<"workspaces" | "users" | "ai">("workspaces");
+  const [pendingUserRoles, setPendingUserRoles] = useState<Record<number, string>>({});
   const [aiProviderData, setAiProviderData] = useState<{ active: string; providers: any[] } | null>(null);
   const [showCreateWsModal, setShowCreateWsModal] = useState(false);
   const [newWsName, setNewWsName] = useState("");
@@ -1045,7 +1046,7 @@ export default function App() {
                   </button>
                   <span style={{ color: "rgba(18,38,32,0.2)", fontSize: "0.65rem" }}>·</span>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.25)", textTransform: "uppercase", letterSpacing: "1px" }}>
-                    admin / admin123
+                    Eiden Group CRM
                   </div>
                 </div>
               </div>
@@ -2981,15 +2982,33 @@ export default function App() {
                               <td className="py-3 px-4" style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--deep-forest)" }}>{u.name}</td>
                               <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.4)" }}>{u.email}</td>
                               <td className="py-3 px-4">
-                                <select value={u.role} onChange={async e => {
-                                  await fetch(`/api/users/${u.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: e.target.value }) });
-                                  fetchAdminData();
-                                }} className="text-[0.7rem] outline-none px-2 py-1 font-semibold"
-                                  style={{ border: "none", borderBottom: "1px solid rgba(18,38,32,0.15)", background: "transparent", color: "var(--deep-forest)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}>
-                                  {["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Admin Coordinator", "Brand Manager", "Branding and Strategy Manager", "Solution Architect", "Designer", "Video Editor", "Web Developer", "Community Manager", "Content Creator", "Content Strategy", "Marketing Strategy", "DevOps", "Sales", "Commercial"].map(r => (
-                                    <option key={r} value={r}>{r}</option>
-                                  ))}
-                                </select>
+                                {(() => {
+                                  const pendingRole = pendingUserRoles[u.id] ?? u.role;
+                                  const isDirty = pendingRole !== u.role;
+                                  return (
+                                    <div className="flex items-center gap-2">
+                                      <select value={pendingRole}
+                                        onChange={e => setPendingUserRoles(prev => ({ ...prev, [u.id]: e.target.value }))}
+                                        className="text-[0.7rem] outline-none px-2 py-1 font-semibold"
+                                        style={{ border: "none", borderBottom: `1px solid ${isDirty ? "var(--warning)" : "rgba(18,38,32,0.15)"}`, background: "transparent", color: isDirty ? "var(--warning)" : "var(--deep-forest)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}>
+                                        {["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Admin Coordinator", "Brand Manager", "Branding and Strategy Manager", "Solution Architect", "Designer", "Video Editor", "Web Developer", "Community Manager", "Content Creator", "Content Strategy", "Marketing Strategy", "DevOps", "Sales", "Commercial", "Intern Designer", "Intern Video Editor", "Intern Web Developer", "Intern Community Manager", "Intern Content Creator", "Intern Content Strategy", "Intern Marketing Strategy", "Intern DevOps", "Intern Sales", "Intern Commercial"].map(r => (
+                                          <option key={r} value={r}>{r}</option>
+                                        ))}
+                                      </select>
+                                      {isDirty && (
+                                        <button
+                                          onClick={async () => {
+                                            await fetch(`/api/users/${u.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: pendingRole }) });
+                                            setPendingUserRoles(prev => { const n = { ...prev }; delete n[u.id]; return n; });
+                                            fetchAdminData();
+                                          }}
+                                          style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", padding: "3px 8px", background: "var(--deep-forest)", color: "var(--silk-creme)", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>
+                                          SAVE
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </td>
                               <td className="py-3 px-4">
                                 <select value={u.workspace_id || ""} onChange={async e => {
