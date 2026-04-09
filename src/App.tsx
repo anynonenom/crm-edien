@@ -1681,7 +1681,7 @@ export default function App() {
             {/* ── Contacts ──────────────────────────────────────── */}
             {activeTab === "contacts" && (
               <motion.div key="contacts" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
-                <div className="shrink-0 grid grid-cols-3 gap-3">
+                <div className="shrink-0 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <StatCard icon={<Users size={15} />} label="Total Contacts" value={String(filteredContacts.length)} color="teal" />
                   <StatCard icon={<CheckCircle2 size={15} />} label="Active Clients" value={String(filteredContacts.filter(c => c.status === "Active").length)} color="success" />
                   <StatCard icon={<TrendingUp size={15} />} label="Leads" value={String(filteredContacts.filter(c => c.status === "Lead").length)} color="teal" />
@@ -1741,7 +1741,7 @@ export default function App() {
             {activeTab === "tasks" && (
               <motion.div key="tasks" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
                 {/* Stats row */}
-                <div className="shrink-0 grid grid-cols-4 gap-3">
+                <div className="shrink-0 grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <StatCard icon={<Clock size={15} />} label="Pending" value={String(filteredTasks.filter(t => t.status === "Pending").length)} color="warn" />
                   <StatCard icon={<Cpu size={15} />} label="In Progress" value={String(filteredTasks.filter(t => t.status === "In Progress").length)} color="teal" />
                   <StatCard icon={<CheckCircle2 size={15} />} label="Completed" value={String(filteredTasks.filter(t => t.status === "Completed").length)} color="success" />
@@ -1765,7 +1765,8 @@ export default function App() {
                 </div>
 
                 {/* Kanban board */}
-                <div className="flex-1 min-h-0 grid grid-cols-3 gap-3 overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-x-auto">
+                <div className="h-full grid grid-cols-3 gap-3" style={{ minWidth: 720 }}>
                   {(["Pending","In Progress","Completed"] as const).map((colStatus): React.ReactElement => {
                     const colTasks = filteredTasks.filter(t => t.status === colStatus);
                     const colAccent = colStatus === "Pending" ? "var(--warning)" : colStatus === "In Progress" ? "#2a9d8f" : "var(--success)";
@@ -1893,6 +1894,7 @@ export default function App() {
                       </div>
                     );
                   })}
+                </div>
                 </div>
 
                 {/* Managers: submitted overdue reasons panel */}
@@ -2105,7 +2107,7 @@ export default function App() {
                                   <motion.div initial={{ width: 0 }} animate={{ width: `${completionRate}%` }}
                                     style={{ height: "100%", background: completionRate >= 75 ? "var(--success)" : completionRate >= 40 ? "var(--warning)" : "var(--danger)", borderRadius: 2 }} />
                                 </div>
-                                <div className="grid grid-cols-4 gap-2">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                   {[
                                     { label: "Total", value: total, color: "var(--deep-forest)" },
                                     { label: "Pending", value: pending, color: "var(--warning)" },
@@ -2225,7 +2227,7 @@ export default function App() {
                           <div className="eiden-card p-6 lg:col-span-2">
                             <div className="mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Workspace Task Summary</div>
                             <div className="mb-5" style={{ fontSize: "0.75rem", color: "rgba(18,38,32,0.38)", fontWeight: 300 }}>All tasks across the team</div>
-                            <div className="grid grid-cols-4 gap-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                               {[
                                 { label: "Total Tasks", value: total, color: "var(--deep-forest)" },
                                 { label: "Completed", value: completed, color: "var(--success)" },
@@ -2550,7 +2552,7 @@ export default function App() {
                           : 0;
                         return (
                           <div className="space-y-4">
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                               {[
                                 { label: "Win Rate", value: `${winRate}%`, color: winRate >= 50 ? "var(--success)" : "var(--warning)" },
                                 { label: "Avg Deal", value: `$${avgDeal.toLocaleString()}`, color: "var(--deep-forest)" },
@@ -2794,7 +2796,7 @@ export default function App() {
             {activeTab === "clients" && (
               <motion.div key="clients" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
                 {/* Stats */}
-                <div className="shrink-0 grid grid-cols-4 gap-3">
+                <div className="shrink-0 grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <StatCard icon={<Users size={15} />} label="Total Clients" value={String(clients.filter(c => c.workspace_id === currentWorkspace?.id).length)} color="teal" />
                   <StatCard icon={<CheckCircle2 size={15} />} label="Active" value={String(clients.filter(c => c.workspace_id === currentWorkspace?.id && c.status === "Active").length)} color="success" />
                   <StatCard icon={<AlertTriangle size={15} />} label="At Risk" value={String(clients.filter(c => c.workspace_id === currentWorkspace?.id && c.status === "At Risk").length)} color="danger" />
@@ -3620,7 +3622,7 @@ export default function App() {
                   </div>
 
                   {/* Summary stats */}
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
                       { label: "Total", value: empTasks.length, color: "var(--deep-forest)" },
                       { label: "Pending", value: pending.length, color: "var(--warning)" },
