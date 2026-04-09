@@ -684,7 +684,7 @@ export default function App() {
     await fetch(`/api/tasks/${deadlineEditTask.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ due_date: deadlineEditValue ? `${deadlineEditValue}:00` : deadlineEditValue })
+      body: JSON.stringify({ due_date: deadlineEditValue ? new Date(deadlineEditValue).toISOString() : deadlineEditValue })
     });
     setDeadlineEditTask(null);
     fetchData();
@@ -700,7 +700,7 @@ export default function App() {
         title: fd.get("title"),
         description: fd.get("description"),
         assignee_id: parseInt(fd.get("assignee_id") as string),
-        due_date: fd.get("due_date") ? `${fd.get("due_date")}:00` : null,
+        due_date: fd.get("due_date") ? new Date(fd.get("due_date") as string).toISOString() : null,
         priority: fd.get("priority"),
         client_id: fd.get("client_id") ? parseInt(fd.get("client_id") as string) : null,
         workspace_id: currentWorkspace?.id
@@ -718,7 +718,7 @@ export default function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: editTask.title, description: editTask.description,
-        due_date: editTask.due_date, priority: editTask.priority,
+        due_date: editTask.due_date ? new Date(editTask.due_date).toISOString() : null, priority: editTask.priority,
         status: editTask.status, assignee_id: editTask.assignee_id
       })
     });
@@ -3289,7 +3289,7 @@ export default function App() {
               <Field label="Title"><input value={editTask.title} onChange={e => setEditTask({ ...editTask, title: e.target.value })} className="field-input" /></Field>
               <Field label="Description"><textarea value={editTask.description || ""} onChange={e => setEditTask({ ...editTask, description: e.target.value })} className="field-input resize-none h-16" /></Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Due Date & Time"><input type="datetime-local" value={toDatetimeLocal(editTask.due_date)} onChange={e => setEditTask({ ...editTask, due_date: e.target.value ? `${e.target.value}:00` : "" })} className="field-input" /></Field>
+                <Field label="Due Date & Time"><input type="datetime-local" value={toDatetimeLocal(editTask.due_date)} onChange={e => setEditTask({ ...editTask, due_date: e.target.value })} className="field-input" /></Field>
                 <Field label="Priority">
                   <select value={editTask.priority} onChange={e => setEditTask({ ...editTask, priority: e.target.value })} className="field-input">
                     <option value="Low">Low</option>
