@@ -609,6 +609,7 @@ export default function App() {
       setRegError("All fields are required");
       return;
     }
+    if (!regEmail.toLowerCase().endsWith("@eiden-group.com")) { setRegError("Email must be a valid @eiden-group.com address"); return; }
     if (regPassword.length < 6) { setRegError("Password must be at least 6 characters"); return; }
     setIsRegistering(true);
     try {
@@ -1100,7 +1101,7 @@ export default function App() {
                         onChange={e => { setRegName(e.target.value); setRegError(null); }} />
                     </AuthField>
                     <AuthField label="Email">
-                      <input type="email" placeholder="name@company.com" className="flash-input" value={regEmail}
+                      <input type="email" placeholder="yourname@eiden-group.com" className="flash-input" value={regEmail}
                         onChange={e => { setRegEmail(e.target.value); setRegError(null); }} />
                     </AuthField>
                     <AuthField label="Your Role">
