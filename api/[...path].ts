@@ -212,6 +212,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (r1 === "register" && method === "POST") {
         const { name, email, username, password, role: requestedRole } = req.body;
         if (!name || !email || !username || !password || !requestedRole) return res.status(400).json({ error: "Missing required fields" });
+        if (!String(email).toLowerCase().endsWith("@eiden-group.com")) return res.status(400).json({ error: "Only @eiden-group.com email addresses are accepted" });
         const { data: exists } = await supabase.from("users").select("id").or(`username.eq.${username},email.eq.${email}`).maybeSingle();
         if (exists) return res.status(409).json({ error: "Username or email already taken" });
         // All new registrations are assigned to the first/default workspace and set as pending (no workspace_id) until Admin approves
