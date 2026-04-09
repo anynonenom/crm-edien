@@ -97,7 +97,23 @@ const getPerms = (role?: string | null) => PERMISSIONS[role ?? ""] ?? { tabs: ["
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const isOverdue = (dueDate: string, status: string) => {
   if (status === "Completed") return false;
-  return new Date(dueDate) < new Date(new Date().toDateString());
+  if (!dueDate) return false;
+  return new Date(dueDate) < new Date();
+};
+
+const formatDueDate = (dueDate: string) => {
+  if (!dueDate) return "—";
+  const d = new Date(dueDate);
+  const date = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${date} · ${time}`;
+};
+
+const toDatetimeLocal = (isoString: string) => {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
 const priorityColor = (p: string) =>
@@ -354,7 +370,7 @@ export default function App() {
           id: Date.now() + t.id,
           type: "task",
           title: "📋 New Task Assigned",
-          body: `"${t.title}" — due ${t.due_date} · Priority: ${t.priority}`,
+          body: `"${t.title}" — due ${formatDueDate(t.due_date)} · Priority: ${t.priority}`,
           at: Date.now()
         }]);
       });
@@ -668,7 +684,7 @@ export default function App() {
     await fetch(`/api/tasks/${deadlineEditTask.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ due_date: deadlineEditValue })
+      body: JSON.stringify({ due_date: deadlineEditValue ? `${deadlineEditValue}:00` : deadlineEditValue })
     });
     setDeadlineEditTask(null);
     fetchData();
@@ -684,7 +700,7 @@ export default function App() {
         title: fd.get("title"),
         description: fd.get("description"),
         assignee_id: parseInt(fd.get("assignee_id") as string),
-        due_date: fd.get("due_date"),
+        due_date: fd.get("due_date") ? `${fd.get("due_date")}:00` : null,
         priority: fd.get("priority"),
         client_id: fd.get("client_id") ? parseInt(fd.get("client_id") as string) : null,
         workspace_id: currentWorkspace?.id
@@ -1275,10 +1291,10 @@ export default function App() {
                   <div key={t.id} className="px-3 py-2" style={{ borderBottom: "1px solid rgba(200,140,60,0.12)" }}>
                     <div style={{ fontSize: "0.68rem", fontWeight: 600, color: "rgba(244,235,208,0.85)", lineHeight: 1.3, marginBottom: 2 }}>{t.title}</div>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(244,235,208,0.4)", marginBottom: 5 }}>
-                      {t.assignee_name} · due {t.due_date}
+                      {t.assignee_name} · due {formatDueDate(t.due_date)}
                       {t.overdue_reason && <span style={{ color: "rgba(240,180,80,0.7)" }}> · reason submitted</span>}
                     </div>
-                    <button onClick={() => { setDeadlineEditTask(t); setDeadlineEditValue(t.due_date); }}
+                    <button onClick={() => { setDeadlineEditTask(t); setDeadlineEditValue(toDatetimeLocal(t.due_date)); }}
                       className="text-left px-2 py-1 w-full"
                       style={{ background: "rgba(200,140,60,0.2)", border: "1px solid rgba(200,140,60,0.35)", color: "rgba(240,180,80,0.9)", fontSize: "0.58rem", fontFamily: "'JetBrains Mono', monospace", cursor: "pointer", letterSpacing: "0.5px" }}>
                       ✏ Edit Deadline
@@ -1531,7 +1547,7 @@ export default function App() {
                           {overdueTasks.slice(0, 3).map(t => (
                             <div key={t.id} className="text-[0.72rem] flex justify-between" style={{ color: "var(--danger)" }}>
                               <span className="truncate font-medium">{t.title}</span>
-                              <span className="ml-2 shrink-0 text-[0.65rem]">{t.due_date}</span>
+                              <span className="ml-2 shrink-0 text-[0.65rem]">{formatDueDate(t.due_date)}</span>
                             </div>
                           ))}
                           {overdueTasks.length > 3 && (
@@ -1828,7 +1844,7 @@ export default function App() {
                                       <span className={`px-1.5 py-0.5 text-[0.52rem] font-bold uppercase border ${priorityColor(task.priority)}`}>{task.priority}</span>
                                     )}
                                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.56rem", color: overdue ? "var(--danger)" : "rgba(18,38,32,0.32)" }}>
-                                      {task.due_date}{overdue ? " ⚠" : ""}
+                                      {formatDueDate(task.due_date)}{overdue ? " ⚠" : ""}
                                     </span>
                                   </div>
                                 </div>
@@ -1888,7 +1904,7 @@ export default function App() {
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
                                 <div className="font-semibold text-[0.78rem]" style={{ color: "var(--deep-forest)" }}>{t.title}</div>
-                                <div className="text-[0.7rem] mt-0.5" style={{ color: "rgba(18,38,32,0.5)" }}>by {t.assignee_name} · due {t.due_date}</div>
+                                <div className="text-[0.7rem] mt-0.5" style={{ color: "rgba(18,38,32,0.5)" }}>by {t.assignee_name} · due {formatDueDate(t.due_date)}</div>
                                 <div className="mt-1.5 text-[0.72rem] italic" style={{ color: "rgba(18,38,32,0.65)" }}>"{t.overdue_reason}"</div>
                               </div>
                               <div className="shrink-0 text-[0.58rem] font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.3)" }}>
@@ -1998,7 +2014,7 @@ export default function App() {
                                   <div key={t.id} className="flex items-center gap-3 px-5 py-3">
                                     <div className="flex-1 min-w-0">
                                       <div className="font-medium text-[0.8rem] truncate" style={{ color: od ? "var(--danger)" : "var(--deep-forest)" }}>{t.title}</div>
-                                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)", marginTop: 2 }}>Due {t.due_date}{od ? " ⚠ overdue" : ""}</div>
+                                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)", marginTop: 2 }}>Due {formatDueDate(t.due_date)}{od ? " ⚠ overdue" : ""}</div>
                                     </div>
                                     <div className="flex items-center gap-1.5 shrink-0">
                                       <span className={`px-1.5 py-0.5 text-[0.5rem] font-bold uppercase border ${priorityColor(t.priority)}`}>{t.priority}</span>
@@ -2409,7 +2425,7 @@ export default function App() {
                                       <div key={t.id} className="flex items-center justify-between p-2" style={{ border: "1px solid rgba(18,38,32,0.08)", borderLeft: "3px solid var(--danger)" }}>
                                         <div>
                                           <div className="font-medium text-[0.8rem]" style={{ color: "var(--deep-forest)" }}>{t.title}</div>
-                                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)" }}>{t.priority} · Due {t.due_date}</div>
+                                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)" }}>{t.priority} · Due {formatDueDate(t.due_date)}</div>
                                         </div>
                                         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: 700, color: "var(--danger)" }}>{daysOver}d overdue</span>
                                       </div>
@@ -2431,7 +2447,7 @@ export default function App() {
                                     <div key={t.id} className="flex items-center gap-3 p-2" style={{ border: "1px solid rgba(18,38,32,0.07)", borderLeft: `2px solid ${ov ? "var(--danger)" : prioColor}` }}>
                                       <div className="flex-1 min-w-0">
                                         <div className="font-medium text-[0.78rem] truncate" style={{ color: "var(--deep-forest)" }}>{t.title}</div>
-                                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.38)", marginTop: 1 }}>Due {t.due_date} · {t.priority}</div>
+                                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.38)", marginTop: 1 }}>Due {formatDueDate(t.due_date)} · {t.priority}</div>
                                       </div>
                                       <span className="text-[0.62rem] font-semibold px-2 py-0.5" style={{ background: ov ? "rgba(220,53,69,0.08)" : "rgba(18,38,32,0.06)", color: ov ? "var(--danger)" : "var(--deep-forest)" }}>{ov ? "Overdue" : t.status}</span>
                                     </div>
@@ -3179,7 +3195,7 @@ export default function App() {
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Due Date"><input name="due_date" type="date" required className="field-input" /></Field>
+                <Field label="Due Date & Time"><input name="due_date" type="datetime-local" required className="field-input" /></Field>
                 <Field label="Client / Company">
                   <select name="client_id" className="field-input">
                     <option value="">None</option>
@@ -3212,7 +3228,7 @@ export default function App() {
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Assignee", value: selectedTaskDetail.assignee_name || "Unassigned" },
-                  { label: "Due Date", value: selectedTaskDetail.due_date, danger: isOverdue(selectedTaskDetail.due_date, selectedTaskDetail.status) },
+                  { label: "Due Date", value: formatDueDate(selectedTaskDetail.due_date), danger: isOverdue(selectedTaskDetail.due_date, selectedTaskDetail.status) },
                   { label: "Status", value: selectedTaskDetail.status },
                   { label: "Priority", value: selectedTaskDetail.priority },
                 ].map(item => (
@@ -3273,7 +3289,7 @@ export default function App() {
               <Field label="Title"><input value={editTask.title} onChange={e => setEditTask({ ...editTask, title: e.target.value })} className="field-input" /></Field>
               <Field label="Description"><textarea value={editTask.description || ""} onChange={e => setEditTask({ ...editTask, description: e.target.value })} className="field-input resize-none h-16" /></Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Due Date"><input type="date" value={editTask.due_date} onChange={e => setEditTask({ ...editTask, due_date: e.target.value })} className="field-input" /></Field>
+                <Field label="Due Date & Time"><input type="datetime-local" value={toDatetimeLocal(editTask.due_date)} onChange={e => setEditTask({ ...editTask, due_date: e.target.value ? `${e.target.value}:00` : "" })} className="field-input" /></Field>
                 <Field label="Priority">
                   <select value={editTask.priority} onChange={e => setEditTask({ ...editTask, priority: e.target.value })} className="field-input">
                     <option value="Low">Low</option>
@@ -3433,7 +3449,7 @@ export default function App() {
             <div className="space-y-4">
               <div className="p-3" style={{ border: "1px solid var(--danger)", background: "rgba(139,58,58,0.05)", borderLeft: "3px solid var(--danger)" }}>
                 <div className="font-semibold text-[0.82rem]" style={{ color: "var(--danger)" }}>{overdueTask.title}</div>
-                <div className="text-[0.7rem] mt-0.5" style={{ color: "rgba(18,38,32,0.5)" }}>Due: {overdueTask.due_date}</div>
+                <div className="text-[0.7rem] mt-0.5" style={{ color: "rgba(18,38,32,0.5)" }}>Due: {formatDueDate(overdueTask.due_date)}</div>
               </div>
               <Field label="Reason for delay">
                 <textarea className="field-input resize-none" rows={4} placeholder="Explain why this task is overdue…"
@@ -3661,7 +3677,7 @@ export default function App() {
               <div>
                 <div className="text-[0.7rem] font-semibold mb-1" style={{ color: "var(--deep-forest)" }}>Task</div>
                 <div className="text-[0.85rem] font-medium" style={{ color: "var(--deep-forest)" }}>{deadlineEditTask.title}</div>
-                <div className="text-[0.65rem] mt-0.5" style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.4)" }}>Current deadline: {deadlineEditTask.due_date}</div>
+                <div className="text-[0.65rem] mt-0.5" style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.4)" }}>Current deadline: {formatDueDate(deadlineEditTask.due_date)}</div>
               </div>
               {deadlineEditTask.overdue_reason && (
                 <div className="p-3" style={{ background: "rgba(220,53,69,0.04)", border: "1px solid rgba(220,53,69,0.15)", borderLeft: "3px solid var(--danger)" }}>
@@ -3671,7 +3687,7 @@ export default function App() {
               )}
               <div>
                 <label className="block text-[0.65rem] font-bold uppercase tracking-wider mb-1.5" style={{ color: "rgba(18,38,32,0.5)" }}>New Deadline</label>
-                <input type="date" value={deadlineEditValue}
+                <input type="datetime-local" value={deadlineEditValue}
                   onChange={e => setDeadlineEditValue(e.target.value)}
                   className="flash-input" style={{ width: "100%" }} />
               </div>
