@@ -8,7 +8,7 @@ import {
   LogOut, Activity as ActivityIcon, CheckCircle2,
   AlertTriangle, Trash2, Edit3, ChevronRight, Send,
   MessageSquare, BarChart2, Bot, X, RefreshCw,
-  Clock, Target, Zap, BookOpen, Shield
+  Clock, Target, Zap, BookOpen, Shield, Search
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "./lib/supabase";
@@ -35,7 +35,8 @@ interface Activity {
 interface Task {
   id: number; title: string; description?: string;
   assignee_name: string; assignee_id: number; deal_title?: string;
-  related_deal_id?: number; due_date: string; status: string;
+  related_deal_id?: number; client_id?: number; client_name?: string;
+  due_date: string; status: string;
   priority: string; workspace_id: number; created_at?: string;
   overdue_reason?: string; overdue_reason_at?: string;
 }
@@ -243,6 +244,8 @@ export default function App() {
   const aiMessages = currentWorkspace ? getMessages(currentWorkspace.id) : [];
   const [aiInput, setAiInput] = useState("");
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [pendingAiAction, setPendingAiAction] = useState<{ action: string; data: any; summary: string } | null>(null);
+  const [taskSearch, setTaskSearch] = useState("");
   const aiEndRef = useRef<HTMLDivElement>(null);
 
   // Auth forms
@@ -265,7 +268,8 @@ export default function App() {
   const filteredContacts = contacts.filter(c => c.workspace_id === currentWorkspace?.id);
   const filteredTasks = tasks.filter(t =>
     t.workspace_id === currentWorkspace?.id &&
-    (!perms.ownTasksOnly || t.assignee_id === currentUser?.id)
+    (!perms.ownTasksOnly || t.assignee_id === currentUser?.id) &&
+    (!taskSearch || t.title.toLowerCase().includes(taskSearch.toLowerCase()) || (t.assignee_name || "").toLowerCase().includes(taskSearch.toLowerCase()) || (t.client_name || "").toLowerCase().includes(taskSearch.toLowerCase()))
   );
 
   // ─── Fetch all data ──────────────────────────────────────────────────────────
@@ -451,10 +455,9 @@ export default function App() {
       const responseText: string = data.text || "No response.";
       addMessage(wsId, { role: "assistant", content: responseText });
 
-      // Parse and execute AI actions
+      // Parse AI action — only PROPOSE, never auto-execute
       try {
         const start = responseText.indexOf('"action"');
-        let action: any = null;
         if (start !== -1) {
           let objStart = responseText.lastIndexOf("{", start);
           if (objStart !== -1) {
@@ -463,82 +466,26 @@ export default function App() {
               if (responseText[i] === "{") depth++;
               else if (responseText[i] === "}") { depth--; if (depth === 0) { end = i; break; } }
             }
-            try { action = JSON.parse(responseText.slice(objStart, end + 1)); } catch { action = null; }
-          }
-        }
-        if (action && action.action) {
-          const act = action.action;
-          const d = action.data || {};
-
-          const aiPost = async (url: string, body: any) => {
-            const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-            return r;
-          };
-          const aiPatch = async (url: string, body: any) => {
-            const r = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-            return r;
-          };
-          const aiDelete = async (url: string) => {
-            const r = await fetch(url, { method: "DELETE" });
-            return r;
-          };
-
-          // ── Tasks ──
-          if (act === "create_task") {
-            const assignee = users.find(u => u.name.toLowerCase().includes((d.assignee || "").toLowerCase()));
-            const r = await aiPost("/api/tasks", { title: d.title, description: d.description || "", assignee_id: assignee?.id || currentUser?.id, due_date: d.due_date || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0], priority: d.priority || "Medium", workspace_id: wsId });
-            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Task "${d.title}" created!` : `❌ Failed to create task.` });
-            if (r.ok) await fetchData();
-          } else if (act === "update_task" && d.id) {
-            const updates: any = {};
-            if (d.status) updates.status = d.status;
-            if (d.priority) updates.priority = d.priority;
-            if (d.due_date) updates.due_date = d.due_date;
-            if (d.assignee) { const u = users.find(u => u.name.toLowerCase().includes(d.assignee.toLowerCase())); if (u) updates.assignee_id = u.id; }
-            const r = await aiPatch(`/api/tasks/${d.id}`, updates);
-            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Task #${d.id} updated!` : `❌ Failed to update task.` });
-            if (r.ok) await fetchData();
-          } else if (act === "delete_task" && d.id) {
-            const r = await aiDelete(`/api/tasks/${d.id}`);
-            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Task #${d.id} deleted.` : `❌ Failed to delete task.` });
-            if (r.ok) await fetchData();
-
-          // ── Deals ──
-          } else if (act === "create_deal") {
-            const r = await aiPost("/api/deals", { title: d.title, value: d.value || 0, stage: d.stage || "Lead", workspace_id: wsId });
-            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Deal "${d.title}" created!` : `❌ Failed to create deal.` });
-            if (r.ok) await fetchData();
-          } else if (act === "update_deal" && d.id) {
-            const updates: any = {};
-            if (d.stage) updates.stage = d.stage;
-            if (d.value !== undefined) updates.value = d.value;
-            if (d.notes) updates.notes = d.notes;
-            const r = await aiPatch(`/api/deals/${d.id}`, updates);
-            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Deal #${d.id} updated!` : `❌ Failed to update deal.` });
-            if (r.ok) await fetchData();
-          } else if (act === "delete_deal" && d.id) {
-            const r = await aiDelete(`/api/deals/${d.id}`);
-            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Deal #${d.id} deleted.` : `❌ Failed to delete deal.` });
-            if (r.ok) await fetchData();
-
-          // ── Contacts ──
-          } else if (act === "create_contact") {
-            const r = await aiPost("/api/contacts", { name: d.name, company: d.company || "", email: d.email || "", status: d.status || "Prospect", source: d.source || "", workspace_id: wsId });
-            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Contact "${d.name}" created!` : `❌ Failed to create contact.` });
-            if (r.ok) await fetchData();
-          } else if (act === "update_contact" && d.id) {
-            const updates: any = {};
-            if (d.status) updates.status = d.status;
-            if (d.company) updates.company = d.company;
-            if (d.email) updates.email = d.email;
-            if (d.notes) updates.notes = d.notes;
-            const r = await aiPatch(`/api/contacts/${d.id}`, updates);
-            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Contact #${d.id} updated!` : `❌ Failed to update contact.` });
-            if (r.ok) await fetchData();
-          } else if (act === "delete_contact" && d.id) {
-            const r = await aiDelete(`/api/contacts/${d.id}`);
-            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Contact #${d.id} deleted.` : `❌ Failed to delete contact.` });
-            if (r.ok) await fetchData();
+            let parsed: any = null;
+            try { parsed = JSON.parse(responseText.slice(objStart, end + 1)); } catch { parsed = null; }
+            if (parsed?.action && parsed?.data) {
+              const act = parsed.action;
+              const d = parsed.data;
+              // Build a human-readable summary for the confirmation prompt
+              const summaries: Record<string, string> = {
+                create_task: `Create task "${d.title}" → ${d.assignee || "me"} · ${d.priority || "Medium"} · due ${d.due_date || "in 7 days"}`,
+                update_task: `Update task #${d.id}${d.status ? ` → ${d.status}` : ""}${d.priority ? ` · ${d.priority}` : ""}${d.due_date ? ` · due ${d.due_date}` : ""}`,
+                delete_task: `Delete task #${d.id} permanently`,
+                create_deal: `Create deal "${d.title}" · $${d.value || 0} · ${d.stage || "Lead"}`,
+                update_deal: `Update deal #${d.id}${d.stage ? ` → ${d.stage}` : ""}${d.value !== undefined ? ` · $${d.value}` : ""}`,
+                delete_deal: `Delete deal #${d.id} permanently`,
+                create_contact: `Create contact "${d.name}"${d.company ? ` (${d.company})` : ""}`,
+                update_contact: `Update contact #${d.id}${d.status ? ` → ${d.status}` : ""}`,
+                delete_contact: `Delete contact #${d.id} permanently`,
+              };
+              const summary = summaries[act] || `${act} — confirm to proceed`;
+              setPendingAiAction({ action: act, data: d, summary });
+            }
           }
         }
       } catch (e: any) {
@@ -550,6 +497,61 @@ export default function App() {
       setIsAiThinking(false);
     }
   }, [aiInput, isAiThinking, getMessages, addMessage, users, currentUser, currentWorkspace, fetchData]);
+
+  // ─── Execute confirmed AI action ────────────────────────────────────────────
+  const executeAiAction = async (act: string, d: any) => {
+    if (!currentWorkspace) return;
+    const wsId = currentWorkspace.id;
+    const post = (url: string, body: any) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const patch = (url: string, body: any) => fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const del = (url: string) => fetch(url, { method: "DELETE" });
+
+    let r: Response;
+    if (act === "create_task") {
+      const assignee = users.find(u => u.name.toLowerCase().includes((d.assignee || "").toLowerCase()));
+      r = await post("/api/tasks", { title: d.title, description: d.description || "", assignee_id: assignee?.id || currentUser?.id, due_date: d.due_date || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0], priority: d.priority || "Medium", workspace_id: wsId });
+      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Task "${d.title}" created!` : `❌ Failed to create task.` });
+    } else if (act === "update_task" && d.id) {
+      const updates: any = {};
+      if (d.status) updates.status = d.status;
+      if (d.priority) updates.priority = d.priority;
+      if (d.due_date) updates.due_date = d.due_date;
+      if (d.assignee) { const u = users.find(u => u.name.toLowerCase().includes(d.assignee.toLowerCase())); if (u) updates.assignee_id = u.id; }
+      r = await patch(`/api/tasks/${d.id}`, updates);
+      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Task #${d.id} updated!` : `❌ Failed to update task.` });
+    } else if (act === "delete_task" && d.id) {
+      r = await del(`/api/tasks/${d.id}`);
+      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Task #${d.id} deleted.` : `❌ Failed to delete task.` });
+    } else if (act === "create_deal") {
+      r = await post("/api/deals", { title: d.title, value: d.value || 0, stage: d.stage || "Lead", workspace_id: wsId });
+      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Deal "${d.title}" created!` : `❌ Failed to create deal.` });
+    } else if (act === "update_deal" && d.id) {
+      const updates: any = {};
+      if (d.stage) updates.stage = d.stage;
+      if (d.value !== undefined) updates.value = d.value;
+      if (d.notes) updates.notes = d.notes;
+      r = await patch(`/api/deals/${d.id}`, updates);
+      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Deal #${d.id} updated!` : `❌ Failed to update deal.` });
+    } else if (act === "delete_deal" && d.id) {
+      r = await del(`/api/deals/${d.id}`);
+      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Deal #${d.id} deleted.` : `❌ Failed to delete deal.` });
+    } else if (act === "create_contact") {
+      r = await post("/api/contacts", { name: d.name, company: d.company || "", email: d.email || "", status: d.status || "Prospect", source: d.source || "", workspace_id: wsId });
+      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Contact "${d.name}" created!` : `❌ Failed to create contact.` });
+    } else if (act === "update_contact" && d.id) {
+      const updates: any = {};
+      if (d.status) updates.status = d.status;
+      if (d.company) updates.company = d.company;
+      if (d.email) updates.email = d.email;
+      if (d.notes) updates.notes = d.notes;
+      r = await patch(`/api/contacts/${d.id}`, updates);
+      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Contact #${d.id} updated!` : `❌ Failed to update contact.` });
+    } else if (act === "delete_contact" && d.id) {
+      r = await del(`/api/contacts/${d.id}`);
+      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Contact #${d.id} deleted.` : `❌ Failed to delete contact.` });
+    } else { return; }
+    await fetchData();
+  };
 
   // ─── Auth ────────────────────────────────────────────────────────────────────
   const handleLogin = async () => {
@@ -1483,6 +1485,24 @@ export default function App() {
                       <div ref={aiEndRef} />
                     </div>
 
+                    {/* Pending AI action — requires explicit confirmation */}
+                    {pendingAiAction && (
+                      <div className="shrink-0 mx-3 mb-2 p-3" style={{ background: "rgba(18,38,32,0.04)", border: "1.5px solid var(--deep-forest)" }}>
+                        <div className="text-[0.6rem] font-bold uppercase tracking-wider mb-1" style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.45)" }}>AI wants to perform an action</div>
+                        <div className="text-[0.78rem] font-medium mb-3" style={{ color: "var(--deep-forest)" }}>{pendingAiAction.summary}</div>
+                        <div className="flex gap-2">
+                          <button onClick={async () => { await executeAiAction(pendingAiAction.action, pendingAiAction.data); setPendingAiAction(null); }}
+                            style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", padding: "5px 14px", background: "var(--deep-forest)", color: "var(--silk-creme)", border: "none", cursor: "pointer", flex: 1 }}>
+                            CONFIRM
+                          </button>
+                          <button onClick={() => setPendingAiAction(null)}
+                            style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", padding: "5px 14px", background: "transparent", color: "var(--gris)", border: "1px solid rgba(18,38,32,0.15)", cursor: "pointer", flex: 1 }}>
+                            CANCEL
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <form onSubmit={e => { e.preventDefault(); sendAiMessage(); }} className="shrink-0 flex gap-2 p-3" style={{ borderTop: "1px solid rgba(18,38,32,0.07)" }}>
                       <input type="text" value={aiInput} onChange={e => setAiInput(e.target.value)}
                         placeholder="Ask Eiden AI anything…"
@@ -1704,26 +1724,21 @@ export default function App() {
                   <StatCard icon={<AlertTriangle size={15} />} label="Overdue" value={String(overdueTasks.length)} color={overdueTasks.length > 0 ? "danger" : "muted"} />
                 </div>
 
-                {/* AI task creation — managers only */}
-                {perms.canCreate && (
-                  <div className="shrink-0 flex gap-3 items-center px-4 py-3" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.1)", borderLeft: "1.5px solid var(--deep-forest)" }}>
-                    <Bot size={14} className="shrink-0" style={{ color: "var(--deep-forest)" }} />
-                    <form className="flex-1 flex gap-2" onSubmit={async e => {
-                      e.preventDefault();
-                      const fd = new FormData(e.currentTarget);
-                      const input = String(fd.get("ai_task") || "").trim();
-                      if (!input) return;
-                      (e.currentTarget as HTMLFormElement).reset();
-                      setActiveTab("dashboard");
-                      await sendAiMessage(input);
-                    }}>
-                      <input name="ai_task" type="text" placeholder="Ask AI to create tasks… e.g. 'high priority task for Sarah by Friday'"
-                        className="flex-1 text-[0.8rem] outline-none"
-                        style={{ border: "none", borderBottom: "1.5px solid rgba(18,38,32,0.15)", padding: "7px 0", fontFamily: "'Space Grotesk',sans-serif", color: "var(--deep-forest)", background: "transparent" }} />
-                      <button type="submit" className="btn-primary">Ask AI</button>
-                    </form>
-                  </div>
-                )}
+                {/* Search bar */}
+                <div className="shrink-0 flex items-center gap-2 px-4 py-2.5" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.1)" }}>
+                  <Search size={13} style={{ color: "rgba(18,38,32,0.35)", flexShrink: 0 }} />
+                  <input
+                    type="text"
+                    value={taskSearch}
+                    onChange={e => setTaskSearch(e.target.value)}
+                    placeholder="Search tasks by title or assignee…"
+                    className="flex-1 text-[0.8rem] outline-none"
+                    style={{ border: "none", padding: "4px 0", fontFamily: "'Space Grotesk', sans-serif", color: "var(--deep-forest)", background: "transparent" }}
+                  />
+                  {taskSearch && (
+                    <button onClick={() => setTaskSearch("")} style={{ color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", lineHeight: 1 }}>✕</button>
+                  )}
+                </div>
 
                 {/* Kanban board */}
                 <div className="flex-1 min-h-0 grid grid-cols-3 gap-3 overflow-hidden">
