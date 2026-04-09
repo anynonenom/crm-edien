@@ -652,7 +652,7 @@ export default function App() {
         assignee_id: parseInt(fd.get("assignee_id") as string),
         due_date: fd.get("due_date"),
         priority: fd.get("priority"),
-        related_deal_id: fd.get("related_deal_id") ? parseInt(fd.get("related_deal_id") as string) : null,
+        client_id: fd.get("client_id") ? parseInt(fd.get("client_id") as string) : null,
         workspace_id: currentWorkspace?.id
       })
     });
@@ -3130,7 +3130,7 @@ export default function App() {
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Due Date"><input name="due_date" type="date" required className="field-input" /></Field>
                 <Field label="Client / Company">
-                  <select name="related_deal_id" defaultValue={selectedDealForTask?.id || ""} className="field-input">
+                  <select name="client_id" className="field-input">
                     <option value="">None</option>
                     {clients.filter(c => c.workspace_id === currentWorkspace?.id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -3175,18 +3175,14 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              {(selectedTaskDetail.related_deal_id || selectedTaskDetail.deal_title) && (() => {
-                const deal = deals.find(d => d.id === selectedTaskDetail.related_deal_id);
-                const contact = deal ? contacts.find(c => c.id === deal.contact_id) : null;
-                const clientDisplay = contact?.company || contact?.name || deal?.contact_name || selectedTaskDetail.deal_title;
-                if (!clientDisplay) return null;
-                return (
-                  <div className="p-3" style={{ background: "rgba(18,38,32,0.025)", border: "1px solid rgba(18,38,32,0.06)" }}>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.38)", marginBottom: 5 }}>Client / Company</div>
-                    <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--deep-forest)" }}>{clientDisplay}</div>
+              {(selectedTaskDetail.client_name || selectedTaskDetail.client_id) && (
+                <div className="p-3" style={{ background: "rgba(18,38,32,0.025)", border: "1px solid rgba(18,38,32,0.06)" }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.38)", marginBottom: 5 }}>Client / Company</div>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--deep-forest)" }}>
+                    {selectedTaskDetail.client_name || clients.find(c => c.id === selectedTaskDetail.client_id)?.name || "—"}
                   </div>
-                );
-              })()}
+                </div>
+              )}
               {selectedTaskDetail.overdue_reason && (
                 <div className="p-3" style={{ background: "rgba(139,58,58,0.04)", border: "1px solid rgba(139,58,58,0.15)", borderLeft: "3px solid var(--danger)" }}>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "var(--danger)", marginBottom: 5 }}>Overdue Reason</div>

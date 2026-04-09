@@ -94,13 +94,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (r0 === "tasks") {
       if (!r1) {
         if (method === "GET") {
-          const { data } = await supabase.from("tasks").select("*, users!assignee_id(name), deals!related_deal_id(title)").order("due_date", { ascending: true });
-          return res.json((data || []).map((t: any) => ({ ...t, assignee_name: t.users?.name || "", deal_title: t.deals?.title || "" })));
+          const { data } = await supabase.from("tasks").select("*, users!assignee_id(name), deals!related_deal_id(title), clients!client_id(name)").order("due_date", { ascending: true });
+          return res.json((data || []).map((t: any) => ({ ...t, assignee_name: t.users?.name || "", deal_title: t.deals?.title || "", client_name: t.clients?.name || "" })));
         }
         if (method === "POST") {
-          const { title, description, assignee_id, related_deal_id, workspace_id, due_date, status, priority } = req.body;
+          const { title, description, assignee_id, client_id, workspace_id, due_date, status, priority } = req.body;
           if (!title) return res.status(400).json({ error: "Title is required" });
-          const { data, error } = await supabase.from("tasks").insert({ title, description, assignee_id: assignee_id || null, related_deal_id: related_deal_id || null, workspace_id: workspace_id || null, due_date, status: status || "Pending", priority: priority || "Medium" }).select().single();
+          const { data, error } = await supabase.from("tasks").insert({ title, description, assignee_id: assignee_id || null, client_id: client_id || null, workspace_id: workspace_id || null, due_date, status: status || "Pending", priority: priority || "Medium" }).select().single();
           if (error) return res.status(500).json({ error: error.message });
           await logActivity(assignee_id || 1, `Created task: ${title}`, title, "task");
           return res.json({ id: data?.id });
@@ -108,13 +108,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       if (r1) {
         if (method === "PATCH") {
-          const { title, description, assignee_id, related_deal_id, due_date, status, priority, overdue_reason, overdue_reason_at } = req.body;
+          const { title, description, assignee_id, related_deal_id, client_id, due_date, status, priority, overdue_reason, overdue_reason_at } = req.body;
           // Only update fields that were explicitly provided (prevents undefined from nullifying existing values)
           const updates: any = {};
           if (title !== undefined) updates.title = title;
           if (description !== undefined) updates.description = description;
           if (assignee_id !== undefined) updates.assignee_id = assignee_id;
           if (related_deal_id !== undefined) updates.related_deal_id = related_deal_id;
+          if (client_id !== undefined) updates.client_id = client_id;
           if (due_date !== undefined) updates.due_date = due_date;
           if (status !== undefined) updates.status = status;
           if (priority !== undefined) updates.priority = priority;
