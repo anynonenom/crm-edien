@@ -151,6 +151,7 @@ export default function App() {
   const [financials, setFinancials] = useState<{ totalRevenue: number; pendingRevenue: number; monthly: any[] } | null>(null);
 
   // Modals
+  const [newTaskAssignees, setNewTaskAssignees] = useState<number[]>([]);
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
   const [showEditTaskModal, setShowEditTaskModal] = useState(false);
   const [showNewDealModal, setShowNewDealModal] = useState(false);
@@ -693,19 +694,25 @@ export default function App() {
   const handleCreateTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    await fetch("/api/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: fd.get("title"),
-        description: fd.get("description"),
-        assignee_id: parseInt(fd.get("assignee_id") as string),
-        due_date: fd.get("due_date") ? new Date(fd.get("due_date") as string).toISOString() : null,
-        priority: fd.get("priority"),
-        client_id: fd.get("client_id") ? parseInt(fd.get("client_id") as string) : null,
-        workspace_id: currentWorkspace?.id
+    const assigneeIds = newTaskAssignees.length > 0 ? newTaskAssignees : [currentUser?.id];
+    const dueDate = fd.get("due_date") ? new Date(fd.get("due_date") as string).toISOString() : null;
+    const clientId = fd.get("client_id") ? parseInt(fd.get("client_id") as string) : null;
+    await Promise.all(assigneeIds.map(assignee_id =>
+      fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: fd.get("title"),
+          description: fd.get("description"),
+          assignee_id,
+          due_date: dueDate,
+          priority: fd.get("priority"),
+          client_id: clientId,
+          workspace_id: currentWorkspace?.id
+        })
       })
-    });
+    ));
+    setNewTaskAssignees([]);
     setShowNewTaskModal(false);
     setSelectedDealForTask(null);
     fetchData();
@@ -3176,16 +3183,38 @@ export default function App() {
 
         {/* New Task */}
         {showNewTaskModal && (
-          <Modal title={selectedDealForTask ? `New Task for "${selectedDealForTask.title}"` : "New Task"} onClose={() => { setShowNewTaskModal(false); setSelectedDealForTask(null); }}>
+          <Modal title={selectedDealForTask ? `New Task for "${selectedDealForTask.title}"` : "New Task"} onClose={() => { setShowNewTaskModal(false); setSelectedDealForTask(null); setNewTaskAssignees([]); }}>
             <form onSubmit={handleCreateTask} className="space-y-4">
               <Field label="Task Title"><input name="title" required className="field-input" placeholder="What needs to be done?" /></Field>
               <Field label="Description (optional)"><textarea name="description" className="field-input resize-none h-16" placeholder="Additional context..." /></Field>
+              {/* Multi-assignee selector */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[0.65rem] font-bold uppercase tracking-wider" style={{ color: "rgba(18,38,32,0.5)" }}>
+                    Assignees {newTaskAssignees.length > 0 && <span style={{ color: "var(--deep-forest)" }}>· {newTaskAssignees.length} selected</span>}
+                  </label>
+                  {perms.canAssignAll && newTaskAssignees.length > 0 && (
+                    <button type="button" onClick={() => setNewTaskAssignees([])} className="text-[0.6rem] hover:underline" style={{ color: "rgba(18,38,32,0.4)" }}>Clear all</button>
+                  )}
+                </div>
+                <div className="overflow-y-auto" style={{ maxHeight: 140, border: "1px solid var(--border)", borderRadius: 6, padding: "4px" }}>
+                  {(perms.canAssignAll ? users.filter(u => u.workspace_id === currentWorkspace?.id) : users.filter(u => u.id === currentUser?.id)).map(u => {
+                    const checked = newTaskAssignees.includes(u.id);
+                    return (
+                      <label key={u.id} className="flex items-center gap-2.5 px-2 py-1.5 cursor-pointer rounded-sm" style={{ background: checked ? "rgba(18,38,32,0.06)" : "transparent" }}>
+                        <input type="checkbox" checked={checked}
+                          onChange={() => setNewTaskAssignees(prev => checked ? prev.filter(id => id !== u.id) : [...prev, u.id])} />
+                        <span className="text-[0.78rem] font-medium flex-1" style={{ color: "var(--deep-forest)" }}>{u.name}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(18,38,32,0.35)" }}>{u.role}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {newTaskAssignees.length === 0 && (
+                  <div className="text-[0.62rem] mt-1" style={{ color: "rgba(18,38,32,0.35)", fontStyle: "italic" }}>Select at least one assignee</div>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Assignee">
-                  <select name="assignee_id" required className="field-input">
-                    {(perms.canAssignAll ? users : users.filter(u => u.id === currentUser?.id)).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
-                </Field>
                 <Field label="Priority">
                   <select name="priority" className="field-input">
                     <option value="Low">Low</option>
@@ -3193,9 +3222,6 @@ export default function App() {
                     <option value="High">High</option>
                   </select>
                 </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Due Date & Time"><input name="due_date" type="datetime-local" required className="field-input" /></Field>
                 <Field label="Client / Company">
                   <select name="client_id" className="field-input">
                     <option value="">None</option>
@@ -3203,7 +3229,10 @@ export default function App() {
                   </select>
                 </Field>
               </div>
-              <button type="submit" className="flash-button mb-0">Create Task</button>
+              <Field label="Due Date & Time"><input name="due_date" type="datetime-local" required className="field-input" /></Field>
+              <button type="submit" disabled={newTaskAssignees.length === 0} className="flash-button mb-0" style={{ opacity: newTaskAssignees.length === 0 ? 0.5 : 1 }}>
+                {newTaskAssignees.length > 1 ? `Create ${newTaskAssignees.length} Tasks` : "Create Task"}
+              </button>
             </form>
           </Modal>
         )}
