@@ -467,47 +467,78 @@ export default function App() {
           }
         }
         if (action && action.action) {
-          if (action.action === "create_task" && action.data) {
-            const d = action.data;
+          const act = action.action;
+          const d = action.data || {};
+
+          const aiPost = async (url: string, body: any) => {
+            const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+            return r;
+          };
+          const aiPatch = async (url: string, body: any) => {
+            const r = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+            return r;
+          };
+          const aiDelete = async (url: string) => {
+            const r = await fetch(url, { method: "DELETE" });
+            return r;
+          };
+
+          // ── Tasks ──
+          if (act === "create_task") {
             const assignee = users.find(u => u.name.toLowerCase().includes((d.assignee || "").toLowerCase()));
-            const taskRes = await fetch("/api/tasks", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                title: d.title,
-                description: d.description || "",
-                assignee_id: assignee?.id || currentUser?.id,
-                due_date: d.due_date || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
-                priority: d.priority || "Medium",
-                workspace_id: wsId
-              })
-            });
-            if (taskRes.ok) {
-              addMessage(wsId, { role: "assistant", content: `✅ Task "${d.title}" created successfully!` });
-              await fetchData();
-            } else {
-              const err = await taskRes.json().catch(() => ({ error: "Unknown error" }));
-              addMessage(wsId, { role: "assistant", content: `❌ Failed to create task: ${err.error || taskRes.status}` });
-            }
-          } else if (action.action === "create_deal" && action.data) {
-            const d = action.data;
-            const dealRes = await fetch("/api/deals", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                title: d.title,
-                value: d.value || 0,
-                stage: d.stage || "Lead",
-                workspace_id: wsId
-              })
-            });
-            if (dealRes.ok) {
-              addMessage(wsId, { role: "assistant", content: `✅ Deal "${d.title}" created successfully!` });
-              await fetchData();
-            } else {
-              const err = await dealRes.json().catch(() => ({ error: "Unknown error" }));
-              addMessage(wsId, { role: "assistant", content: `❌ Failed to create deal: ${err.error || dealRes.status}` });
-            }
+            const r = await aiPost("/api/tasks", { title: d.title, description: d.description || "", assignee_id: assignee?.id || currentUser?.id, due_date: d.due_date || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0], priority: d.priority || "Medium", workspace_id: wsId });
+            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Task "${d.title}" created!` : `❌ Failed to create task.` });
+            if (r.ok) await fetchData();
+          } else if (act === "update_task" && d.id) {
+            const updates: any = {};
+            if (d.status) updates.status = d.status;
+            if (d.priority) updates.priority = d.priority;
+            if (d.due_date) updates.due_date = d.due_date;
+            if (d.assignee) { const u = users.find(u => u.name.toLowerCase().includes(d.assignee.toLowerCase())); if (u) updates.assignee_id = u.id; }
+            const r = await aiPatch(`/api/tasks/${d.id}`, updates);
+            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Task #${d.id} updated!` : `❌ Failed to update task.` });
+            if (r.ok) await fetchData();
+          } else if (act === "delete_task" && d.id) {
+            const r = await aiDelete(`/api/tasks/${d.id}`);
+            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Task #${d.id} deleted.` : `❌ Failed to delete task.` });
+            if (r.ok) await fetchData();
+
+          // ── Deals ──
+          } else if (act === "create_deal") {
+            const r = await aiPost("/api/deals", { title: d.title, value: d.value || 0, stage: d.stage || "Lead", workspace_id: wsId });
+            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Deal "${d.title}" created!` : `❌ Failed to create deal.` });
+            if (r.ok) await fetchData();
+          } else if (act === "update_deal" && d.id) {
+            const updates: any = {};
+            if (d.stage) updates.stage = d.stage;
+            if (d.value !== undefined) updates.value = d.value;
+            if (d.notes) updates.notes = d.notes;
+            const r = await aiPatch(`/api/deals/${d.id}`, updates);
+            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Deal #${d.id} updated!` : `❌ Failed to update deal.` });
+            if (r.ok) await fetchData();
+          } else if (act === "delete_deal" && d.id) {
+            const r = await aiDelete(`/api/deals/${d.id}`);
+            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Deal #${d.id} deleted.` : `❌ Failed to delete deal.` });
+            if (r.ok) await fetchData();
+
+          // ── Contacts ──
+          } else if (act === "create_contact") {
+            const r = await aiPost("/api/contacts", { name: d.name, company: d.company || "", email: d.email || "", status: d.status || "Prospect", source: d.source || "", workspace_id: wsId });
+            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Contact "${d.name}" created!` : `❌ Failed to create contact.` });
+            if (r.ok) await fetchData();
+          } else if (act === "update_contact" && d.id) {
+            const updates: any = {};
+            if (d.status) updates.status = d.status;
+            if (d.company) updates.company = d.company;
+            if (d.email) updates.email = d.email;
+            if (d.notes) updates.notes = d.notes;
+            const r = await aiPatch(`/api/contacts/${d.id}`, updates);
+            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Contact #${d.id} updated!` : `❌ Failed to update contact.` });
+            if (r.ok) await fetchData();
+          } else if (act === "delete_contact" && d.id) {
+            const r = await aiDelete(`/api/contacts/${d.id}`);
+            addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Contact #${d.id} deleted.` : `❌ Failed to delete contact.` });
+            if (r.ok) await fetchData();
           }
         }
       } catch (e: any) {
@@ -1747,8 +1778,14 @@ export default function App() {
                                 </div>
                                 {/* Description preview */}
                                 {task.description && (
-                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.38)", marginBottom: 7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.38)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                     {task.description}
+                                  </div>
+                                )}
+                                {/* Client / Company */}
+                                {task.client_name && (
+                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.56rem", color: "var(--deep-forest)", marginBottom: 5, opacity: 0.6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    ◈ {task.client_name}
                                   </div>
                                 )}
                                 {/* Meta */}
@@ -1793,17 +1830,15 @@ export default function App() {
                                     Reason: {task.overdue_reason.slice(0, 55)}{task.overdue_reason.length > 55 ? "…" : ""}
                                   </div>
                                 )}
-                                {/* Manager: hover actions */}
+                                {/* Manager/Creator: hover actions */}
                                 {perms.canCreate && (
                                   <div className="absolute top-2 right-2 hidden group-hover:flex gap-1">
                                     <button onClick={e => { e.stopPropagation(); setEditTask({ ...task }); setShowEditTaskModal(true); }}
                                       style={{ color: "var(--deep-forest)", background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.12)", padding: "3px 5px", cursor: "pointer" }}
                                       className="hover:opacity-70 transition-opacity"><Edit3 size={10} /></button>
-                                    {perms.canDelete && (
-                                      <button onClick={e => { e.stopPropagation(); deleteTask(task.id); }}
-                                        style={{ color: "var(--gris)", background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.12)", padding: "3px 5px", cursor: "pointer" }}
-                                        className="hover:text-[var(--danger)] transition-colors"><Trash2 size={10} /></button>
-                                    )}
+                                    <button onClick={e => { e.stopPropagation(); deleteTask(task.id); }}
+                                      style={{ color: "var(--gris)", background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.12)", padding: "3px 5px", cursor: "pointer" }}
+                                      className="hover:text-[var(--danger)] transition-colors"><Trash2 size={10} /></button>
                                   </div>
                                 )}
                               </div>

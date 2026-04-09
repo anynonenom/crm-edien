@@ -511,14 +511,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { data: settings } = await supabase.from("global_settings").select("ai_provider").eq("id", 1).maybeSingle();
         const provider = settings?.ai_provider || process.env.AI_PROVIDER || "groq";
         const today = new Date().toISOString().split("T")[0];
-        const [{ data: dealsData }, { data: tasksRaw }, { data: kbData }] = await Promise.all([
-          supabase.from("deals").select("title, value, stage, risk_score, contacts(name)").order("created_at", { ascending: false }).limit(10),
-          supabase.from("tasks").select("title, status, priority, due_date, users!assignee_id(name)").neq("status", "Completed").order("due_date").limit(15),
+        const [{ data: dealsData }, { data: tasksRaw }, { data: kbData }, { data: contactsData }] = await Promise.all([
+          supabase.from("deals").select("id, title, value, stage, risk_score, contacts(name)").order("created_at", { ascending: false }).limit(20),
+          supabase.from("tasks").select("id, title, status, priority, due_date, users!assignee_id(name)").neq("status", "Completed").order("due_date").limit(20),
           supabase.from("knowledge_base").select("title, content, category"),
+          supabase.from("contacts").select("id, name, company, email, status").order("created_at", { ascending: false }).limit(20),
         ]);
         const d = dealsData || [];
         const t = (tasksRaw || []).map((x: any) => ({ ...x, assignee: x.users?.name || "Unassigned" }));
         const kb = kbData || [];
+        const contacts = contactsData || [];
         const pipelineValue = d.reduce((s: number, x: any) => s + (x.value || 0), 0);
         const wonDeals = d.filter((x: any) => x.stage === "Won").length;
         const closedDeals = d.filter((x: any) => ["Won", "Lost"].includes(x.stage)).length;
@@ -530,20 +532,30 @@ Your role: Help employees manage their work, monitor tasks, analyze deals, track
 **Pipeline:** $${pipelineValue.toLocaleString()} total value
 **Active Deals:** ${d.filter((x: any) => !["Won","Lost"].includes(x.stage)).length} | **Win Rate:** ${winRate}%
 **Overdue Tasks:** ${overdueTasks.length}
-**ACTIVE TASKS (${t.length}):**
-${t.map((x: any) => `- [${x.priority}${x.due_date < today ? " OVERDUE" : ""}] ${x.title} → ${x.assignee} (due: ${x.due_date}, ${x.status})`).join("\n") || "None"}
-**RECENT DEALS:**
-${d.map((x: any) => `- ${x.title}: $${(x.value || 0).toLocaleString()} [${x.stage}] risk:${x.risk_score}% contact:${(x.contacts as any)?.name || "N/A"}`).join("\n") || "None"}
+**ACTIVE TASKS (${t.length}) — use these IDs for updates/deletes:**
+${t.map((x: any) => `- [ID:${x.id}] [${x.priority}${x.due_date < today ? " OVERDUE" : ""}] ${x.title} → ${x.assignee} (due: ${x.due_date}, ${x.status})`).join("\n") || "None"}
+**RECENT DEALS — use these IDs for updates/deletes:**
+${d.map((x: any) => `- [ID:${x.id}] ${x.title}: $${(x.value || 0).toLocaleString()} [${x.stage}] risk:${x.risk_score}% contact:${(x.contacts as any)?.name || "N/A"}`).join("\n") || "None"}
+**CONTACTS — use these IDs for updates/deletes:**
+${contacts.map((x: any) => `- [ID:${x.id}] ${x.name} | ${x.company || "No company"} | ${x.email || "No email"} | ${x.status}`).join("\n") || "None"}
 **KNOWLEDGE BASE:**
 ${kb.map((k: any) => `[${k.category}] ${k.title}: ${k.content.slice(0, 120)}...`).join("\n")}
-## CAPABILITIES
-When a user wants to create or update data, respond with a JSON action block:
-{"action":"create_task","data":{"title":"...","assignee":"...","due_date":"YYYY-MM-DD","priority":"High|Medium|Low","description":"..."}}
-{"action":"create_deal","data":{"title":"...","value":0,"stage":"Lead|Proposal|Negotiation"}}
+## CAPABILITIES — respond with ONE JSON action block when the user wants to create/update/delete data:
+Create task:   {"action":"create_task","data":{"title":"...","assignee":"...","due_date":"YYYY-MM-DD","priority":"High|Medium|Low","description":"..."}}
+Update task:   {"action":"update_task","data":{"id":123,"status":"Pending|In Progress|Completed","priority":"High|Medium|Low","due_date":"YYYY-MM-DD","assignee":"..."}}
+Delete task:   {"action":"delete_task","data":{"id":123}}
+Create deal:   {"action":"create_deal","data":{"title":"...","value":0,"stage":"Lead|Proposal|Negotiation|Won|Lost"}}
+Update deal:   {"action":"update_deal","data":{"id":123,"stage":"...","value":0,"notes":"..."}}
+Delete deal:   {"action":"delete_deal","data":{"id":123}}
+Create contact: {"action":"create_contact","data":{"name":"...","company":"...","email":"...","status":"Active|Prospect|Inactive","source":"..."}}
+Update contact: {"action":"update_contact","data":{"id":123,"status":"...","company":"...","email":"...","notes":"..."}}
+Delete contact: {"action":"delete_contact","data":{"id":123}}
 ## GUIDELINES
 - Be concise, highlight overdue tasks and high-risk deals proactively
 - For briefings, use bullet points
-- Always ground analysis in the actual data provided above`;
+- Always ground analysis in the actual data provided above
+- When updating/deleting, use the exact numeric ID from the data above
+- Only include fields you want to change in update actions`;
         try {
           const text = await sendToAI(systemPrompt, messages.map((m: any) => ({ role: m.role, content: String(m.content) })), provider);
           return res.json({ text });
