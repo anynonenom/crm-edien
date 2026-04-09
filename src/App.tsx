@@ -211,7 +211,9 @@ export default function App() {
 
   // Notifications
   const [notifications, setNotifications] = useState<{ id: number; type: "task" | "clockout" | "warn"; title: string; body: string; at: number }[]>([]);
+  const [toasts, setToasts] = useState<{ id: number; type: "task" | "clockout" | "warn"; title: string; body: string }[]>([]);
   const seenTaskIdsRef = useRef<Set<number>>(new Set());
+  const shownToastIdsRef = useRef<Set<number>>(new Set());
   const autoClockWarnedRef = useRef(false);
 
   // Work schedule: { start, end } in 24h hours. null = weekend.
@@ -378,6 +380,26 @@ export default function App() {
     }
     myTasks.forEach(t => seenTaskIdsRef.current.add(t.id));
   }, [tasks, isLoggedIn, currentUser]);
+
+  // Request browser notification permission on login
+  useEffect(() => {
+    if (isLoggedIn && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, [isLoggedIn]);
+
+  // Watch notifications → show toasts + fire browser notification when tab is hidden
+  useEffect(() => {
+    notifications.forEach(n => {
+      if (shownToastIdsRef.current.has(n.id)) return;
+      shownToastIdsRef.current.add(n.id);
+      setToasts(prev => [...prev.slice(-4), { id: n.id, type: n.type, title: n.title, body: n.body }]);
+      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== n.id)), 5500);
+      if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+        new Notification(n.title, { body: n.body, icon: "https://eiden-group.com/wp-content/uploads/2025/11/ChatGPT-Image-Nov-25-2025-03_46_55-PM.png" });
+      }
+    });
+  }, [notifications]);
 
   useEffect(() => {
     if (!isLoggedIn || !currentWorkspace?.id) return;
@@ -3757,31 +3779,37 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Notification toasts */}
-      <AnimatePresence>
-        {notifications.slice(-1).map(n => (
-          <motion.div key={n.id}
-            initial={{ opacity: 0, y: 60, x: "-50%" }}
-            animate={{ opacity: 1, y: 0, x: "-50%" }}
-            exit={{ opacity: 0, y: 60, x: "-50%" }}
-            transition={{ type: "spring", stiffness: 280, damping: 28 }}
-            onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
-            className="fixed bottom-6 left-1/2 cursor-pointer z-[9999] flex items-center gap-3 px-5 py-4"
-            style={{
-              background: n.type === "clockout" ? "var(--success)" : n.type === "warn" ? "#92600a" : "var(--deep-forest)",
-              boxShadow: "0 12px 40px rgba(0,0,0,0.35)", minWidth: 300, maxWidth: 400
-            }}>
-            <div className="shrink-0 w-8 h-8 flex items-center justify-center text-[1rem]" style={{ background: "rgba(255,255,255,0.12)" }}>
-              {n.type === "clockout" ? "✅" : n.type === "warn" ? "⏰" : "📋"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: "1px" }}>{n.title}</div>
-              <div className="text-[0.78rem] mt-0.5" style={{ color: "rgba(255,255,255,0.9)", fontWeight: 500, lineHeight: 1.3 }}>{n.body}</div>
-            </div>
-            <X size={14} style={{ color: "rgba(255,255,255,0.4)", flexShrink: 0 }} />
-          </motion.div>
-        ))}
-      </AnimatePresence>
+      {/* Notification toasts — top-right stacked */}
+      <div className="fixed top-[72px] right-3 sm:right-5 z-[9999] flex flex-col gap-2" style={{ maxWidth: 360, width: "calc(100vw - 24px)", pointerEvents: "none" }}>
+        <AnimatePresence>
+          {toasts.map(n => {
+            const accent = n.type === "clockout" ? "var(--success)" : n.type === "warn" ? "#a05c00" : "var(--deep-forest)";
+            const icon = n.type === "clockout" ? "✅" : n.type === "warn" ? "⏰" : "📋";
+            return (
+              <motion.div key={n.id}
+                initial={{ opacity: 0, x: 80 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 80 }}
+                transition={{ type: "spring", stiffness: 320, damping: 30 }}
+                style={{ pointerEvents: "auto", overflow: "hidden", background: "var(--pure-white)", border: `1px solid ${accent}33`, borderLeft: `3px solid ${accent}`, boxShadow: "0 8px 32px rgba(0,0,0,0.14)" }}>
+                <div className="flex items-start gap-3 px-4 py-3">
+                  <span className="text-[1rem] shrink-0 mt-0.5">{icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: accent }}>{n.title}</div>
+                    <div className="text-[0.75rem] mt-0.5 leading-snug" style={{ color: "var(--deep-forest)", opacity: 0.85 }}>{n.body}</div>
+                  </div>
+                  <button onClick={() => setToasts(prev => prev.filter(t => t.id !== n.id))} style={{ color: "rgba(18,38,32,0.3)", background: "none", border: "none", cursor: "pointer", padding: 2, flexShrink: 0 }}>
+                    <X size={12} />
+                  </button>
+                </div>
+                {/* Auto-dismiss progress bar */}
+                <motion.div initial={{ scaleX: 1 }} animate={{ scaleX: 0 }} transition={{ duration: 5, ease: "linear" }}
+                  style={{ height: 2, background: accent, transformOrigin: "left", opacity: 0.5 }} />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
 
       {/* Chat notification toast */}
       <AnimatePresence>
