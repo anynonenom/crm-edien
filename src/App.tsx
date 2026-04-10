@@ -210,7 +210,7 @@ export default function App() {
   const [liveTime, setLiveTime] = useState(new Date());
 
   // Notifications
-  const [notifications, setNotifications] = useState<{ id: number; type: "task" | "clockout" | "warn"; title: string; body: string; at: number }[]>([]);
+  const [notifications, setNotifications] = useState<{ id: number; type: "task" | "clockout" | "warn"; title: string; body: string; at: number; taskId?: number }[]>([]);
   const [toasts, setToasts] = useState<{ id: number; type: "task" | "clockout" | "warn"; title: string; body: string }[]>([]);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const seenTaskIdsRef = useRef<Set<number>>(new Set());
@@ -418,7 +418,8 @@ export default function App() {
           type: "warn" as const,
           title: "Overdue Reason Submitted",
           body: `${t.assignee_name || "Employee"} · "${t.title}": ${t.overdue_reason}`,
-          at: Date.now()
+          at: Date.now(),
+          taskId: t.id
         }]);
       });
   }, [tasks, isLoggedIn, currentUser, perms.canCreate]);
@@ -4059,20 +4060,40 @@ export default function App() {
                           Recent · {notifications.length}
                         </span>
                       </div>
-                      {[...notifications].reverse().map(n => (
-                        <div key={n.id} className="flex items-start gap-3 px-5 py-4" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
-                          <div className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full mt-0.5"
-                            style={{ background: n.type === "warn" ? "rgba(234,179,8,0.12)" : n.type === "clockout" ? "rgba(45,122,110,0.12)" : "rgba(18,38,32,0.08)" }}>
-                            {n.type === "warn" ? <AlertTriangle size={14} style={{ color: "var(--warning)" }} /> :
-                             n.type === "clockout" ? <Clock size={14} style={{ color: "var(--teal)" }} /> :
-                             <Bell size={14} style={{ color: "var(--deep-forest)" }} />}
+                      {[...notifications].reverse().map(n => {
+                        const isReasonNotif = n.title === "Overdue Reason Submitted" && n.taskId;
+                        const linkedTask = isReasonNotif ? tasks.find(t => t.id === n.taskId) : null;
+                        return (
+                          <div key={n.id}
+                            onClick={() => {
+                              if (linkedTask) {
+                                setDeadlineEditTask({ ...linkedTask });
+                                setDeadlineEditValue(toDatetimeLocal(linkedTask.due_date));
+                                setShowNotifPanel(false);
+                              }
+                            }}
+                            className="flex items-start gap-3 px-5 py-4"
+                            style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", cursor: linkedTask ? "pointer" : "default", transition: "background 0.15s" }}
+                            onMouseEnter={e => { if (linkedTask) e.currentTarget.style.background = "rgba(18,38,32,0.03)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = ""; }}>
+                            <div className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full mt-0.5"
+                              style={{ background: n.type === "warn" ? "rgba(234,179,8,0.12)" : n.type === "clockout" ? "rgba(45,122,110,0.12)" : "rgba(18,38,32,0.08)" }}>
+                              {n.type === "warn" ? <AlertTriangle size={14} style={{ color: "var(--warning)" }} /> :
+                               n.type === "clockout" ? <Clock size={14} style={{ color: "var(--teal)" }} /> :
+                               <Bell size={14} style={{ color: "var(--deep-forest)" }} />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[0.8rem] font-semibold leading-snug" style={{ color: "var(--deep-forest)" }}>{n.title}</div>
+                              <div className="text-[0.7rem] mt-1 leading-relaxed" style={{ color: "rgba(18,38,32,0.55)" }}>{n.body}</div>
+                              {linkedTask && (
+                                <div className="mt-1.5 text-[0.6rem] font-semibold uppercase tracking-wide" style={{ color: "var(--warning)", fontFamily: "'JetBrains Mono', monospace" }}>
+                                  Tap to review &amp; edit deadline →
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-[0.8rem] font-semibold leading-snug" style={{ color: "var(--deep-forest)" }}>{n.title}</div>
-                            <div className="text-[0.7rem] mt-1 leading-relaxed" style={{ color: "rgba(18,38,32,0.55)" }}>{n.body}</div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
