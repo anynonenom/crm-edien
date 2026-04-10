@@ -4223,18 +4223,18 @@ function NavItem({ active, onClick, icon, label, badge, badgeColor }: {
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(18,38,32,0.6)", backdropFilter: "blur(6px)" }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" style={{ background: "rgba(18,38,32,0.6)", backdropFilter: "blur(6px)" }}>
       <motion.div initial={{ opacity: 0, scale: 0.97, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }}
-        className="w-full max-w-md mx-3 sm:mx-0 relative"
-        style={{ background: "var(--pure-white)", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 32px 80px rgba(0,0,0,0.2)" }}>
+        className="w-full relative"
+        style={{ maxWidth: 760, background: "var(--pure-white)", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 40px 100px rgba(0,0,0,0.28)" }}>
         {/* Corner accent */}
         <div className="absolute bottom-0 right-0 w-8 h-8 pointer-events-none" style={{ borderBottom: "1.5px solid rgba(18,38,32,0.2)", borderRight: "1.5px solid rgba(18,38,32,0.2)" }} />
-        <div className="flex items-center justify-between px-6 sm:px-8 pt-7 pb-5" style={{ borderBottom: "1px solid rgba(18,38,32,0.08)" }}>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, letterSpacing: "-0.3px", color: "var(--deep-forest)", textTransform: "uppercase" }}>{title}</h2>
-          <button onClick={onClose} style={{ color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", fontSize: "1.3rem", lineHeight: 1, transition: "color 0.2s" }}
+        <div className="flex items-center justify-between px-8 sm:px-10 pt-8 pb-6" style={{ borderBottom: "1px solid rgba(18,38,32,0.08)" }}>
+          <h2 style={{ fontSize: "1.15rem", fontWeight: 700, letterSpacing: "-0.3px", color: "var(--deep-forest)", textTransform: "uppercase" }}>{title}</h2>
+          <button onClick={onClose} style={{ color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", fontSize: "1.5rem", lineHeight: 1, transition: "color 0.2s", marginLeft: 16 }}
             onMouseEnter={e => (e.currentTarget.style.color = "var(--danger)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(18,38,32,0.35)")}>×</button>
         </div>
-        <div className="px-6 sm:px-8 py-6 sm:py-7">{children}</div>
+        <div className="px-8 sm:px-10 py-7 sm:py-8">{children}</div>
       </motion.div>
     </div>
   );
