@@ -27,10 +27,14 @@
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           navigator.serviceWorker.register("/sw.js").then(reg => {
-            // Poll for updates every 60 seconds
-            setInterval(() => reg.update(), 60000);
+            // Poll every 30 seconds
+            setInterval(() => reg.update(), 30000);
+            // Also check when the user switches back to the tab
+            document.addEventListener("visibilitychange", () => {
+              if (document.visibilityState === "visible") reg.update();
+            });
           }).catch(() => {});
-          // When a new service worker takes control, reload to get the latest build
+          // Reload automatically when new SW takes control
           navigator.serviceWorker.addEventListener("controllerchange", () => {
             window.location.reload();
           });
