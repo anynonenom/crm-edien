@@ -596,7 +596,21 @@ export default function App() {
 
     let r: Response;
     if (act === "create_task") {
-      const assignee = users.find(u => u.name.toLowerCase().includes((d.assignee || "").toLowerCase()));
+      if (!perms.canCreate) {
+        addMessage(wsId, { role: "assistant", content: "❌ You don't have permission to create tasks." });
+        return;
+      }
+      // Only assign to users who have task-creation permission (managers/coordinators)
+      const assignableUsers = users.filter(u => {
+        const p = PERMISSIONS[u.role];
+        return p && p.canCreate;
+      });
+      const assignee = assignableUsers.find(u => u.name.toLowerCase().includes((d.assignee || "").toLowerCase()))
+        ?? users.find(u => u.name.toLowerCase().includes((d.assignee || "").toLowerCase()));
+      if (d.assignee && !assignee) {
+        addMessage(wsId, { role: "assistant", content: `❌ "${d.assignee}" doesn't have permission to be assigned tasks or wasn't found.` });
+        return;
+      }
       r = await post("/api/tasks", { title: d.title, description: d.description || "", assignee_id: assignee?.id || currentUser?.id, due_date: d.due_date || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0], priority: d.priority || "Medium", workspace_id: wsId });
       addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Task "${d.title}" created!` : `❌ Failed to create task.` });
     } else if (act === "update_task" && d.id) {
@@ -1865,9 +1879,15 @@ export default function App() {
                             <span style={{ fontSize: "0.62rem", color: overdue ? "var(--danger)" : "rgba(18,38,32,0.32)", fontFamily: "'JetBrains Mono', monospace" }}>{formatDueDate(task.due_date)}{overdue ? " ⚠" : ""}</span>
                           </div>
                         </div>
-                        {/* Move to buttons */}
+                        {/* Move to buttons + delete */}
                         {(perms.canCreate || task.assignee_id === currentUser?.id) && (
                           <div className="flex gap-1.5 mt-2.5 pt-2.5" style={{ borderTop: "1px solid rgba(18,38,32,0.07)" }} onClick={e => e.stopPropagation()}>
+                          {perms.canCreate && (
+                            <button onClick={async () => { if (confirm(`Delete "${task.title}"?`)) { await deleteTask(task.id); } }}
+                              style={{ padding: "5px 7px", fontSize: "0.55rem", background: "transparent", border: "1px solid rgba(139,58,58,0.35)", color: "var(--danger)", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                              <Trash2 size={9} />
+                            </button>
+                          )}
                             <span style={{ fontSize: "0.55rem", fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.35)", textTransform: "uppercase", letterSpacing: "0.5px", alignSelf: "center", marginRight: 2 }}>Move →</span>
                             {(["Pending","In Progress","Completed"] as const).filter(s => s !== mobileKanbanCol).map(targetStatus => {
                               const accent = targetStatus === "Pending" ? "var(--warning)" : targetStatus === "In Progress" ? "#2a9d8f" : "var(--success)";
