@@ -1842,6 +1842,28 @@ export default function App() {
                             <span style={{ fontSize: "0.62rem", color: overdue ? "var(--danger)" : "rgba(18,38,32,0.32)", fontFamily: "'JetBrains Mono', monospace" }}>{formatDueDate(task.due_date)}{overdue ? " ⚠" : ""}</span>
                           </div>
                         </div>
+                        {/* Move to buttons */}
+                        {(perms.canCreate || task.assignee_id === currentUser?.id) && (
+                          <div className="flex gap-1.5 mt-2.5 pt-2.5" style={{ borderTop: "1px solid rgba(18,38,32,0.07)" }} onClick={e => e.stopPropagation()}>
+                            <span style={{ fontSize: "0.55rem", fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.35)", textTransform: "uppercase", letterSpacing: "0.5px", alignSelf: "center", marginRight: 2 }}>Move →</span>
+                            {(["Pending","In Progress","Completed"] as const).filter(s => s !== mobileKanbanCol).map(targetStatus => {
+                              const accent = targetStatus === "Pending" ? "var(--warning)" : targetStatus === "In Progress" ? "#2a9d8f" : "var(--success)";
+                              return (
+                                <button key={targetStatus} onClick={async () => {
+                                  if (perms.canCreate) {
+                                    await updateTaskStatus(task.id, targetStatus);
+                                  } else if (task.assignee_id === currentUser?.id) {
+                                    await updateTaskStatusByEmployee(task.id, targetStatus, task.title);
+                                  }
+                                  setMobileKanbanCol(targetStatus);
+                                }}
+                                  style={{ flex: 1, padding: "5px 4px", fontSize: "0.55rem", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "transparent", border: `1px solid ${accent}`, color: accent, cursor: "pointer" }}>
+                                  {targetStatus === "In Progress" ? "In Progress" : targetStatus}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                         {overdue && task.assignee_id === currentUser?.id && !task.overdue_reason && (
                           <button onClick={e => { e.stopPropagation(); setOverdueTask(task); setOverdueReasonText(""); }}
                             className="mt-2 w-full flex items-center justify-center gap-1 text-[0.57rem] font-semibold uppercase tracking-wide px-2 py-1.5"
