@@ -258,6 +258,7 @@ export default function App() {
   const [adminData, setAdminData] = useState<{ workspaces: any[]; users: any[] } | null>(null);
   const [adminSection, setAdminSection] = useState<"workspaces" | "users" | "ai">("workspaces");
   const [pendingUserRoles, setPendingUserRoles] = useState<Record<number, string>>({});
+  const [pendingUserEdits, setPendingUserEdits] = useState<Record<number, { name?: string; email?: string; password?: string }>>({});
   const [aiProviderData, setAiProviderData] = useState<{ active: string; providers: any[] } | null>(null);
   const [showCreateWsModal, setShowCreateWsModal] = useState(false);
   const [newWsName, setNewWsName] = useState("");
@@ -3134,65 +3135,96 @@ export default function App() {
                   {adminData && adminSection === "users" && (
                     <div className="eiden-card overflow-hidden">
                       <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                      <table style={{ minWidth: 640 }} className="w-full text-left">
+                      <table style={{ minWidth: 860 }} className="w-full text-left">
                         <thead className="sticky top-0" style={{ background: "rgba(18,38,32,0.04)" }}>
                           <tr style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
-                            {["Name", "Email", "Role", "Workspace", "Actions"].map(h => (
-                              <th key={h} className="py-2.5 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.35)" }}>{h}</th>
+                            {["Name", "Email", "Password", "Role", "Workspace", "Actions"].map(h => (
+                              <th key={h} className="py-2.5 px-3" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.35)", whiteSpace: "nowrap" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
-                          {adminData.users.map((u: any) => (
-                            <tr key={u.id} style={{ borderBottom: "1px solid rgba(18,38,32,0.05)" }}>
-                              <td className="py-3 px-4" style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--deep-forest)" }}>{u.name}</td>
-                              <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.4)" }}>{u.email}</td>
-                              <td className="py-3 px-4">
-                                {(() => {
-                                  const pendingRole = pendingUserRoles[u.id] ?? u.role;
-                                  const isDirty = pendingRole !== u.role;
-                                  return (
-                                    <div className="flex items-center gap-2">
-                                      <select value={pendingRole}
-                                        onChange={e => setPendingUserRoles(prev => ({ ...prev, [u.id]: e.target.value }))}
-                                        className="text-[0.7rem] outline-none px-2 py-1 font-semibold"
-                                        style={{ border: "none", borderBottom: `1px solid ${isDirty ? "var(--warning)" : "rgba(18,38,32,0.15)"}`, background: "transparent", color: isDirty ? "var(--warning)" : "var(--deep-forest)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}>
-                                        {["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Admin Coordinator", "Brand Manager", "Branding and Strategy Manager", "Solution Architect", "Designer", "Video Editor", "Web Developer", "Community Manager", "Content Creator", "Content Strategy", "Marketing Strategy", "DevOps", "Sales", "Commercial", "Intern Designer", "Intern Video Editor", "Intern Web Developer", "Intern Community Manager", "Intern Content Creator", "Intern Content Strategy", "Intern Marketing Strategy", "Intern DevOps", "Intern Sales", "Intern Commercial"].map(r => (
-                                          <option key={r} value={r}>{r}</option>
-                                        ))}
-                                      </select>
-                                      {isDirty && (
-                                        <button
-                                          onClick={async () => {
-                                            await fetch(`/api/users/${u.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: pendingRole }) });
-                                            setPendingUserRoles(prev => { const n = { ...prev }; delete n[u.id]; return n; });
-                                            fetchAdminData();
-                                          }}
-                                          style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", padding: "3px 8px", background: "var(--deep-forest)", color: "var(--silk-creme)", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>
-                                          SAVE
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </td>
-                              <td className="py-3 px-4">
-                                <select value={u.workspace_id || ""} onChange={async e => {
-                                  await fetch(`/api/users/${u.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspace_id: e.target.value }) });
-                                  fetchAdminData();
-                                }} className="text-[0.7rem] outline-none px-2 py-1"
-                                  style={{ border: "none", borderBottom: "1px solid rgba(18,38,32,0.15)", background: "transparent", color: "var(--deep-forest)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}>
-                                  {adminData.workspaces.map((ws: any) => <option key={ws.id} value={ws.id}>{ws.name}</option>)}
-                                </select>
-                              </td>
-                              <td className="py-3 px-4">
-                                {u.id !== currentUser?.id && (
-                                  <button onClick={async () => { if (confirm(`Delete user "${u.name}"?`)) { await fetch(`/api/users/${u.id}`, { method: "DELETE" }); fetchAdminData(); } }}
-                                    className="btn-mini danger" style={{ fontSize: "0.6rem" }}><Trash2 size={10} /></button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
+                          {adminData.users.map((u: any) => {
+                            const edits = pendingUserEdits[u.id] ?? {};
+                            const pendingRole = pendingUserRoles[u.id] ?? u.role;
+                            const isRoleDirty = pendingRole !== u.role;
+                            const nameVal = edits.name ?? u.name;
+                            const emailVal = edits.email ?? u.email;
+                            const passVal = edits.password ?? "";
+                            const isInfoDirty = nameVal !== u.name || emailVal !== u.email || passVal.length >= 6;
+                            const setEdit = (field: string, val: string) => setPendingUserEdits(prev => ({ ...prev, [u.id]: { ...prev[u.id], [field]: val } }));
+                            const saveInfo = async () => {
+                              const body: any = {};
+                              if (nameVal !== u.name) body.name = nameVal;
+                              if (emailVal !== u.email) body.email = emailVal;
+                              if (passVal.trim().length >= 6) body.password = passVal.trim();
+                              if (Object.keys(body).length === 0) return;
+                              await fetch(`/api/users/${u.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                              setPendingUserEdits(prev => { const n = { ...prev }; delete n[u.id]; return n; });
+                              fetchAdminData();
+                            };
+                            return (
+                              <tr key={u.id} style={{ borderBottom: "1px solid rgba(18,38,32,0.05)" }}>
+                                {/* Name */}
+                                <td className="py-2 px-3">
+                                  <input value={nameVal} onChange={e => setEdit("name", e.target.value)}
+                                    style={{ background: "transparent", border: "none", borderBottom: `1px solid ${nameVal !== u.name ? "var(--warning)" : "rgba(18,38,32,0.12)"}`, fontSize: "0.78rem", fontWeight: 600, color: "var(--deep-forest)", fontFamily: "'Space Grotesk', sans-serif", outline: "none", width: 120, padding: "2px 0" }} />
+                                </td>
+                                {/* Email */}
+                                <td className="py-2 px-3">
+                                  <input value={emailVal} onChange={e => setEdit("email", e.target.value)}
+                                    style={{ background: "transparent", border: "none", borderBottom: `1px solid ${emailVal !== u.email ? "var(--warning)" : "rgba(18,38,32,0.12)"}`, fontSize: "0.65rem", fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.55)", outline: "none", width: 160, padding: "2px 0" }} />
+                                </td>
+                                {/* Password */}
+                                <td className="py-2 px-3">
+                                  <input type="password" value={passVal} onChange={e => setEdit("password", e.target.value)} placeholder="New password"
+                                    style={{ background: "transparent", border: "none", borderBottom: `1px solid ${passVal.length >= 6 ? "var(--warning)" : "rgba(18,38,32,0.12)"}`, fontSize: "0.65rem", fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.55)", outline: "none", width: 130, padding: "2px 0" }} />
+                                </td>
+                                {/* Role */}
+                                <td className="py-2 px-3">
+                                  <div className="flex items-center gap-1.5">
+                                    <select value={pendingRole} onChange={e => setPendingUserRoles(prev => ({ ...prev, [u.id]: e.target.value }))}
+                                      className="text-[0.7rem] outline-none py-1 font-semibold"
+                                      style={{ border: "none", borderBottom: `1px solid ${isRoleDirty ? "var(--warning)" : "rgba(18,38,32,0.15)"}`, background: "transparent", color: isRoleDirty ? "var(--warning)" : "var(--deep-forest)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer", maxWidth: 160 }}>
+                                      {["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Admin Coordinator", "Brand Manager", "Branding and Strategy Manager", "Solution Architect", "Designer", "Video Editor", "Web Developer", "Community Manager", "Content Creator", "Content Strategy", "Marketing Strategy", "DevOps", "Sales", "Commercial", "Intern Designer", "Intern Video Editor", "Intern Web Developer", "Intern Community Manager", "Intern Content Creator", "Intern Content Strategy", "Intern Marketing Strategy", "Intern DevOps", "Intern Sales", "Intern Commercial"].map(r => (
+                                        <option key={r} value={r}>{r}</option>
+                                      ))}
+                                    </select>
+                                    {isRoleDirty && (
+                                      <button onClick={async () => {
+                                        await fetch(`/api/users/${u.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: pendingRole }) });
+                                        setPendingUserRoles(prev => { const n = { ...prev }; delete n[u.id]; return n; });
+                                        fetchAdminData();
+                                      }} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", fontWeight: 700, textTransform: "uppercase", padding: "2px 6px", background: "var(--deep-forest)", color: "var(--silk-creme)", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>SAVE</button>
+                                    )}
+                                  </div>
+                                </td>
+                                {/* Workspace */}
+                                <td className="py-2 px-3">
+                                  <select value={u.workspace_id || ""} onChange={async e => {
+                                    await fetch(`/api/users/${u.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspace_id: e.target.value }) });
+                                    fetchAdminData();
+                                  }} className="text-[0.7rem] outline-none py-1"
+                                    style={{ border: "none", borderBottom: "1px solid rgba(18,38,32,0.15)", background: "transparent", color: "var(--deep-forest)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer", maxWidth: 130 }}>
+                                    {adminData.workspaces.map((ws: any) => <option key={ws.id} value={ws.id}>{ws.name}</option>)}
+                                  </select>
+                                </td>
+                                {/* Actions */}
+                                <td className="py-2 px-3">
+                                  <div className="flex items-center gap-1.5">
+                                    {isInfoDirty && (
+                                      <button onClick={saveInfo}
+                                        style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", fontWeight: 700, textTransform: "uppercase", padding: "3px 7px", background: "var(--success)", color: "var(--silk-creme)", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>SAVE</button>
+                                    )}
+                                    {u.id !== currentUser?.id && (
+                                      <button onClick={async () => { if (confirm(`Delete user "${u.name}"?`)) { await fetch(`/api/users/${u.id}`, { method: "DELETE" }); fetchAdminData(); } }}
+                                        className="btn-mini danger" style={{ fontSize: "0.6rem" }}><Trash2 size={10} /></button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                       </div>
@@ -3826,26 +3858,59 @@ export default function App() {
         )}
 
         {/* Profile */}
-        {showProfileModal && (
-          <Modal title="Your Profile" onClose={() => setShowProfileModal(false)}>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: "Name", value: currentUser?.name, colored: false },
-                  { label: "Role", value: currentUser?.role, colored: true },
-                  { label: "Workspace", value: currentWorkspace?.name, colored: false },
-                  { label: "Open Tasks", value: `${tasks.filter(t => t.assignee_id === currentUser?.id && t.status !== "Completed").length} open`, colored: true },
-                ].map(({ label, value, colored }) => (
-                  <div key={label} className="p-3" style={{ border: "1px solid rgba(18,38,32,0.1)" }}>
-                    <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] mb-1" style={{ color: "var(--gris)" }}>{label}</div>
-                    <div className="font-semibold text-[0.85rem]" style={{ color: colored ? "var(--deep-forest)" : "var(--deep-forest)" }}>{value}</div>
+        {showProfileModal && (() => {
+          const [profileName, setProfileName] = React.useState(currentUser?.name ?? "");
+          const [profileEmail, setProfileEmail] = React.useState(currentUser?.email ?? "");
+          const [profilePass, setProfilePass] = React.useState("");
+          const [profileSaving, setProfileSaving] = React.useState(false);
+          const [profileMsg, setProfileMsg] = React.useState<string | null>(null);
+          const handleProfileSave = async () => {
+            if (!currentUser) return;
+            setProfileSaving(true); setProfileMsg(null);
+            const body: any = {};
+            if (profileName.trim() && profileName.trim() !== currentUser.name) body.name = profileName.trim();
+            if (profileEmail.trim() && profileEmail.trim() !== currentUser.email) body.email = profileEmail.trim();
+            if (profilePass.trim().length >= 6) body.password = profilePass.trim();
+            if (Object.keys(body).length === 0) { setProfileSaving(false); setProfileMsg("No changes to save."); return; }
+            const res = await fetch(`/api/users/${currentUser.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+            if (res.ok) {
+              if (body.name) setCurrentUser((u: any) => u ? { ...u, name: body.name } : u);
+              if (body.email) setCurrentUser((u: any) => u ? { ...u, email: body.email } : u);
+              setProfilePass(""); setProfileMsg("Saved successfully.");
+            } else { setProfileMsg("Error saving. Try again."); }
+            setProfileSaving(false);
+          };
+          return (
+            <Modal title="Your Profile" onClose={() => setShowProfileModal(false)}>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 text-[0.75rem]">
+                  <div className="p-3" style={{ border: "1px solid rgba(18,38,32,0.1)" }}>
+                    <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] mb-1" style={{ color: "var(--gris)" }}>Role</div>
+                    <div className="font-semibold" style={{ color: "var(--deep-forest)" }}>{currentUser?.role}</div>
                   </div>
-                ))}
+                  <div className="p-3" style={{ border: "1px solid rgba(18,38,32,0.1)" }}>
+                    <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] mb-1" style={{ color: "var(--gris)" }}>Open Tasks</div>
+                    <div className="font-semibold" style={{ color: "var(--deep-forest)" }}>{tasks.filter(t => t.assignee_id === currentUser?.id && t.status !== "Completed").length} open</div>
+                  </div>
+                </div>
+                <Field label="Name">
+                  <input className="field-input" value={profileName} onChange={e => setProfileName(e.target.value)} placeholder="Your name" />
+                </Field>
+                <Field label="Email">
+                  <input className="field-input" type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} placeholder="your@email.com" />
+                </Field>
+                <Field label="New Password (leave blank to keep current)">
+                  <input className="field-input" type="password" value={profilePass} onChange={e => setProfilePass(e.target.value)} placeholder="Min 6 characters" />
+                </Field>
+                {profileMsg && <div style={{ fontSize: "0.75rem", color: profileMsg.startsWith("Saved") ? "var(--success)" : "var(--danger)" }}>{profileMsg}</div>}
+                <button onClick={handleProfileSave} disabled={profileSaving} className="btn-primary w-full justify-center" style={{ padding: "10px 0" }}>
+                  {profileSaving ? "Saving…" : "Save Changes"}
+                </button>
+                <button onClick={() => { setShowProfileModal(false); setIsLoggedIn(false); setCurrentUser(null); setCurrentWorkspace(null); localStorage.removeItem("eiden_session"); }} className="flash-button" style={{ marginBottom: 0, borderColor: "rgba(139,58,58,0.4)", color: "var(--danger)" }}>Log out</button>
               </div>
-              <button onClick={() => { setShowProfileModal(false); setIsLoggedIn(false); setCurrentUser(null); setCurrentWorkspace(null); localStorage.removeItem("eiden_session"); }} className="flash-button" style={{ marginBottom: 0, borderColor: "rgba(139,58,58,0.4)", color: "var(--danger)" }}>Log out</button>
-            </div>
-          </Modal>
-        )}
+            </Modal>
+          );
+        })()}
       </AnimatePresence>
 
       {/* ── Mobile floating notification bell (bottom-right) ── */}

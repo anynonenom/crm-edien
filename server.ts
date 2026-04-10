@@ -360,13 +360,14 @@ async function startServer() {
 
   app.patch("/api/users/:id", async (req, res) => {
     const { id } = req.params;
-    const { name, email, role, workspace_id } = req.body;
+    const { name, email, role, workspace_id, password } = req.body;
     try {
       const updates: any = {};
       if (name !== undefined) updates.name = name;
       if (email !== undefined) updates.email = email;
       if (role !== undefined) updates.role = role;
       if (workspace_id !== undefined) updates.workspace_id = Number(workspace_id);
+      if (password !== undefined && password.trim().length >= 6) updates.password = await bcrypt.hash(password, 10);
       await supabase.from("users").update(updates).eq("id", id);
       res.json({ success: true });
     } catch { res.status(500).json({ error: "Server error" }); }
