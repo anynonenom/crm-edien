@@ -76,7 +76,7 @@ const PERMISSIONS: Record<string, { tabs: string[]; canCreate: boolean; canDelet
   "Eiden HQ":                     { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],   canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
   "Eiden Global":                  { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],   canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
   "Operational Manager":           { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],   canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Admin Coordinator":             { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Admin Coordinator":             { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"], canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
   "Brand Manager":                 { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
   "Branding and Strategy Manager": { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
   "Solution Architect":            { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
@@ -216,6 +216,7 @@ export default function App() {
   const seenTaskIdsRef = useRef<Set<number>>(new Set());
   const shownToastIdsRef = useRef<Set<number>>(new Set());
   const notifiedOverdueRef = useRef<Set<number>>(new Set());
+  const seenReasonTaskIdsRef = useRef<Set<number>>(new Set());
   const touchDragTaskIdRef = useRef<number | null>(null);
   const touchGhostRef = useRef<HTMLDivElement | null>(null);
   const autoClockWarnedRef = useRef(false);
@@ -269,6 +270,7 @@ export default function App() {
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [pendingAiAction, setPendingAiAction] = useState<{ action: string; data: any; summary: string } | null>(null);
   const [taskSearch, setTaskSearch] = useState("");
+  const [mobileKanbanCol, setMobileKanbanCol] = useState<"Pending"|"In Progress"|"Completed">("Pending");
   const aiEndRef = useRef<HTMLDivElement>(null);
 
   // Auth forms
@@ -402,6 +404,24 @@ export default function App() {
         }]);
       });
   }, [tasks, isLoggedIn, currentUser]);
+
+  // Submitted overdue reasons → notify managers once per task
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser || !perms.canCreate) return;
+    tasks
+      .filter(t => t.overdue_reason)
+      .forEach(t => {
+        if (seenReasonTaskIdsRef.current.has(t.id)) return;
+        seenReasonTaskIdsRef.current.add(t.id);
+        setNotifications(prev => [...prev, {
+          id: Date.now() + t.id + 20000,
+          type: "warn" as const,
+          title: "Overdue Reason Submitted",
+          body: `${t.assignee_name || "Employee"} · "${t.title}": ${t.overdue_reason}`,
+          at: Date.now()
+        }]);
+      });
+  }, [tasks, isLoggedIn, currentUser, perms.canCreate]);
 
   // Request browser notification permission on login
   useEffect(() => {
@@ -1783,9 +1803,62 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Kanban board */}
-                <div className="flex-1 min-h-0 overflow-x-auto">
-                <div className="h-full grid grid-cols-3 gap-3" style={{ minWidth: 720 }}>
+                {/* Mobile column switcher */}
+                <div className="lg:hidden shrink-0 flex" style={{ borderBottom: "1px solid rgba(18,38,32,0.08)", background: "var(--pure-white)" }}>
+                  {(["Pending","In Progress","Completed"] as const).map(col => {
+                    const accent = col === "Pending" ? "var(--warning)" : col === "In Progress" ? "#2a9d8f" : "var(--success)";
+                    const count = filteredTasks.filter(t => t.status === col).length;
+                    const active = mobileKanbanCol === col;
+                    return (
+                      <button key={col} onClick={() => setMobileKanbanCol(col)}
+                        className="flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-all"
+                        style={{ background: "none", border: "none", cursor: "pointer", borderBottom: active ? `2px solid ${accent}` : "2px solid transparent", color: active ? accent : "rgba(18,38,32,0.4)" }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>{col}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", fontWeight: active ? 700 : 400 }}>{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Mobile: single column list */}
+                <div className="lg:hidden flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
+                  {filteredTasks.filter(t => t.status === mobileKanbanCol).map((task: Task): React.ReactElement => {
+                    const overdue = isOverdue(task.due_date, task.status);
+                    const colAccent = mobileKanbanCol === "Pending" ? "var(--warning)" : mobileKanbanCol === "In Progress" ? "#2a9d8f" : "var(--success)";
+                    return (
+                      <div key={task.id}
+                        onTouchStart={e => handleTouchDragStart(e, task)}
+                        onTouchMove={handleTouchDragMove}
+                        onTouchEnd={handleTouchDragEnd}
+                        onClick={() => { setSelectedTaskDetail({ ...task }); setShowTaskDetailModal(true); }}
+                        style={{ background: "var(--pure-white)", border: `1px solid ${overdue ? "rgba(139,58,58,0.25)" : "rgba(18,38,32,0.08)"}`, borderLeft: `3px solid ${overdue ? "var(--danger)" : colAccent}`, padding: "12px 14px", cursor: "pointer" }}>
+                        <div style={{ fontSize: "0.85rem", fontWeight: 600, lineHeight: 1.3, marginBottom: 6, color: overdue ? "var(--danger)" : "var(--deep-forest)" }}>{task.title}</div>
+                        {task.description && <div style={{ fontSize: "0.7rem", color: "rgba(18,38,32,0.45)", marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.description}</div>}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span style={{ fontSize: "0.72rem", color: "rgba(18,38,32,0.5)" }}>{task.assignee_name || "Unassigned"}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-1.5 py-0.5 text-[0.52rem] font-bold uppercase border ${priorityColor(task.priority)}`}>{task.priority}</span>
+                            <span style={{ fontSize: "0.62rem", color: overdue ? "var(--danger)" : "rgba(18,38,32,0.32)", fontFamily: "'JetBrains Mono', monospace" }}>{formatDueDate(task.due_date)}{overdue ? " ⚠" : ""}</span>
+                          </div>
+                        </div>
+                        {overdue && task.assignee_id === currentUser?.id && !task.overdue_reason && (
+                          <button onClick={e => { e.stopPropagation(); setOverdueTask(task); setOverdueReasonText(""); }}
+                            className="mt-2 w-full flex items-center justify-center gap-1 text-[0.57rem] font-semibold uppercase tracking-wide px-2 py-1.5"
+                            style={{ color: "var(--danger)", border: "1px solid var(--danger)", background: "rgba(139,58,58,0.06)", cursor: "pointer" }}>
+                            <AlertTriangle size={9} /> Submit Overdue Reason
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {filteredTasks.filter(t => t.status === mobileKanbanCol).length === 0 && (
+                    <div className="flex items-center justify-center py-12 text-[0.65rem]" style={{ color: "rgba(18,38,32,0.25)", fontFamily: "'JetBrains Mono', monospace" }}>No tasks here</div>
+                  )}
+                </div>
+
+                {/* Desktop: 3-column kanban */}
+                <div className="hidden lg:block flex-1 min-h-0 overflow-x-auto">
+                <div className="h-full grid grid-cols-3 gap-3" style={{ minWidth: 680 }}>
                   {(["Pending","In Progress","Completed"] as const).map((colStatus): React.ReactElement => {
                     const colTasks = filteredTasks.filter(t => t.status === colStatus);
                     const colAccent = colStatus === "Pending" ? "var(--warning)" : colStatus === "In Progress" ? "#2a9d8f" : "var(--success)";
@@ -1919,36 +1992,6 @@ export default function App() {
                   })}
                 </div>
                 </div>
-
-                {/* Managers: submitted overdue reasons panel */}
-                {(["Admin","Eiden HQ","Eiden Global","Operational Manager","Admin Coordinator","Brand Manager","Branding and Strategy Manager","Solution Architect"].includes(currentUser?.role || "")) && (() => {
-                  const reasonedTasks = filteredTasks.filter(t => t.overdue_reason);
-                  if (reasonedTasks.length === 0) return null;
-                  return (
-                    <div className="shrink-0 p-4" style={{ border: "1px solid rgba(18,38,32,0.1)", borderLeft: "3px solid var(--warning)", background: "rgba(200,160,60,0.03)" }}>
-                      <div className="flex items-center gap-2 mb-3">
-                        <AlertTriangle size={13} style={{ color: "var(--warning)" }} />
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: "var(--warning)" }}>Submitted Overdue Reasons ({reasonedTasks.length})</span>
-                      </div>
-                      <div className="space-y-2">
-                        {reasonedTasks.map(t => (
-                          <div key={t.id} className="p-3" style={{ border: "1px solid rgba(18,38,32,0.07)", background: "white" }}>
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-[0.78rem]" style={{ color: "var(--deep-forest)" }}>{t.title}</div>
-                                <div className="text-[0.7rem] mt-0.5" style={{ color: "rgba(18,38,32,0.5)" }}>by {t.assignee_name} · due {formatDueDate(t.due_date)}</div>
-                                <div className="mt-1.5 text-[0.72rem] italic" style={{ color: "rgba(18,38,32,0.65)" }}>"{t.overdue_reason}"</div>
-                              </div>
-                              <div className="shrink-0 text-[0.58rem] font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.3)" }}>
-                                {t.overdue_reason_at ? new Date(t.overdue_reason_at).toLocaleDateString() : ""}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
               </motion.div>
             )}
 
@@ -3774,7 +3817,7 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => setShowProfileModal(false)} className="flash-button" style={{ marginBottom: 0 }}>Close</button>
+              <button onClick={() => { setShowProfileModal(false); setIsLoggedIn(false); setCurrentUser(null); setCurrentWorkspace(null); localStorage.removeItem("eiden_session"); }} className="flash-button" style={{ marginBottom: 0, borderColor: "rgba(139,58,58,0.4)", color: "var(--danger)" }}>Log out</button>
             </div>
           </Modal>
         )}
@@ -3784,7 +3827,7 @@ export default function App() {
       {isLoggedIn && (
         <button onClick={() => setShowNotifPanel(v => !v)}
           className="lg:hidden fixed z-[60] flex items-center justify-center"
-          style={{ bottom: 74, right: 18, width: 52, height: 52, borderRadius: "50%", background: "var(--deep-forest)", color: "var(--silk-creme)", border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(18,38,32,0.35)", position: "relative" }}>
+          style={{ bottom: 74, right: 18, width: 52, height: 52, borderRadius: "50%", background: "var(--deep-forest)", color: "var(--silk-creme)", border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(18,38,32,0.35)" }}>
           <Bell size={22} />
           {(() => { const total = notifications.length + filteredTasks.filter(t => (perms.canCreate || t.assignee_id === currentUser?.id) && isOverdue(t.due_date, t.status) && !t.overdue_reason).length; return total > 0 ? <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full text-[0.55rem] font-bold" style={{ background: "var(--danger)", color: "white" }}>{total}</span> : null; })()}
         </button>
