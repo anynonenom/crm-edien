@@ -3133,7 +3133,8 @@ export default function App() {
 
                   {adminData && adminSection === "users" && (
                     <div className="eiden-card overflow-hidden">
-                      <table className="w-full text-left">
+                      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                      <table style={{ minWidth: 640 }} className="w-full text-left">
                         <thead className="sticky top-0" style={{ background: "rgba(18,38,32,0.04)" }}>
                           <tr style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
                             {["Name", "Email", "Role", "Workspace", "Actions"].map(h => (
@@ -3194,6 +3195,7 @@ export default function App() {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     </div>
                   )}
                 </div>
