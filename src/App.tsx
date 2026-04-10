@@ -212,6 +212,7 @@ export default function App() {
   // Notifications
   const [notifications, setNotifications] = useState<{ id: number; type: "task" | "clockout" | "warn"; title: string; body: string; at: number }[]>([]);
   const [toasts, setToasts] = useState<{ id: number; type: "task" | "clockout" | "warn"; title: string; body: string }[]>([]);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
   const seenTaskIdsRef = useRef<Set<number>>(new Set());
   const shownToastIdsRef = useRef<Set<number>>(new Set());
   const notifiedOverdueRef = useRef<Set<number>>(new Set());
@@ -1361,58 +1362,6 @@ export default function App() {
           )}
         </nav>
 
-        {/* Admin Coordinator — all workspace overdue tasks with deadline editing */}
-        {currentUser?.role === "Admin Coordinator" && (() => {
-          const allOverdue = tasks.filter(t => t.workspace_id === currentWorkspace?.id && isOverdue(t.due_date, t.status));
-          if (allOverdue.length === 0) return null;
-          return (
-            <div className="mx-4 mb-3" style={{ background: "rgba(80,40,10,0.18)", border: "1px solid rgba(200,140,60,0.35)" }}>
-              <div className="px-3 py-2" style={{ borderBottom: "1px solid rgba(200,140,60,0.2)" }}>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.56rem", letterSpacing: "1px", textTransform: "uppercase", color: "rgba(240,180,80,0.9)", fontWeight: 700 }}>
-                  ⏰ {allOverdue.length} Overdue — Edit Deadlines
-                </div>
-              </div>
-              <div className="overflow-y-auto" style={{ maxHeight: 200 }}>
-                {allOverdue.map(t => (
-                  <div key={t.id} className="px-3 py-2" style={{ borderBottom: "1px solid rgba(200,140,60,0.12)" }}>
-                    <div style={{ fontSize: "0.68rem", fontWeight: 600, color: "rgba(244,235,208,0.85)", lineHeight: 1.3, marginBottom: 2 }}>{t.title}</div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(244,235,208,0.4)", marginBottom: 5 }}>
-                      {t.assignee_name} · due {formatDueDate(t.due_date)}
-                      {t.overdue_reason && <span style={{ color: "rgba(240,180,80,0.7)" }}> · reason submitted</span>}
-                    </div>
-                    <button onClick={() => { setDeadlineEditTask(t); setDeadlineEditValue(toDatetimeLocal(t.due_date)); }}
-                      className="text-left px-2 py-1 w-full"
-                      style={{ background: "rgba(200,140,60,0.2)", border: "1px solid rgba(200,140,60,0.35)", color: "rgba(240,180,80,0.9)", fontSize: "0.58rem", fontFamily: "'JetBrains Mono', monospace", cursor: "pointer", letterSpacing: "0.5px" }}>
-                      ✏ Edit Deadline
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Overdue notification in sidebar — own tasks for other roles */}
-        {currentUser?.role !== "Admin Coordinator" && (() => {
-          const myOverdue = filteredTasks.filter(t => isOverdue(t.due_date, t.status) && !t.overdue_reason);
-          if (myOverdue.length === 0) return null;
-          return (
-            <div className="mx-4 mb-3 p-3" style={{ background: "rgba(139,58,58,0.15)", border: "1px solid rgba(139,58,58,0.3)" }}>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", letterSpacing: "1px", textTransform: "uppercase", color: "rgba(200,112,112,0.9)", marginBottom: 6 }}>
-                ⚠ {myOverdue.length} overdue task{myOverdue.length > 1 ? "s" : ""}
-              </div>
-              {myOverdue.slice(0, 2).map(t => (
-                <button key={t.id} onClick={() => { setOverdueTask(t); setOverdueReasonText(""); }}
-                  className="w-full text-left mb-1.5 last:mb-0 px-2 py-1.5"
-                  style={{ background: "rgba(139,58,58,0.2)", border: "none", cursor: "pointer", color: "rgba(244,235,208,0.8)", fontSize: "0.7rem", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  <div style={{ fontWeight: 600, fontSize: "0.72rem" }}>{t.title}</div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(244,235,208,0.45)", marginTop: 2 }}>Submit reason →</div>
-                </button>
-              ))}
-              {myOverdue.length > 2 && <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(244,235,208,0.35)", marginTop: 4 }}>+{myOverdue.length - 2} more overdue</div>}
-            </div>
-          );
-        })()}
 
         {/* User / bottom */}
         <div className="px-6 py-5" style={{ borderTop: "1px solid rgba(244,235,208,0.07)" }}>
@@ -1471,14 +1420,12 @@ export default function App() {
             {activeTab === "contacts" && perms.canCreate && <button onClick={() => setShowNewContactModal(true)} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Contact</button>}
             {activeTab === "tasks" && perms.canCreate && <button onClick={() => { setSelectedDealForTask(null); setShowNewTaskModal(true); }} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Task</button>}
             {activeTab === "knowledge_base" && currentUser?.role === "Admin" && <button onClick={() => { setKbTitle(""); setKbContent(""); setKbCategory("Services"); setShowNewKnowledgeModal(true); }} className="btn-primary text-[0.68rem] px-3 py-1.5">+ Entry</button>}
-            {/* Notification bell */}
+            {/* Notification bell — top bar (desktop + mobile) */}
             <div className="relative">
-              <button onClick={() => setNotifications([])} title={notifications.length > 0 ? "Click to dismiss all" : "No notifications"}
+              <button onClick={() => setShowNotifPanel(v => !v)} title="Notifications"
                 style={{ color: notifications.length > 0 ? "var(--warning)" : "rgba(18,38,32,0.3)", background: "none", border: "none", cursor: "pointer", padding: 4, position: "relative" }}>
                 <Bell size={15} />
-                {notifications.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 flex items-center justify-center rounded-full text-[0.5rem] font-bold" style={{ background: "var(--danger)", color: "white" }}>{notifications.length}</span>
-                )}
+                {(() => { const total = notifications.length + filteredTasks.filter(t => (perms.canCreate || t.assignee_id === currentUser?.id) && isOverdue(t.due_date, t.status) && !t.overdue_reason).length; return total > 0 ? <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 flex items-center justify-center rounded-full text-[0.5rem] font-bold" style={{ background: "var(--danger)", color: "white" }}>{total}</span> : null; })()}
               </button>
             </div>
             <button onClick={fetchData} style={{ color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", padding: 4 }} title="Refresh"
@@ -3834,7 +3781,17 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* ── Mobile FAB (floating action button) ── */}
+      {/* ── Mobile floating notification bell (bottom-right) ── */}
+      {isLoggedIn && (
+        <button onClick={() => setShowNotifPanel(v => !v)}
+          className="lg:hidden fixed z-[60] flex items-center justify-center"
+          style={{ bottom: 74, right: 18, width: 52, height: 52, borderRadius: "50%", background: "var(--deep-forest)", color: "var(--silk-creme)", border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(18,38,32,0.35)", position: "relative" }}>
+          <Bell size={22} />
+          {(() => { const total = notifications.length + filteredTasks.filter(t => (perms.canCreate || t.assignee_id === currentUser?.id) && isOverdue(t.due_date, t.status) && !t.overdue_reason).length; return total > 0 ? <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full text-[0.55rem] font-bold" style={{ background: "var(--danger)", color: "white" }}>{total}</span> : null; })()}
+        </button>
+      )}
+
+      {/* ── Mobile FAB (floating action button) — sits above bell ── */}
       {(() => {
         const fabAction =
           activeTab === "tasks" && perms.canCreate ? () => { setSelectedDealForTask(null); setShowNewTaskModal(true); } :
@@ -3847,7 +3804,7 @@ export default function App() {
         return (
           <button onClick={fabAction}
             className="lg:hidden fixed z-[60] flex items-center justify-center"
-            style={{ bottom: 74, right: 18, width: 52, height: 52, borderRadius: "50%", background: "var(--deep-forest)", color: "var(--silk-creme)", border: "none", cursor: "pointer", fontSize: "1.6rem", fontWeight: 300, boxShadow: "0 4px 20px rgba(18,38,32,0.35)", lineHeight: 1 }}>
+            style={{ bottom: 134, right: 18, width: 52, height: 52, borderRadius: "50%", background: "var(--teal, #2d7a6e)", color: "var(--silk-creme)", border: "none", cursor: "pointer", fontSize: "1.6rem", fontWeight: 300, boxShadow: "0 4px 20px rgba(18,38,32,0.35)", lineHeight: 1 }}>
             +
           </button>
         );
@@ -3948,6 +3905,139 @@ export default function App() {
             <MessageSquare size={13} style={{ color: "rgba(244,235,208,0.4)", flexShrink: 0 }} />
           </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* ── Notification Slide-in Panel (desktop + mobile) ── */}
+      <AnimatePresence>
+        {showNotifPanel && isLoggedIn && (() => {
+          const overdue = filteredTasks.filter(t =>
+            (perms.canCreate || t.assignee_id === currentUser?.id) &&
+            isOverdue(t.due_date, t.status) && !t.overdue_reason
+          );
+          const totalCount = overdue.length + notifications.length;
+          return (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                key="notif-backdrop"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setShowNotifPanel(false)}
+                className="fixed inset-0 z-[90]"
+                style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)" }}
+              />
+              {/* Slide-in panel */}
+              <motion.div
+                key="notif-panel"
+                initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+                transition={{ type: "spring", stiffness: 320, damping: 34 }}
+                className="fixed top-0 right-0 bottom-0 z-[100] flex flex-col"
+                style={{ width: "min(380px, 100vw)", background: "var(--silk-creme)", boxShadow: "-8px 0 40px rgba(18,38,32,0.18)" }}
+              >
+                {/* Header */}
+                <div className="shrink-0 flex items-center justify-between px-5 py-4" style={{ background: "var(--deep-forest)", color: "var(--silk-creme)" }}>
+                  <div className="flex items-center gap-2.5">
+                    <Bell size={16} />
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" }}>Notifications</span>
+                    {totalCount > 0 && (
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full text-[0.55rem] font-bold" style={{ background: "var(--danger)", color: "white" }}>{totalCount}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {totalCount > 0 && (
+                      <button onClick={() => setNotifications([])}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(244,235,208,0.5)", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", letterSpacing: "1px", textTransform: "uppercase", transition: "color 0.15s" }}
+                        onMouseEnter={e => (e.currentTarget.style.color = "var(--silk-creme)")}
+                        onMouseLeave={e => (e.currentTarget.style.color = "rgba(244,235,208,0.5)")}>
+                        Clear all
+                      </button>
+                    )}
+                    <button onClick={() => setShowNotifPanel(false)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(244,235,208,0.6)", display: "flex", alignItems: "center", padding: 2, transition: "color 0.15s" }}
+                      onMouseEnter={e => (e.currentTarget.style.color = "var(--silk-creme)")}
+                      onMouseLeave={e => (e.currentTarget.style.color = "rgba(244,235,208,0.6)")}>
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="flex-1 overflow-y-auto">
+                  {/* Empty state */}
+                  {totalCount === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full gap-3 pb-16">
+                      <div className="w-16 h-16 flex items-center justify-center rounded-full" style={{ background: "rgba(18,38,32,0.06)" }}>
+                        <Bell size={28} style={{ color: "rgba(18,38,32,0.2)" }} />
+                      </div>
+                      <div className="text-[0.8rem] font-semibold" style={{ color: "rgba(18,38,32,0.35)" }}>All caught up!</div>
+                      <div className="text-[0.7rem]" style={{ color: "rgba(18,38,32,0.25)" }}>No new notifications</div>
+                    </div>
+                  )}
+
+                  {/* Overdue tasks */}
+                  {overdue.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: "1px solid rgba(220,38,38,0.15)", background: "rgba(220,38,38,0.04)" }}>
+                        <AlertTriangle size={12} style={{ color: "var(--danger)" }} />
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--danger)" }}>
+                          Overdue · {overdue.length}
+                        </span>
+                      </div>
+                      {overdue.map(t => (
+                        <div key={t.id}
+                          onClick={() => { setSelectedTaskDetail({ ...t }); setShowTaskDetailModal(true); setShowNotifPanel(false); }}
+                          className="flex items-start gap-3 px-5 py-4 cursor-pointer"
+                          style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", transition: "background 0.15s" }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "rgba(220,38,38,0.04)")}
+                          onMouseLeave={e => (e.currentTarget.style.background = "")}>
+                          <div className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full mt-0.5" style={{ background: "rgba(220,38,38,0.1)" }}>
+                            <AlertTriangle size={14} style={{ color: "var(--danger)" }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[0.8rem] font-semibold leading-snug" style={{ color: "var(--deep-forest)" }}>{t.title}</div>
+                            <div className="text-[0.67rem] mt-1" style={{ color: "var(--danger)" }}>Due {formatDueDate(t.due_date)}</div>
+                            {perms.canCreate && t.assignee_id !== currentUser?.id && (
+                              <div className="text-[0.63rem] mt-0.5" style={{ color: "rgba(18,38,32,0.4)" }}>
+                                {users.find(u => u.id === t.assignee_id)?.name ?? "—"}
+                              </div>
+                            )}
+                          </div>
+                          <span className="shrink-0 self-center text-[0.55rem] font-bold px-2 py-1 rounded-sm" style={{ background: "rgba(220,38,38,0.12)", color: "var(--danger)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.5px" }}>LATE</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Recent system notifications */}
+                  {notifications.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.08)", background: "rgba(18,38,32,0.03)" }}>
+                        <Bell size={11} style={{ color: "rgba(18,38,32,0.4)" }} />
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(18,38,32,0.4)" }}>
+                          Recent · {notifications.length}
+                        </span>
+                      </div>
+                      {[...notifications].reverse().map(n => (
+                        <div key={n.id} className="flex items-start gap-3 px-5 py-4" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)" }}>
+                          <div className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full mt-0.5"
+                            style={{ background: n.type === "warn" ? "rgba(234,179,8,0.12)" : n.type === "clockout" ? "rgba(45,122,110,0.12)" : "rgba(18,38,32,0.08)" }}>
+                            {n.type === "warn" ? <AlertTriangle size={14} style={{ color: "var(--warning)" }} /> :
+                             n.type === "clockout" ? <Clock size={14} style={{ color: "var(--teal)" }} /> :
+                             <Bell size={14} style={{ color: "var(--deep-forest)" }} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[0.8rem] font-semibold leading-snug" style={{ color: "var(--deep-forest)" }}>{n.title}</div>
+                            <div className="text-[0.7rem] mt-1 leading-relaxed" style={{ color: "rgba(18,38,32,0.55)" }}>{n.body}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </>
+          );
+        })()}
       </AnimatePresence>
     </div>
   );
