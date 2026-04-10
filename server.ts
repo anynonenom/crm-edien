@@ -787,6 +787,13 @@ You can include normal text AND an action block in the same response. Example:
     }
   });
 
+  // ─── Service Worker — always no-cache so updates propagate instantly ──────────
+  app.get("/sw.js", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.sendFile(path.join(__dirname, process.env.NODE_ENV !== "production" ? "public/sw.js" : "dist/sw.js"));
+  });
+
   // ─── Vite Dev / Static ────────────────────────────────────────────────────────
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

@@ -1497,7 +1497,7 @@ export default function App() {
           <AnimatePresence mode="wait">
             {/* ── Dashboard ─────────────────────────────────────── */}
             {activeTab === "dashboard" && (
-              <motion.div key="dashboard" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col gap-3 lg:gap-4 overflow-y-auto lg:overflow-hidden">
+              <motion.div key="dashboard" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col gap-3 lg:gap-4 overflow-y-auto lg:overflow-hidden pb-24 lg:pb-0">
                 {/* Stats row — role-aware */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3 shrink-0">
                   {perms.canAssignAll ? (
@@ -3849,7 +3849,7 @@ export default function App() {
       {isLoggedIn && (
         <button onClick={() => setShowNotifPanel(v => !v)}
           className="lg:hidden fixed z-[60] flex items-center justify-center"
-          style={{ bottom: 74, right: 18, width: 52, height: 52, borderRadius: "50%", background: "var(--deep-forest)", color: "var(--silk-creme)", border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(18,38,32,0.35)" }}>
+          style={{ bottom: 84, right: 18, width: 52, height: 52, borderRadius: "50%", background: "var(--deep-forest)", color: "var(--silk-creme)", border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(18,38,32,0.35)" }}>
           <Bell size={22} />
           {(() => { const total = notifications.length + filteredTasks.filter(t => (perms.canCreate || t.assignee_id === currentUser?.id) && isOverdue(t.due_date, t.status) && !t.overdue_reason).length; return total > 0 ? <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full text-[0.55rem] font-bold" style={{ background: "var(--danger)", color: "white" }}>{total}</span> : null; })()}
         </button>
