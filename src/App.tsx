@@ -1110,7 +1110,7 @@ export default function App() {
         <div className="hidden md:flex relative overflow-hidden flex-col justify-between" style={{ width: "55%", background: "var(--deep-forest)", padding: "60px" }}>
           <div className="silk-texture" />
           <div style={{ position: "relative", zIndex: 10 }}>
-            <img src="https://eiden-group.com/wp-content/uploads/2026/04/EIDEN-BMS.png" alt="Eiden Group" style={{ height: 140, width: "auto", opacity: 0.95 }} />
+            <img src="https://eiden-group.com/wp-content/uploads/2025/11/ChatGPT-Image-Nov-25-2025-03_46_55-PM.png" alt="Eiden Group" style={{ height: 140, width: "auto", opacity: 0.95 }} />
           </div>
           <div style={{ position: "relative", zIndex: 10, color: "var(--silk-creme)" }}>
             <h1 style={{ fontSize: "clamp(3rem,7vw,5.5rem)", lineHeight: 0.9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "-2px" }}>
@@ -3833,6 +3833,25 @@ export default function App() {
           </Modal>
         )}
       </AnimatePresence>
+
+      {/* ── Mobile FAB (floating action button) ── */}
+      {(() => {
+        const fabAction =
+          activeTab === "tasks" && perms.canCreate ? () => { setSelectedDealForTask(null); setShowNewTaskModal(true); } :
+          activeTab === "pipeline" && perms.canCreate ? () => setShowNewDealModal(true) :
+          activeTab === "contacts" && perms.canCreate ? () => setShowNewContactModal(true) :
+          activeTab === "clients" && perms.canCreate ? () => setShowNewClientModal(true) :
+          activeTab === "knowledge_base" && currentUser?.role === "Admin" ? () => { setKbTitle(""); setKbContent(""); setKbCategory("Services"); setShowNewKnowledgeModal(true); } :
+          null;
+        if (!fabAction) return null;
+        return (
+          <button onClick={fabAction}
+            className="lg:hidden fixed z-[60] flex items-center justify-center"
+            style={{ bottom: 74, right: 18, width: 52, height: 52, borderRadius: "50%", background: "var(--deep-forest)", color: "var(--silk-creme)", border: "none", cursor: "pointer", fontSize: "1.6rem", fontWeight: 300, boxShadow: "0 4px 20px rgba(18,38,32,0.35)", lineHeight: 1 }}>
+            +
+          </button>
+        );
+      })()}
 
       {/* ── Mobile bottom nav ── */}
       {(() => {
