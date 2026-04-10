@@ -1322,7 +1322,7 @@ export default function App() {
   const overdueTasks = filteredTasks.filter(t => isOverdue(t.due_date, t.status));
 
   return (
-    <div className="h-screen w-full flex overflow-hidden" style={{ background: "var(--silk-creme)" }}>
+    <div className="h-screen w-screen flex overflow-hidden" style={{ background: "var(--silk-creme)", maxWidth: "100%" }}>
 
       {/* Grain overlay */}
       <svg className="grain-overlay">
@@ -1390,7 +1390,7 @@ export default function App() {
       </div>
 
       {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex-1 min-w-0 w-full flex flex-col overflow-hidden">
         {/* Top bar */}
         <div className="shrink-0 flex items-center justify-between px-4 lg:px-8" style={{ height: 64, background: "var(--pure-white)", borderBottom: "1px solid rgba(18,38,32,0.08)" }}>
           <div className="flex items-center gap-3">
@@ -1436,11 +1436,11 @@ export default function App() {
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 overflow-hidden px-3 sm:px-5 lg:px-8 py-4 lg:py-6 pb-20 lg:pb-6" style={{ background: "var(--silk-creme)" }}>
+        <div className="flex-1 w-full overflow-hidden px-3 sm:px-5 lg:px-8 py-4 lg:py-6 pb-20 lg:pb-6" style={{ background: "var(--silk-creme)" }}>
           <AnimatePresence mode="wait">
             {/* ── Dashboard ─────────────────────────────────────── */}
             {activeTab === "dashboard" && (
-              <motion.div key="dashboard" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-3 lg:gap-4 overflow-y-auto lg:overflow-hidden">
+              <motion.div key="dashboard" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col gap-3 lg:gap-4 overflow-y-auto lg:overflow-hidden">
                 {/* Stats row — role-aware */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 lg:gap-3 shrink-0">
                   {perms.canAssignAll ? (
@@ -1653,7 +1653,7 @@ export default function App() {
 
             {/* ── Pipeline ──────────────────────────────────────── */}
             {activeTab === "pipeline" && (
-              <motion.div key="pipeline" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex gap-3 lg:gap-4 overflow-x-auto pb-2">
+              <motion.div key="pipeline" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full flex gap-3 lg:gap-4 overflow-x-auto pb-2">
                 {["Lead", "Proposal", "Negotiation", "Won", "Lost"].map(stage => {
                   const stageDeals = filteredDeals.filter(d => d.stage === stage);
                   const accentColor = stage === "Won" ? "var(--success)" : stage === "Lost" ? "var(--danger)" : "var(--deep-forest)";
@@ -1700,7 +1700,7 @@ export default function App() {
 
             {/* ── Contacts ──────────────────────────────────────── */}
             {activeTab === "contacts" && (
-              <motion.div key="contacts" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
+              <motion.div key="contacts" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col gap-4">
                 <div className="shrink-0 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <StatCard icon={<Users size={15} />} label="Total Contacts" value={String(filteredContacts.length)} color="teal" />
                   <StatCard icon={<CheckCircle2 size={15} />} label="Active Clients" value={String(filteredContacts.filter(c => c.status === "Active").length)} color="success" />
@@ -1759,7 +1759,7 @@ export default function App() {
 
             {/* ── Tasks (Kanban) ───────────────────────────────── */}
             {activeTab === "tasks" && (
-              <motion.div key="tasks" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
+              <motion.div key="tasks" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col gap-4">
                 {/* Stats row */}
                 <div className="shrink-0 grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <StatCard icon={<Clock size={15} />} label="Pending" value={String(filteredTasks.filter(t => t.status === "Pending").length)} color="warn" />
@@ -1955,7 +1955,7 @@ export default function App() {
 
             {/* ── Task Analytics (role-aware) ───────────────────── */}
             {activeTab === "time" && (
-              <motion.div key="time" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
+              <motion.div key="time" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full overflow-y-auto">
                 {((): React.ReactElement => {
                   const isManager = ["Admin","Eiden HQ","Operational Manager","Eiden Global","Admin Coordinator","Brand Manager","Branding and Strategy Manager","Solution Architect"].includes(currentUser?.role || "");
                   const wsUsers = users.filter(u => u.workspace_id === currentWorkspace?.id);
@@ -2161,7 +2161,7 @@ export default function App() {
 
             {/* ── Team ─────────────────────────────────────────── */}
             {activeTab === "team" && (
-              <motion.div key="team" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
+              <motion.div key="team" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full overflow-y-auto">
                 <div className="space-y-4 pb-6">
                   <div className="eiden-card overflow-hidden">
                     <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(18,38,32,0.07)", background: "rgba(18,38,32,0.02)" }}>
@@ -2217,7 +2217,7 @@ export default function App() {
 
             {/* ── Analytics ────────────────────────────────────── */}
             {activeTab === "analytics" && (
-              <motion.div key="analytics" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-0 overflow-hidden">
+              <motion.div key="analytics" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col gap-0 overflow-hidden">
                 {/* Sub-tabs */}
                 <div className="shrink-0 flex gap-0" style={{ borderBottom: "2px solid rgba(18,38,32,0.08)", background: "var(--pure-white)", paddingLeft: 0 }}>
                   {([
@@ -2818,7 +2818,7 @@ export default function App() {
 
             {/* ── Client Management ─────────────────────────────── */}
             {activeTab === "clients" && (
-              <motion.div key="clients" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
+              <motion.div key="clients" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col gap-4">
                 {/* Stats */}
                 <div className="shrink-0 grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <StatCard icon={<Users size={15} />} label="Total Clients" value={String(clients.filter(c => c.workspace_id === currentWorkspace?.id).length)} color="teal" />
@@ -2893,7 +2893,7 @@ export default function App() {
 
             {/* ── Codex ────────────────────────────────────────── */}
             {activeTab === "knowledge_base" && (
-              <motion.div key="knowledge_base" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
+              <motion.div key="knowledge_base" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full overflow-y-auto">
                 {/* Category groups */}
                 {["Company", "Services", "Methodology", "Results", "Sales", "Brand"].map(cat => {
                   const items = knowledge.filter(k => k.category === cat);
@@ -2962,7 +2962,7 @@ export default function App() {
 
             {/* ── Admin Panel ──────────────────────────────────── */}
             {activeTab === "admin" && currentUser?.role === "Admin" && (
-              <motion.div key="admin" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full flex flex-col gap-4">
+              <motion.div key="admin" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col gap-4">
                 {/* Sub-tabs */}
                 <div className="shrink-0 flex gap-0" style={{ borderBottom: "2px solid rgba(18,38,32,0.08)" }}>
                   {(["workspaces", "users", "ai"] as const).map(s => (
