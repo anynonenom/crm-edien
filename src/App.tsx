@@ -515,8 +515,8 @@ export default function App() {
                 create_task: `Create task "${d.title}" → ${d.assignee || "me"} · ${d.priority || "Medium"} · due ${d.due_date || "in 7 days"}`,
                 update_task: `Update task #${d.id}${d.status ? ` → ${d.status}` : ""}${d.priority ? ` · ${d.priority}` : ""}${d.due_date ? ` · due ${d.due_date}` : ""}`,
                 delete_task: `Delete task #${d.id} permanently`,
-                create_deal: `Create deal "${d.title}" · $${d.value || 0} · ${d.stage || "Lead"}`,
-                update_deal: `Update deal #${d.id}${d.stage ? ` → ${d.stage}` : ""}${d.value !== undefined ? ` · $${d.value}` : ""}`,
+                create_deal: `Create deal "${d.title}" · MAD ${d.value || 0} · ${d.stage || "Lead"}`,
+                update_deal: `Update deal #${d.id}${d.stage ? ` → ${d.stage}` : ""}${d.value !== undefined ? ` · MAD ${d.value}` : ""}`,
                 delete_deal: `Delete deal #${d.id} permanently`,
                 create_contact: `Create contact "${d.name}"${d.company ? ` (${d.company})` : ""}`,
                 update_contact: `Update contact #${d.id}${d.status ? ` → ${d.status}` : ""}`,
@@ -1435,7 +1435,7 @@ export default function App() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 lg:gap-3 shrink-0">
                   {perms.canAssignAll ? (
                     <>
-                      <StatCard icon={<TrendingUp size={16} />} label="Pipeline Value" value={`$${(stats?.pipelineValue || 0).toLocaleString()}`} color="teal" />
+                      <StatCard icon={<TrendingUp size={16} />} label="Pipeline Value" value={`MAD ${(stats?.pipelineValue || 0).toLocaleString()}`} color="teal" />
                       <StatCard icon={<Target size={16} />} label="Active Deals" value={String(stats?.activeDeals ?? "—")} color="teal" />
                       <StatCard icon={<Zap size={16} />} label="Win Rate" value={stats?.winRate ?? "—"} color="success" />
                       <StatCard icon={<Users size={16} />} label="Active Clients" value={String(stats?.activeClients ?? "—")} color="teal" />
@@ -1656,7 +1656,7 @@ export default function App() {
                         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "2px", color: accentColor }}>{stage}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-[0.65rem] font-bold" style={{ background: accentColor, color: "var(--silk-creme)", padding: "2px 8px", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", letterSpacing: "1px" }}>{stageDeals.length}</span>
-                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.4)" }}>${stageDeals.reduce((s, d) => s + d.value, 0).toLocaleString()}</span>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.4)" }}>MAD {stageDeals.reduce((s, d) => s + d.value, 0).toLocaleString()}</span>
                         </div>
                       </div>
                       <div className="flex-1 overflow-y-auto space-y-2 pr-0.5">
@@ -1667,7 +1667,7 @@ export default function App() {
                             <div className="absolute bottom-0 right-0 w-3 h-3 pointer-events-none" style={{ borderBottom: "1.5px solid rgba(18,38,32,0.2)", borderRight: "1.5px solid rgba(18,38,32,0.2)" }} />
                             <div className="mb-2" style={{ fontSize: "0.82rem", fontWeight: 600, lineHeight: 1.3, color: "var(--deep-forest)" }}>{deal.title}</div>
                             <div className="flex justify-between text-[0.72rem] mb-1">
-                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem", fontWeight: 600, color: "var(--deep-forest)" }}>${deal.value.toLocaleString()}</span>
+                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem", fontWeight: 600, color: "var(--deep-forest)" }}>MAD {deal.value.toLocaleString()}</span>
                               <span className="font-medium" style={{ color: deal.risk_score > 50 ? "var(--danger)" : "var(--success)" }}>Risk {deal.risk_score}%</span>
                             </div>
                             {deal.contact_name && <div className="text-[0.65rem] text-[var(--gris)] mb-2">{deal.contact_name}</div>}
@@ -1730,7 +1730,7 @@ export default function App() {
                               </span>
                             </td>
                             <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.38)" }}>{c.source || "—"}</td>
-                            <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", fontWeight: 600, color: "var(--deep-forest)" }}>${(c.ltv || 0).toLocaleString()}</td>
+                            <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", fontWeight: 600, color: "var(--deep-forest)" }}>MAD {(c.ltv || 0).toLocaleString()}</td>
                             <td className="py-3 px-4">
                               {perms.canDelete && (
                                 <button onClick={() => deleteContact(c.id)} className="btn-mini danger" title="Delete contact" style={{ padding: "3px 7px" }}>
@@ -2493,11 +2493,11 @@ export default function App() {
                       <div className="grid grid-cols-2 gap-4 mb-6">
                         <div className="p-3" style={{ borderLeft: "3px solid var(--success)" }}>
                           <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)] mb-1">Won Revenue</div>
-                          <div style={{ fontSize: "1.8rem", fontWeight: 300, color: "var(--success)", lineHeight: 1 }}>${(financials?.totalRevenue || 0).toLocaleString()}</div>
+                          <div style={{ fontSize: "1.8rem", fontWeight: 300, color: "var(--success)", lineHeight: 1 }}>MAD {(financials?.totalRevenue || 0).toLocaleString()}</div>
                         </div>
                         <div className="p-3" style={{ borderLeft: "1.5px solid var(--deep-forest)" }}>
                           <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--gris)] mb-1">Pipeline</div>
-                          <div style={{ fontSize: "1.8rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>${(financials?.pendingRevenue || 0).toLocaleString()}</div>
+                          <div style={{ fontSize: "1.8rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>MAD {(financials?.pendingRevenue || 0).toLocaleString()}</div>
                         </div>
                       </div>
                       {financials?.monthly && financials.monthly.length > 0 && (
@@ -2565,7 +2565,7 @@ export default function App() {
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                               {[
                                 { label: "Win Rate", value: `${winRate}%`, color: winRate >= 50 ? "var(--success)" : "var(--warning)" },
-                                { label: "Avg Deal", value: `$${avgDeal.toLocaleString()}`, color: "var(--deep-forest)" },
+                                { label: "Avg Deal", value: `MAD ${avgDeal.toLocaleString()}`, color: "var(--deep-forest)" },
                                 { label: "Avg Probability", value: `${avgProbability}%`, color: "#2a9d8f" },
                               ].map(s => (
                                 <div key={s.label} className="text-center p-3" style={{ border: "1px solid rgba(18,38,32,0.08)" }}>
@@ -2611,7 +2611,7 @@ export default function App() {
                               <div className="grid grid-cols-2 gap-3">
                                 <div className="p-3" style={{ borderLeft: "3px solid var(--success)" }}>
                                   <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Monthly Revenue</div>
-                                  <div style={{ fontSize: "1.5rem", fontWeight: 300, color: "var(--success)", lineHeight: 1 }}>${totalMRR.toLocaleString()}</div>
+                                  <div style={{ fontSize: "1.5rem", fontWeight: 300, color: "var(--success)", lineHeight: 1 }}>MAD {totalMRR.toLocaleString()}</div>
                                 </div>
                                 <div className="p-3" style={{ borderLeft: "1.5px solid var(--deep-forest)" }}>
                                   <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Active Clients</div>
@@ -2662,7 +2662,7 @@ export default function App() {
                                     <div className="font-semibold text-[0.8rem] truncate" style={{ color: "var(--deep-forest)" }}>{d.title}</div>
                                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)", marginTop: 1 }}>{d.contact_name} · {d.stage}</div>
                                   </div>
-                                  <span className="text-[0.72rem] font-bold shrink-0" style={{ color: "var(--deep-forest)" }}>${d.value.toLocaleString()}</span>
+                                  <span className="text-[0.72rem] font-bold shrink-0" style={{ color: "var(--deep-forest)" }}>MAD {d.value.toLocaleString()}</span>
                                 </div>
                                 <div style={{ height: 4, background: "rgba(18,38,32,0.06)", borderRadius: 2 }}>
                                   <div style={{ height: "100%", width: `${d.risk_score}%`, background: riskColor, borderRadius: 2 }} />
@@ -2736,7 +2736,7 @@ export default function App() {
                         <div className="grid grid-cols-2 gap-3 mt-2">
                           <div className="p-3" style={{ borderLeft: "3px solid var(--deep-forest)" }}>
                             <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Total LTV</div>
-                            <div style={{ fontSize: "1.4rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>${filteredContacts.reduce((s, c) => s + (c.ltv || 0), 0).toLocaleString()}</div>
+                            <div style={{ fontSize: "1.4rem", fontWeight: 300, color: "var(--deep-forest)", lineHeight: 1 }}>MAD {filteredContacts.reduce((s, c) => s + (c.ltv || 0), 0).toLocaleString()}</div>
                           </div>
                           <div className="p-3" style={{ borderLeft: "1.5px solid var(--success)" }}>
                             <div className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--gris)] mb-1">Active</div>
@@ -2785,7 +2785,7 @@ export default function App() {
                                 <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)", marginTop: 1 }}>{c.company} · {c.source}</div>
                               </div>
                               <span className="text-[0.6rem] font-bold px-1.5 py-0.5" style={{ color: statusColor, border: `1px solid ${statusColor}33` }}>{c.status}</span>
-                              <span className="text-[0.72rem] font-bold shrink-0" style={{ color: "var(--deep-forest)" }}>${(c.ltv || 0).toLocaleString()}</span>
+                              <span className="text-[0.72rem] font-bold shrink-0" style={{ color: "var(--deep-forest)" }}>MAD {(c.ltv || 0).toLocaleString()}</span>
                             </div>
                           );
                         })}
