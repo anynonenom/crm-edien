@@ -2926,7 +2926,7 @@ export default function App() {
                                 {cl.contact_email && <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.4)", marginTop: 2 }}>{cl.contact_email}</div>}
                               </td>
                               <td className="py-3 px-4" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", fontWeight: 600, color: "var(--deep-forest)" }}>
-                                ${(cl.monthly_value || 0).toLocaleString()}<span style={{ fontSize: "0.58rem", opacity: 0.45 }}>/mo</span>
+                                MAD {(cl.monthly_value || 0).toLocaleString()}<span style={{ fontSize: "0.58rem", opacity: 0.45 }}>/mo</span>
                               </td>
                               <td className="py-3 px-4">
                                 <div className="flex gap-1">
@@ -3235,7 +3235,7 @@ export default function App() {
             <form onSubmit={handleCreateDeal} className="space-y-4">
               <Field label="Deal Title"><input name="title" required className="field-input" placeholder="e.g. Website Redesign" /></Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Value ($)"><input name="value" type="number" required className="field-input" placeholder="0" min={0} /></Field>
+                <Field label="Value (MAD)"><input name="value" type="number" required className="field-input" placeholder="0" min={0} /></Field>
                 <Field label="Stage">
                   <select name="stage" required className="field-input">
                     <option value="Lead">Lead</option>
@@ -3261,7 +3261,7 @@ export default function App() {
             <div className="space-y-4">
               <Field label="Title"><input value={selectedDeal.title} onChange={e => setSelectedDeal({ ...selectedDeal, title: e.target.value })} className="field-input" /></Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Value ($)"><input type="number" value={selectedDeal.value} onChange={e => setSelectedDeal({ ...selectedDeal, value: Number(e.target.value) })} className="field-input" /></Field>
+                <Field label="Value (MAD)"><input type="number" value={selectedDeal.value} onChange={e => setSelectedDeal({ ...selectedDeal, value: Number(e.target.value) })} className="field-input" /></Field>
                 <Field label="Stage">
                   <select value={selectedDeal.stage} onChange={e => setSelectedDeal({ ...selectedDeal, stage: e.target.value })} className="field-input">
                     {["Lead","Proposal","Negotiation","Won","Lost"].map(s => <option key={s} value={s}>{s}</option>)}
@@ -3644,7 +3644,7 @@ export default function App() {
                 <Field label="Contact Phone">
                   <input name="contact_phone" placeholder="+1 555 000 0000" className="field-input" />
                 </Field>
-                <Field label="Monthly Value (USD)">
+                <Field label="Monthly Value (MAD)">
                   <input name="monthly_value" type="number" placeholder="0" min="0" className="field-input" />
                 </Field>
               </div>
@@ -3696,7 +3696,7 @@ export default function App() {
                 <Field label="Contact Phone">
                   <input name="contact_phone" defaultValue={editClient.contact_phone} className="field-input" />
                 </Field>
-                <Field label="Monthly Value (USD)">
+                <Field label="Monthly Value (MAD)">
                   <input name="monthly_value" type="number" defaultValue={editClient.monthly_value} min="0" className="field-input" />
                 </Field>
               </div>
