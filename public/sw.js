@@ -1,4 +1,4 @@
-const CACHE_NAME = "eiden-bms-v1";
+const CACHE_NAME = "eiden-bms-v2";
 const STATIC_ASSETS = ["/", "/index.html"];
 
 // Install — cache shell

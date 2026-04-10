@@ -719,11 +719,14 @@ async function startServer() {
     if (!Array.isArray(messages) || messages.length === 0) return res.status(400).json({ error: "messages array is required" });
 
     const today = new Date().toISOString().split("T")[0];
-    const [{ data: dealsData }, { data: tasksRaw }, { data: kbData }] = await Promise.all([
+    const TASK_CREATOR_ROLES = ["Admin","Eiden HQ","Eiden Global","Operational Manager","Admin Coordinator","Brand Manager","Branding and Strategy Manager","Solution Architect"];
+    const [{ data: dealsData }, { data: tasksRaw }, { data: kbData }, { data: usersRaw }] = await Promise.all([
       supabase.from("deals").select("title, value, stage, risk_score, contacts(name)").order("created_at", { ascending: false }).limit(10),
       supabase.from("tasks").select("title, status, priority, due_date, users!assignee_id(name)").neq("status", "Completed").order("due_date").limit(15),
       supabase.from("knowledge_base").select("title, content, category"),
+      supabase.from("users").select("name, role"),
     ]);
+    const assignableUsers = (usersRaw || []).filter((u: any) => TASK_CREATOR_ROLES.includes(u.role));
 
     const d = dealsData || [];
     const t = (tasksRaw || []).map((x: any) => ({ ...x, assignee: x.users?.name || "Unassigned" }));
@@ -756,8 +759,11 @@ ${kb.map((k: any) => `[${k.category}] ${k.title}: ${k.content.slice(0, 120)}...`
 ## CAPABILITIES
 You can interpret natural language to take actions. When a user wants to create or update data, respond with a JSON action block anywhere in your response:
 
-For creating a task:
+For creating a task (only assign to team members listed in ASSIGNABLE TEAM MEMBERS below):
 {"action":"create_task","data":{"title":"...","assignee":"...","due_date":"YYYY-MM-DD","priority":"High|Medium|Low","description":"..."}}
+
+**ASSIGNABLE TEAM MEMBERS (managers/coordinators only):**
+${assignableUsers.map((u: any) => `- ${u.name} (${u.role})`).join("\n") || "None available"}
 
 For creating a deal:
 {"action":"create_deal","data":{"title":"...","value":0,"stage":"Lead|Proposal|Negotiation"}}
