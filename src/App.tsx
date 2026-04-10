@@ -1499,14 +1499,13 @@ export default function App() {
             {activeTab === "dashboard" && (
               <motion.div key="dashboard" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col gap-3 lg:gap-4 overflow-y-auto lg:overflow-hidden">
                 {/* Stats row — role-aware */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 lg:gap-3 shrink-0">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3 shrink-0">
                   {perms.canAssignAll ? (
                     <>
                       <StatCard icon={<TrendingUp size={16} />} label="Pipeline Value" value={`MAD ${(stats?.pipelineValue || 0).toLocaleString()}`} color="teal" />
                       <StatCard icon={<Target size={16} />} label="Active Deals" value={String(stats?.activeDeals ?? "—")} color="teal" />
                       <StatCard icon={<Zap size={16} />} label="Win Rate" value={stats?.winRate ?? "—"} color="success" />
                       <StatCard icon={<Users size={16} />} label="Active Clients" value={String(stats?.activeClients ?? "—")} color="teal" />
-                      <StatCard icon={<AlertTriangle size={16} />} label="Overdue Tasks" value={String(stats?.overdueTasks ?? 0)} color={stats?.overdueTasks ? "danger" : "muted"} />
                     </>
                   ) : (
                     <>
@@ -1520,7 +1519,7 @@ export default function App() {
                 </div>
 
                 {/* AI + Activity row */}
-                <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px] gap-3 lg:gap-4 min-h-0">
+                <div className="flex-1 grid grid-cols-1 gap-3 lg:gap-4 min-h-0">
                   {/* AI Chat Panel */}
                   <div className="eiden-card flex flex-col overflow-hidden" style={{ minHeight: 340 }}>
                     <div className="shrink-0 px-3 sm:px-4 py-3 flex flex-wrap items-center justify-between gap-2" style={{ background: "var(--deep-forest)", borderBottom: "1px solid rgba(244,235,208,0.08)" }}>
@@ -1618,92 +1617,6 @@ export default function App() {
                     </form>
                   </div>
 
-                  {/* Right column */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-4 lg:flex lg:flex-col lg:min-h-0">
-                    {/* Overdue tasks */}
-                    {overdueTasks.length > 0 && (
-                      <div className="sm:col-span-2 lg:col-span-1 shrink-0 p-3 sm:p-4" style={{ border: "1px solid var(--danger)", background: "rgba(139,58,58,0.04)", borderLeft: "3px solid var(--danger)" }}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <AlertTriangle size={12} style={{ color: "var(--danger)" }} />
-                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px", color: "var(--danger)" }}>Overdue Tasks</span>
-                        </div>
-                        <div className="space-y-1.5">
-                          {overdueTasks.slice(0, 3).map(t => (
-                            <div key={t.id} className="text-[0.72rem] flex justify-between" style={{ color: "var(--danger)" }}>
-                              <span className="truncate font-medium">{t.title}</span>
-                              <span className="ml-2 shrink-0 text-[0.65rem]">{formatDueDate(t.due_date)}</span>
-                            </div>
-                          ))}
-                          {overdueTasks.length > 3 && (
-                            <button onClick={() => setActiveTab("tasks")} className="text-[0.65rem] font-semibold hover:underline" style={{ color: "var(--danger)" }}>
-                              +{overdueTasks.length - 3} more → View all
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* AI Chat History */}
-                    <div className="eiden-card overflow-hidden flex flex-col lg:flex-1 lg:min-h-0">
-                      <div className="shrink-0 px-3 sm:px-4 py-2.5 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(18,38,32,0.06)" }}>
-                        <div className="flex items-center gap-2">
-                          <Bot size={12} style={{ color: "var(--deep-forest)", opacity: 0.5 }} />
-                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>AI Chat History</span>
-                        </div>
-                        {aiMessages.length > 0 && (
-                          <button onClick={() => currentWorkspace && clearHistory(currentWorkspace.id)}
-                            style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.3)", background: "none", border: "none", cursor: "pointer", letterSpacing: "1px", textTransform: "uppercase" }}>
-                            Clear
-                          </button>
-                        )}
-                      </div>
-                      <div className="overflow-y-auto p-3 space-y-2 max-h-52 sm:max-h-64 lg:max-h-none lg:flex-1">
-                        {aiMessages.length === 0 ? (
-                          <div className="text-center py-6">
-                            <Bot size={24} className="mx-auto mb-2 opacity-15" style={{ color: "var(--deep-forest)" }} />
-                            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(18,38,32,0.3)" }}>No AI conversations yet</div>
-                          </div>
-                        ) : (
-                          [...aiMessages].reverse().map((msg, i) => (
-                            <div key={i} className="cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => { const el = document.querySelector(".ai-chat-scroll"); if (el) el.scrollIntoView({ behavior: "smooth" }); }}
-                              style={{ borderLeft: `1.5px solid ${msg.role === "user" ? "var(--deep-forest)" : "rgba(18,38,32,0.2)"}`, paddingLeft: 8, paddingTop: 4, paddingBottom: 4 }}>
-                              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(18,38,32,0.35)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 2 }}>
-                                {msg.role === "user" ? "You" : "Eiden AI"}
-                                <span className="ml-2">{new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                              </div>
-                              <div style={{ fontSize: "0.72rem", color: "var(--deep-forest)", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                                {msg.content}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Pipeline snapshot */}
-                    {perms.canAssignAll && (
-                    <div className="shrink-0 eiden-card p-3 sm:p-4">
-                      <div className="mb-3" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.45)" }}>Pipeline Snapshot</div>
-                      {["Lead", "Proposal", "Negotiation", "Won"].map(stage => {
-                        const count = filteredDeals.filter(d => d.stage === stage).length;
-                        const total = filteredDeals.length || 1;
-                        const barColor = stage === "Won" ? "var(--success)" : stage === "Lost" ? "var(--danger)" : "var(--deep-forest)";
-                        return (
-                          <div key={stage} className="mb-2.5">
-                            <div className="flex justify-between text-[0.68rem] mb-1">
-                              <span className="font-semibold" style={{ color: barColor }}>{stage}</span>
-                              <span className="text-[var(--gris)]">{count}</span>
-                            </div>
-                            <div style={{ height: 2, background: "rgba(18,38,32,0.08)", marginTop: 4 }}>
-                              <motion.div initial={{ width: 0 }} animate={{ width: `${(count / total) * 100}%` }} className="h-full" style={{ background: barColor }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    )}
-                  </div>
                 </div>
               </motion.div>
             )}
