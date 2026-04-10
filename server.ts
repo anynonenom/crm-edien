@@ -296,9 +296,13 @@ async function startServer() {
 
   app.patch("/api/tasks/:id", async (req, res) => {
     const { id } = req.params;
-    const { title, description, assignee_id, related_deal_id, due_date, status, priority } = req.body;
     try {
-      await supabase.from("tasks").update({ title, description, assignee_id, related_deal_id, due_date, status, priority }).eq("id", id);
+      const updates: any = {};
+      for (const f of ["title","description","assignee_id","related_deal_id","due_date","status","priority","overdue_reason","client_id"]) {
+        if (Object.prototype.hasOwnProperty.call(req.body, f)) updates[f] = req.body[f] ?? null;
+      }
+      const { error } = await supabase.from("tasks").update(updates).eq("id", id);
+      if (error) { console.error("Task update error:", error); return res.status(500).json({ error: error.message }); }
       res.json({ success: true });
     } catch { res.status(500).json({ error: "Server error" }); }
   });
@@ -330,7 +334,7 @@ async function startServer() {
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) return res.status(401).json({ error: "Invalid credentials" });
       await logActivity(user.id, "Logged in", user.name, "auth");
-      res.json({ id: user.id, name: user.name, role: user.role, workspace_id: user.workspace_id });
+      res.json({ id: user.id, name: user.name, role: user.role, workspace_id: user.workspace_id, email: user.email, username: user.username });
     } catch { res.status(500).json({ error: "Server error" }); }
   });
 
@@ -367,10 +371,14 @@ async function startServer() {
       if (email !== undefined) updates.email = email;
       if (role !== undefined) updates.role = role;
       if (workspace_id !== undefined) updates.workspace_id = Number(workspace_id);
-      if (password !== undefined && password.trim().length >= 6) updates.password = await bcrypt.hash(password, 10);
-      await supabase.from("users").update(updates).eq("id", id);
+      if (password !== undefined && String(password).trim().length >= 6) {
+        updates.password = await bcrypt.hash(String(password).trim(), 10);
+      }
+      if (Object.keys(updates).length === 0) return res.json({ success: true });
+      const { error } = await supabase.from("users").update(updates).eq("id", Number(id));
+      if (error) { console.error("User update error:", error); return res.status(500).json({ error: error.message }); }
       res.json({ success: true });
-    } catch { res.status(500).json({ error: "Server error" }); }
+    } catch (err: any) { console.error("User PATCH error:", err); res.status(500).json({ error: "Server error" }); }
   });
 
   // ─── Workspaces ──────────────────────────────────────────────────────────────

@@ -430,6 +430,31 @@ export default function App() {
       });
   }, [tasks, isLoggedIn, currentUser, perms.canCreate]);
 
+  // Load persisted notifications from localStorage on login
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser) return;
+    try {
+      const saved = localStorage.getItem(`eiden_notifs_${currentUser.id}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setNotifications(parsed);
+        // Seed seenRefs so we don't duplicate on next fetchData
+        parsed.forEach((n: any) => {
+          if (n.title === "Overdue Reason Submitted" && n.taskId) seenReasonTaskIdsRef.current.add(n.taskId);
+          if (n.type === "task" && n.taskId) seenTaskIdsRef.current.add(n.taskId);
+          if (n.type === "warn" && !n.taskId) notifiedOverdueRef.current.add(n.id);
+        });
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, currentUser?.id]);
+
+  // Persist notifications to localStorage whenever they change
+  useEffect(() => {
+    if (!currentUser) return;
+    localStorage.setItem(`eiden_notifs_${currentUser.id}`, JSON.stringify(notifications));
+  }, [notifications, currentUser?.id]);
+
   // Request browser notification permission on login
   useEffect(() => {
     if (isLoggedIn && "Notification" in window && Notification.permission === "default") {
@@ -826,11 +851,15 @@ export default function App() {
 
   const saveDeadlineEdit = async () => {
     if (!deadlineEditTask || !deadlineEditValue) return;
-    await fetch(`/api/tasks/${deadlineEditTask.id}`, {
+    const taskId = deadlineEditTask.id;
+    await fetch(`/api/tasks/${taskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ due_date: deadlineEditValue ? new Date(deadlineEditValue).toISOString() : deadlineEditValue })
+      body: JSON.stringify({ due_date: new Date(deadlineEditValue).toISOString(), overdue_reason: null })
     });
+    // Remove the handled notification and allow future re-notification if needed
+    setNotifications(prev => prev.filter(n => n.taskId !== taskId));
+    seenReasonTaskIdsRef.current.delete(taskId);
     setDeadlineEditTask(null);
     fetchData();
   };
@@ -1439,7 +1468,7 @@ export default function App() {
             <button onClick={() => { setProfileName(currentUser?.name ?? ""); setProfileEmail(currentUser?.email ?? ""); setProfilePass(""); setProfileMsg(null); setShowProfileModal(true); }} className="btn-mini flex-1 justify-center" style={{ borderColor: "rgba(244,235,208,0.15)", color: "rgba(244,235,208,0.5)" }}>
               <Settings size={10} /> Profile
             </button>
-            <button onClick={() => { setIsLoggedIn(false); setCurrentUser(null); setCurrentWorkspace(null); localStorage.removeItem("eiden_session"); }} className="btn-mini flex-1 justify-center danger" style={{ borderColor: "rgba(139,58,58,0.4)", color: "rgba(200,112,112,0.8)" }}>
+            <button onClick={() => { if (currentUser) localStorage.removeItem(`eiden_notifs_${currentUser.id}`); setNotifications([]); setIsLoggedIn(false); setCurrentUser(null); setCurrentWorkspace(null); localStorage.removeItem("eiden_session"); }} className="btn-mini flex-1 justify-center danger" style={{ borderColor: "rgba(139,58,58,0.4)", color: "rgba(200,112,112,0.8)" }}>
               <LogOut size={10} /> Logout
             </button>
           </div>
@@ -4009,7 +4038,7 @@ export default function App() {
                   </div>
                   <div className="flex items-center gap-3">
                     {totalCount > 0 && (
-                      <button onClick={() => setNotifications([])}
+                      <button onClick={() => { setNotifications([]); if (currentUser) localStorage.removeItem(`eiden_notifs_${currentUser.id}`); }}
                         style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(244,235,208,0.5)", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", letterSpacing: "1px", textTransform: "uppercase", transition: "color 0.15s" }}
                         onMouseEnter={e => (e.currentTarget.style.color = "var(--silk-creme)")}
                         onMouseLeave={e => (e.currentTarget.style.color = "rgba(244,235,208,0.5)")}>
