@@ -8,44 +8,51 @@ export interface AiMessage {
 }
 
 interface AiChatStore {
-  // Messages keyed by workspaceId so each workspace has its own history
-  messagesByWorkspace: Record<number, AiMessage[]>;
-  getMessages: (workspaceId: number) => AiMessage[];
-  addMessage: (workspaceId: number, msg: Omit<AiMessage, "timestamp">) => void;
-  clearHistory: (workspaceId: number) => void;
+  // Messages keyed by "userId_workspaceId" so each user has their own history
+  messagesByKey: Record<string, AiMessage[]>;
+  getMessages: (userId: number, workspaceId: number) => AiMessage[];
+  addMessage: (userId: number, workspaceId: number, msg: Omit<AiMessage, "timestamp">) => void;
+  clearHistory: (userId: number, workspaceId: number) => void;
 }
+
+const makeKey = (userId: number, workspaceId: number) => `${userId}_${workspaceId}`;
 
 export const useAiChatStore = create<AiChatStore>()(
   persist(
     (set, get) => ({
-      messagesByWorkspace: {},
+      messagesByKey: {},
 
-      getMessages: (workspaceId) =>
-        get().messagesByWorkspace[workspaceId] ?? [],
+      getMessages: (userId, workspaceId) =>
+        get().messagesByKey[makeKey(userId, workspaceId)] ?? [],
 
-      addMessage: (workspaceId, msg) =>
-        set((state) => ({
-          messagesByWorkspace: {
-            ...state.messagesByWorkspace,
-            [workspaceId]: [
-              ...(state.messagesByWorkspace[workspaceId] ?? []),
-              { ...msg, timestamp: Date.now() },
-            ],
-          },
-        })),
+      addMessage: (userId, workspaceId, msg) =>
+        set((state) => {
+          const key = makeKey(userId, workspaceId);
+          return {
+            messagesByKey: {
+              ...state.messagesByKey,
+              [key]: [
+                ...(state.messagesByKey[key] ?? []),
+                { ...msg, timestamp: Date.now() },
+              ],
+            },
+          };
+        }),
 
-      clearHistory: (workspaceId) =>
-        set((state) => ({
-          messagesByWorkspace: {
-            ...state.messagesByWorkspace,
-            [workspaceId]: [],
-          },
-        })),
+      clearHistory: (userId, workspaceId) =>
+        set((state) => {
+          const key = makeKey(userId, workspaceId);
+          return {
+            messagesByKey: {
+              ...state.messagesByKey,
+              [key]: [],
+            },
+          };
+        }),
     }),
     {
-      name: "eiden-ai-chat", // localStorage key
-      // Only persist the messages, not the derived methods
-      partialize: (state) => ({ messagesByWorkspace: state.messagesByWorkspace }),
+      name: "eiden-ai-chat-v2", // bumped key to avoid old workspace-only data
+      partialize: (state) => ({ messagesByKey: state.messagesByKey }),
     }
   )
 );

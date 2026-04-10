@@ -271,11 +271,13 @@ export default function App() {
 
   // AI Assistant — persistent via Zustand + localStorage
   const { getMessages, addMessage, clearHistory } = useAiChatStore();
-  const aiMessages = currentWorkspace ? getMessages(currentWorkspace.id) : [];
+  const uid = currentUser?.id ?? 0;
+  const aiMessages = (currentWorkspace && uid) ? getMessages(uid, currentWorkspace.id) : [];
   const [aiInput, setAiInput] = useState("");
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [pendingAiAction, setPendingAiAction] = useState<{ action: string; data: any; summary: string } | null>(null);
   const [taskSearch, setTaskSearch] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [mobileKanbanCol, setMobileKanbanCol] = useState<"Pending"|"In Progress"|"Completed">("Pending");
   const aiEndRef = useRef<HTMLDivElement>(null);
 
@@ -545,12 +547,12 @@ export default function App() {
 
     const wsId = currentWorkspace.id;
     const userMsg: Omit<AiMessage, "timestamp"> = { role: "user", content: trimmed };
-    addMessage(wsId, userMsg);
+    addMessage(uid, wsId,userMsg);
     setAiInput("");
     setIsAiThinking(true);
 
     // Build history to send (include the new user message)
-    const history = [...getMessages(wsId), { ...userMsg, timestamp: Date.now() }];
+    const history = [...getMessages(uid, wsId), { ...userMsg, timestamp: Date.now() }];
 
     try {
       const res = await fetch("/api/ai", {
@@ -561,12 +563,12 @@ export default function App() {
       const data = await res.json();
 
       if (!res.ok) {
-        addMessage(wsId, { role: "assistant", content: `Error: ${data.error || "AI unavailable"}` });
+        addMessage(uid, wsId,{ role: "assistant", content: `Error: ${data.error || "AI unavailable"}` });
         return;
       }
 
       const responseText: string = data.text || "No response.";
-      addMessage(wsId, { role: "assistant", content: responseText });
+      addMessage(uid, wsId,{ role: "assistant", content: responseText });
 
       // Parse AI action — only PROPOSE, never auto-execute
       try {
@@ -605,7 +607,7 @@ export default function App() {
         console.error("AI action parse error:", e);
       }
     } catch {
-      addMessage(wsId, { role: "assistant", content: "Connection error. Please check your network and try again." });
+      addMessage(uid, wsId,{ role: "assistant", content: "Connection error. Please check your network and try again." });
     } finally {
       setIsAiThinking(false);
     }
@@ -622,7 +624,7 @@ export default function App() {
     let r: Response;
     if (act === "create_task") {
       if (!perms.canCreate) {
-        addMessage(wsId, { role: "assistant", content: "❌ You don't have permission to create tasks." });
+        addMessage(uid, wsId,{ role: "assistant", content: "❌ You don't have permission to create tasks." });
         return;
       }
       // Only assign to users who have task-creation permission (managers/coordinators)
@@ -633,11 +635,11 @@ export default function App() {
       const assignee = assignableUsers.find(u => u.name.toLowerCase().includes((d.assignee || "").toLowerCase()))
         ?? users.find(u => u.name.toLowerCase().includes((d.assignee || "").toLowerCase()));
       if (d.assignee && !assignee) {
-        addMessage(wsId, { role: "assistant", content: `❌ "${d.assignee}" doesn't have permission to be assigned tasks or wasn't found.` });
+        addMessage(uid, wsId,{ role: "assistant", content: `❌ "${d.assignee}" doesn't have permission to be assigned tasks or wasn't found.` });
         return;
       }
       r = await post("/api/tasks", { title: d.title, description: d.description || "", assignee_id: assignee?.id || currentUser?.id, due_date: d.due_date || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0], priority: d.priority || "Medium", workspace_id: wsId });
-      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Task "${d.title}" created!` : `❌ Failed to create task.` });
+      addMessage(uid, wsId,{ role: "assistant", content: r.ok ? `✅ Task "${d.title}" created!` : `❌ Failed to create task.` });
     } else if (act === "update_task" && d.id) {
       const updates: any = {};
       if (d.status) updates.status = d.status;
@@ -645,26 +647,26 @@ export default function App() {
       if (d.due_date) updates.due_date = d.due_date;
       if (d.assignee) { const u = users.find(u => u.name.toLowerCase().includes(d.assignee.toLowerCase())); if (u) updates.assignee_id = u.id; }
       r = await patch(`/api/tasks/${d.id}`, updates);
-      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Task #${d.id} updated!` : `❌ Failed to update task.` });
+      addMessage(uid, wsId,{ role: "assistant", content: r.ok ? `✅ Task #${d.id} updated!` : `❌ Failed to update task.` });
     } else if (act === "delete_task" && d.id) {
       r = await del(`/api/tasks/${d.id}`);
-      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Task #${d.id} deleted.` : `❌ Failed to delete task.` });
+      addMessage(uid, wsId,{ role: "assistant", content: r.ok ? `✅ Task #${d.id} deleted.` : `❌ Failed to delete task.` });
     } else if (act === "create_deal") {
       r = await post("/api/deals", { title: d.title, value: d.value || 0, stage: d.stage || "Lead", workspace_id: wsId });
-      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Deal "${d.title}" created!` : `❌ Failed to create deal.` });
+      addMessage(uid, wsId,{ role: "assistant", content: r.ok ? `✅ Deal "${d.title}" created!` : `❌ Failed to create deal.` });
     } else if (act === "update_deal" && d.id) {
       const updates: any = {};
       if (d.stage) updates.stage = d.stage;
       if (d.value !== undefined) updates.value = d.value;
       if (d.notes) updates.notes = d.notes;
       r = await patch(`/api/deals/${d.id}`, updates);
-      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Deal #${d.id} updated!` : `❌ Failed to update deal.` });
+      addMessage(uid, wsId,{ role: "assistant", content: r.ok ? `✅ Deal #${d.id} updated!` : `❌ Failed to update deal.` });
     } else if (act === "delete_deal" && d.id) {
       r = await del(`/api/deals/${d.id}`);
-      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Deal #${d.id} deleted.` : `❌ Failed to delete deal.` });
+      addMessage(uid, wsId,{ role: "assistant", content: r.ok ? `✅ Deal #${d.id} deleted.` : `❌ Failed to delete deal.` });
     } else if (act === "create_contact") {
       r = await post("/api/contacts", { name: d.name, company: d.company || "", email: d.email || "", status: d.status || "Prospect", source: d.source || "", workspace_id: wsId });
-      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Contact "${d.name}" created!` : `❌ Failed to create contact.` });
+      addMessage(uid, wsId,{ role: "assistant", content: r.ok ? `✅ Contact "${d.name}" created!` : `❌ Failed to create contact.` });
     } else if (act === "update_contact" && d.id) {
       const updates: any = {};
       if (d.status) updates.status = d.status;
@@ -672,10 +674,10 @@ export default function App() {
       if (d.email) updates.email = d.email;
       if (d.notes) updates.notes = d.notes;
       r = await patch(`/api/contacts/${d.id}`, updates);
-      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Contact #${d.id} updated!` : `❌ Failed to update contact.` });
+      addMessage(uid, wsId,{ role: "assistant", content: r.ok ? `✅ Contact #${d.id} updated!` : `❌ Failed to update contact.` });
     } else if (act === "delete_contact" && d.id) {
       r = await del(`/api/contacts/${d.id}`);
-      addMessage(wsId, { role: "assistant", content: r.ok ? `✅ Contact #${d.id} deleted.` : `❌ Failed to delete contact.` });
+      addMessage(uid, wsId,{ role: "assistant", content: r.ok ? `✅ Contact #${d.id} deleted.` : `❌ Failed to delete contact.` });
     } else { return; }
     await fetchData();
   };
@@ -715,9 +717,9 @@ export default function App() {
             setIsLoggedIn(true);
             setShowTfa(false);
             localStorage.setItem("eiden_session", JSON.stringify({ user, workspace: ws }));
-            // Welcome message — only add if this workspace has no history yet
-            if (useAiChatStore.getState().getMessages(ws.id).length === 0) {
-              useAiChatStore.getState().addMessage(ws.id, {
+            // Welcome message — only add if this user has no history yet
+            if (useAiChatStore.getState().getMessages(user.id, ws.id).length === 0) {
+              useAiChatStore.getState().addMessage(user.id, ws.id, {
                 role: "assistant",
                 content: `Welcome back, ${user.name}! I'm EIDEN AI, your BSM assistant. I can help you manage tasks, analyze your pipeline, and keep your team on track.\n\nTry asking me:\n• "What tasks are overdue?"\n• "Give me a morning briefing"\n• "What deals are at risk?"\n• "Create a task to review the proposal for Sarah"`
               });
@@ -1514,9 +1516,13 @@ export default function App() {
                 {(() => { const total = notifications.length + filteredTasks.filter(t => (perms.canCreate || t.assignee_id === currentUser?.id) && isOverdue(t.due_date, t.status) && !t.overdue_reason).length; return total > 0 ? <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 flex items-center justify-center rounded-full text-[0.5rem] font-bold" style={{ background: "var(--danger)", color: "white" }}>{total}</span> : null; })()}
               </button>
             </div>
-            <button onClick={fetchData} style={{ color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", padding: 4 }} title="Refresh"
-              onMouseEnter={e => (e.currentTarget.style.color = "var(--deep-forest)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(18,38,32,0.35)")}>
-              <RefreshCw size={14} />
+            <button onClick={async () => { setIsRefreshing(true); await fetchData(); setIsRefreshing(false); }}
+              disabled={isRefreshing}
+              style={{ color: isRefreshing ? "var(--deep-forest)" : "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: isRefreshing ? "default" : "pointer", padding: 4, transition: "color 0.2s" }}
+              title="Refresh"
+              onMouseEnter={e => { if (!isRefreshing) e.currentTarget.style.color = "var(--deep-forest)"; }}
+              onMouseLeave={e => { if (!isRefreshing) e.currentTarget.style.color = "rgba(18,38,32,0.35)"; }}>
+              <RefreshCw size={14} style={{ animation: isRefreshing ? "spin 0.8s linear infinite" : "none" }} />
             </button>
           </div>
         </div>
@@ -1560,7 +1566,7 @@ export default function App() {
                       <div className="flex flex-wrap gap-1.5">
                         <button onClick={() => sendAiMessage("Give me a morning briefing on the pipeline and top priorities")} className="btn-mini" style={{ fontSize: "0.6rem" }}>Brief</button>
                         <button onClick={() => sendAiMessage("Which tasks are overdue and what should I prioritize?")} className="btn-mini" style={{ fontSize: "0.6rem" }}>Urgent?</button>
-                        <button onClick={() => currentWorkspace && clearHistory(currentWorkspace.id)} className="btn-mini" style={{ fontSize: "0.6rem" }}>Clear</button>
+                        <button onClick={() => currentWorkspace && clearHistory(uid, currentWorkspace.id)} className="btn-mini" style={{ fontSize: "0.6rem" }}>Clear</button>
                       </div>
                     </div>
 
@@ -3897,7 +3903,7 @@ export default function App() {
         return (
           <button onClick={fabAction}
             className="lg:hidden fixed z-[60] flex items-center justify-center"
-            style={{ bottom: 134, right: 18, width: 52, height: 52, borderRadius: "50%", background: "var(--teal, #2d7a6e)", color: "var(--silk-creme)", border: "none", cursor: "pointer", fontSize: "1.6rem", fontWeight: 300, boxShadow: "0 4px 20px rgba(18,38,32,0.35)", lineHeight: 1 }}>
+            style={{ bottom: 156, right: 18, width: 52, height: 52, borderRadius: "50%", background: "var(--teal, #2d7a6e)", color: "var(--silk-creme)", border: "none", cursor: "pointer", fontSize: "1.6rem", fontWeight: 300, boxShadow: "0 4px 20px rgba(18,38,32,0.35)", lineHeight: 1 }}>
             +
           </button>
         );
