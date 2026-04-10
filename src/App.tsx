@@ -214,6 +214,9 @@ export default function App() {
   const [toasts, setToasts] = useState<{ id: number; type: "task" | "clockout" | "warn"; title: string; body: string }[]>([]);
   const seenTaskIdsRef = useRef<Set<number>>(new Set());
   const shownToastIdsRef = useRef<Set<number>>(new Set());
+  const notifiedOverdueRef = useRef<Set<number>>(new Set());
+  const touchDragTaskIdRef = useRef<number | null>(null);
+  const touchGhostRef = useRef<HTMLDivElement | null>(null);
   const autoClockWarnedRef = useRef(false);
 
   // Work schedule: { start, end } in 24h hours. null = weekend.
@@ -381,6 +384,24 @@ export default function App() {
     myTasks.forEach(t => seenTaskIdsRef.current.add(t.id));
   }, [tasks, isLoggedIn, currentUser]);
 
+  // Overdue notifications — fire once per task when it crosses the deadline
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser) return;
+    tasks
+      .filter(t => t.assignee_id === currentUser.id && isOverdue(t.due_date, t.status) && !t.overdue_reason)
+      .forEach(t => {
+        if (notifiedOverdueRef.current.has(t.id)) return;
+        notifiedOverdueRef.current.add(t.id);
+        setNotifications(prev => [...prev, {
+          id: Date.now() + t.id + 5000,
+          type: "warn",
+          title: "Task Overdue",
+          body: `"${t.title}" has passed its deadline — please submit a reason`,
+          at: Date.now()
+        }]);
+      });
+  }, [tasks, isLoggedIn, currentUser]);
+
   // Request browser notification permission on login
   useEffect(() => {
     if (isLoggedIn && "Notification" in window && Notification.permission === "default") {
@@ -396,7 +417,7 @@ export default function App() {
       setToasts(prev => [...prev.slice(-4), { id: n.id, type: n.type, title: n.title, body: n.body }]);
       setTimeout(() => setToasts(prev => prev.filter(t => t.id !== n.id)), 5500);
       if (document.hidden && "Notification" in window && Notification.permission === "granted") {
-        new Notification(n.title, { body: n.body, icon: "https://eiden-group.com/wp-content/uploads/2025/02/cropped-favicon-transparent.png" });
+        new Notification(n.title, { body: n.body, icon: "https://eiden-group.com/wp-content/uploads/2026/04/EIDEN-BMS.png" });
       }
     });
   }, [notifications]);
@@ -675,6 +696,48 @@ export default function App() {
       body: JSON.stringify({ status })
     });
     fetchData();
+  };
+
+  // ─── Touch drag handlers (mobile Kanban) ─────────────────────────────────────
+  const handleTouchDragStart = (e: React.TouchEvent, task: Task) => {
+    if (!perms.canCreate && task.assignee_id !== currentUser?.id) return;
+    touchDragTaskIdRef.current = task.id;
+    const touch = e.touches[0];
+    const ghost = document.createElement("div");
+    ghost.textContent = task.title;
+    ghost.style.cssText = `position:fixed;z-index:9999;pointer-events:none;background:var(--deep-forest);color:var(--silk-creme);padding:8px 14px;font-size:0.72rem;font-family:'Space Grotesk',sans-serif;font-weight:600;opacity:0.92;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transform:translate(-50%,-50%);box-shadow:0 8px 24px rgba(0,0,0,0.3);border-radius:3px;`;
+    ghost.style.left = touch.clientX + "px";
+    ghost.style.top = touch.clientY + "px";
+    document.body.appendChild(ghost);
+    touchGhostRef.current = ghost;
+  };
+
+  const handleTouchDragMove = (e: React.TouchEvent) => {
+    if (!touchDragTaskIdRef.current || !touchGhostRef.current) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    touchGhostRef.current.style.left = touch.clientX + "px";
+    touchGhostRef.current.style.top = touch.clientY + "px";
+  };
+
+  const handleTouchDragEnd = async (e: React.TouchEvent) => {
+    const taskId = touchDragTaskIdRef.current;
+    touchDragTaskIdRef.current = null;
+    if (touchGhostRef.current) { touchGhostRef.current.style.display = "none"; }
+    if (!taskId) return;
+    const touch = e.changedTouches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (touchGhostRef.current) { document.body.removeChild(touchGhostRef.current); touchGhostRef.current = null; }
+    const col = el?.closest("[data-column]") as HTMLElement | null;
+    if (!col?.dataset.column) return;
+    const newStatus = col.dataset.column;
+    const draggedTask = filteredTasks.find(t => t.id === taskId);
+    if (!draggedTask || draggedTask.status === newStatus) return;
+    if (perms.canCreate) {
+      await updateTaskStatus(taskId, newStatus as "Pending" | "In Progress" | "Completed");
+    } else if (draggedTask.assignee_id === currentUser?.id) {
+      await updateTaskStatusByEmployee(taskId, newStatus, draggedTask.title);
+    }
   };
 
   // Employee drags own task — updates status and notifies team chat (visible to Aya and all managers)
@@ -1047,7 +1110,7 @@ export default function App() {
         <div className="hidden md:flex relative overflow-hidden flex-col justify-between" style={{ width: "55%", background: "var(--deep-forest)", padding: "60px" }}>
           <div className="silk-texture" />
           <div style={{ position: "relative", zIndex: 10 }}>
-            <img src="https://eiden-group.com/wp-content/uploads/2025/02/cropped-favicon-transparent.png" alt="Eiden Group" style={{ height: 140, width: "auto", opacity: 0.95 }} />
+            <img src="https://eiden-group.com/wp-content/uploads/2026/04/EIDEN-BMS.png" alt="Eiden Group" style={{ height: 140, width: "auto", opacity: 0.95 }} />
           </div>
           <div style={{ position: "relative", zIndex: 10, color: "var(--silk-creme)" }}>
             <h1 style={{ fontSize: "clamp(3rem,7vw,5.5rem)", lineHeight: 0.9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "-2px" }}>
@@ -1274,7 +1337,7 @@ export default function App() {
         {/* Brand */}
         <div className="flex items-center justify-between gap-3 px-6 py-0" style={{ height: 64, borderBottom: "1px solid rgba(244,235,208,0.08)" }}>
           <div className="flex items-center gap-3">
-            <img src="https://eiden-group.com/wp-content/uploads/2025/02/cropped-favicon-transparent.png" alt="Eiden Group" style={{ height: 38, width: "auto", opacity: 0.92 }} />
+            <img src="https://eiden-group.com/wp-content/uploads/2026/04/EIDEN-BMS.png" alt="Eiden Group" style={{ height: 38, width: "auto", opacity: 0.92 }} />
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "var(--silk-creme)", opacity: 0.8 }}>Eiden BSM</div>
           </div>
         </div>
@@ -1782,6 +1845,7 @@ export default function App() {
                     const colAccent = colStatus === "Pending" ? "var(--warning)" : colStatus === "In Progress" ? "#2a9d8f" : "var(--success)";
                     return (
                       <div key={colStatus} className="flex flex-col min-h-0 overflow-hidden"
+                        data-column={colStatus}
                         style={{ background: "rgba(18,38,32,0.015)", border: "1px solid rgba(18,38,32,0.08)" }}
                         onDragOver={e => e.preventDefault()}
                         onDrop={async e => {
@@ -1810,6 +1874,9 @@ export default function App() {
                               <div key={task.id}
                                 draggable={perms.canCreate || task.assignee_id === currentUser?.id}
                                 onDragStart={perms.canCreate || task.assignee_id === currentUser?.id ? e => { e.dataTransfer.setData("taskId", task.id.toString()); e.dataTransfer.effectAllowed = "move"; } : undefined}
+                                onTouchStart={e => handleTouchDragStart(e, task)}
+                                onTouchMove={handleTouchDragMove}
+                                onTouchEnd={handleTouchDragEnd}
                                 onClick={() => { setSelectedTaskDetail({ ...task }); setShowTaskDetailModal(true); }}
                                 className="group relative select-none"
                                 style={{
