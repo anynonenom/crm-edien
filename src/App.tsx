@@ -1322,7 +1322,7 @@ export default function App() {
   const overdueTasks = filteredTasks.filter(t => isOverdue(t.due_date, t.status));
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden" style={{ background: "var(--silk-creme)", maxWidth: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%", overflow: "hidden", background: "var(--silk-creme)" }}>
 
       {/* Grain overlay */}
       <svg className="grain-overlay">
@@ -1333,8 +1333,8 @@ export default function App() {
       </svg>
 
       {/* ── Sidebar — desktop only ── */}
-      <div className="hidden lg:flex flex-col shrink-0"
-        style={{ width: 220, background: "var(--deep-forest)", minHeight: "100vh" }}>
+      <div className="max-lg:hidden flex flex-col shrink-0"
+        style={{ width: 220, background: "var(--deep-forest)", height: "100%" }}>
         {/* Brand */}
         <div className="flex items-center justify-between gap-3 px-6 py-0" style={{ height: 64, borderBottom: "1px solid rgba(244,235,208,0.08)" }}>
           <div className="flex items-center gap-3">
@@ -1390,7 +1390,7 @@ export default function App() {
       </div>
 
       {/* ── Main content ── */}
-      <div className="flex-1 min-w-0 w-full flex flex-col overflow-hidden">
+      <div style={{ flex: "1 1 0%", minWidth: 0, width: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Top bar */}
         <div className="shrink-0 flex items-center justify-between px-4 lg:px-8" style={{ height: 64, background: "var(--pure-white)", borderBottom: "1px solid rgba(18,38,32,0.08)" }}>
           <div className="flex items-center gap-3">
@@ -1436,7 +1436,7 @@ export default function App() {
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 w-full overflow-hidden px-3 sm:px-5 lg:px-8 py-4 lg:py-6 pb-20 lg:pb-6" style={{ background: "var(--silk-creme)" }}>
+        <div className="overflow-hidden px-3 sm:px-4 lg:px-8 py-4 lg:py-6 pb-20 lg:pb-6" style={{ flex: "1 1 0%", minHeight: 0, width: "100%", background: "var(--silk-creme)" }}>
           <AnimatePresence mode="wait">
             {/* ── Dashboard ─────────────────────────────────────── */}
             {activeTab === "dashboard" && (
