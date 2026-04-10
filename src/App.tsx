@@ -168,6 +168,11 @@ export default function App() {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [selectedDealForTask, setSelectedDealForTask] = useState<Deal | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profilePass, setProfilePass] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState<string | null>(null);
 
   // Edit task
   const [editTask, setEditTask] = useState<Task | null>(null);
@@ -788,6 +793,23 @@ export default function App() {
     fetchData();
   };
 
+  const handleProfileSave = async () => {
+    if (!currentUser) return;
+    setProfileSaving(true); setProfileMsg(null);
+    const body: any = {};
+    if (profileName.trim() && profileName.trim() !== currentUser.name) body.name = profileName.trim();
+    if (profileEmail.trim() && profileEmail.trim() !== currentUser.email) body.email = profileEmail.trim();
+    if (profilePass.trim().length >= 6) body.password = profilePass.trim();
+    if (Object.keys(body).length === 0) { setProfileSaving(false); setProfileMsg("No changes to save."); return; }
+    const res = await fetch(`/api/users/${currentUser.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (res.ok) {
+      if (body.name) setCurrentUser((u: any) => u ? { ...u, name: body.name } : u);
+      if (body.email) setCurrentUser((u: any) => u ? { ...u, email: body.email } : u);
+      setProfilePass(""); setProfileMsg("Saved successfully.");
+    } else { setProfileMsg("Error saving. Try again."); }
+    setProfileSaving(false);
+  };
+
   const saveDeadlineEdit = async () => {
     if (!deadlineEditTask || !deadlineEditValue) return;
     await fetch(`/api/tasks/${deadlineEditTask.id}`, {
@@ -1400,7 +1422,7 @@ export default function App() {
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", marginTop: 3, color: "rgba(244,235,208,0.35)", letterSpacing: "0.5px" }}>{currentUser?.role} · {currentWorkspace?.name}</div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setShowProfileModal(true)} className="btn-mini flex-1 justify-center" style={{ borderColor: "rgba(244,235,208,0.15)", color: "rgba(244,235,208,0.5)" }}>
+            <button onClick={() => { setProfileName(currentUser?.name ?? ""); setProfileEmail(currentUser?.email ?? ""); setProfilePass(""); setProfileMsg(null); setShowProfileModal(true); }} className="btn-mini flex-1 justify-center" style={{ borderColor: "rgba(244,235,208,0.15)", color: "rgba(244,235,208,0.5)" }}>
               <Settings size={10} /> Profile
             </button>
             <button onClick={() => { setIsLoggedIn(false); setCurrentUser(null); setCurrentWorkspace(null); localStorage.removeItem("eiden_session"); }} className="btn-mini flex-1 justify-center danger" style={{ borderColor: "rgba(139,58,58,0.4)", color: "rgba(200,112,112,0.8)" }}>
@@ -3858,59 +3880,36 @@ export default function App() {
         )}
 
         {/* Profile */}
-        {showProfileModal && (() => {
-          const [profileName, setProfileName] = React.useState(currentUser?.name ?? "");
-          const [profileEmail, setProfileEmail] = React.useState(currentUser?.email ?? "");
-          const [profilePass, setProfilePass] = React.useState("");
-          const [profileSaving, setProfileSaving] = React.useState(false);
-          const [profileMsg, setProfileMsg] = React.useState<string | null>(null);
-          const handleProfileSave = async () => {
-            if (!currentUser) return;
-            setProfileSaving(true); setProfileMsg(null);
-            const body: any = {};
-            if (profileName.trim() && profileName.trim() !== currentUser.name) body.name = profileName.trim();
-            if (profileEmail.trim() && profileEmail.trim() !== currentUser.email) body.email = profileEmail.trim();
-            if (profilePass.trim().length >= 6) body.password = profilePass.trim();
-            if (Object.keys(body).length === 0) { setProfileSaving(false); setProfileMsg("No changes to save."); return; }
-            const res = await fetch(`/api/users/${currentUser.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-            if (res.ok) {
-              if (body.name) setCurrentUser((u: any) => u ? { ...u, name: body.name } : u);
-              if (body.email) setCurrentUser((u: any) => u ? { ...u, email: body.email } : u);
-              setProfilePass(""); setProfileMsg("Saved successfully.");
-            } else { setProfileMsg("Error saving. Try again."); }
-            setProfileSaving(false);
-          };
-          return (
-            <Modal title="Your Profile" onClose={() => setShowProfileModal(false)}>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3 text-[0.75rem]">
-                  <div className="p-3" style={{ border: "1px solid rgba(18,38,32,0.1)" }}>
-                    <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] mb-1" style={{ color: "var(--gris)" }}>Role</div>
-                    <div className="font-semibold" style={{ color: "var(--deep-forest)" }}>{currentUser?.role}</div>
-                  </div>
-                  <div className="p-3" style={{ border: "1px solid rgba(18,38,32,0.1)" }}>
-                    <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] mb-1" style={{ color: "var(--gris)" }}>Open Tasks</div>
-                    <div className="font-semibold" style={{ color: "var(--deep-forest)" }}>{tasks.filter(t => t.assignee_id === currentUser?.id && t.status !== "Completed").length} open</div>
-                  </div>
+        {showProfileModal && (
+          <Modal title="Your Profile" onClose={() => setShowProfileModal(false)}>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-[0.75rem]">
+                <div className="p-3" style={{ border: "1px solid rgba(18,38,32,0.1)" }}>
+                  <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] mb-1" style={{ color: "var(--gris)" }}>Role</div>
+                  <div className="font-semibold" style={{ color: "var(--deep-forest)" }}>{currentUser?.role}</div>
                 </div>
-                <Field label="Name">
-                  <input className="field-input" value={profileName} onChange={e => setProfileName(e.target.value)} placeholder="Your name" />
-                </Field>
-                <Field label="Email">
-                  <input className="field-input" type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} placeholder="your@email.com" />
-                </Field>
-                <Field label="New Password (leave blank to keep current)">
-                  <input className="field-input" type="password" value={profilePass} onChange={e => setProfilePass(e.target.value)} placeholder="Min 6 characters" />
-                </Field>
-                {profileMsg && <div style={{ fontSize: "0.75rem", color: profileMsg.startsWith("Saved") ? "var(--success)" : "var(--danger)" }}>{profileMsg}</div>}
-                <button onClick={handleProfileSave} disabled={profileSaving} className="btn-primary w-full justify-center" style={{ padding: "10px 0" }}>
-                  {profileSaving ? "Saving…" : "Save Changes"}
-                </button>
-                <button onClick={() => { setShowProfileModal(false); setIsLoggedIn(false); setCurrentUser(null); setCurrentWorkspace(null); localStorage.removeItem("eiden_session"); }} className="flash-button" style={{ marginBottom: 0, borderColor: "rgba(139,58,58,0.4)", color: "var(--danger)" }}>Log out</button>
+                <div className="p-3" style={{ border: "1px solid rgba(18,38,32,0.1)" }}>
+                  <div className="text-[0.6rem] font-bold uppercase tracking-[0.08em] mb-1" style={{ color: "var(--gris)" }}>Open Tasks</div>
+                  <div className="font-semibold" style={{ color: "var(--deep-forest)" }}>{tasks.filter(t => t.assignee_id === currentUser?.id && t.status !== "Completed").length} open</div>
+                </div>
               </div>
-            </Modal>
-          );
-        })()}
+              <Field label="Name">
+                <input className="field-input" value={profileName} onChange={e => setProfileName(e.target.value)} placeholder="Your name" />
+              </Field>
+              <Field label="Email">
+                <input className="field-input" type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} placeholder="your@email.com" />
+              </Field>
+              <Field label="New Password (leave blank to keep current)">
+                <input className="field-input" type="password" value={profilePass} onChange={e => setProfilePass(e.target.value)} placeholder="Min 6 characters" />
+              </Field>
+              {profileMsg && <div style={{ fontSize: "0.75rem", color: profileMsg.startsWith("Saved") ? "var(--success)" : "var(--danger)" }}>{profileMsg}</div>}
+              <button onClick={handleProfileSave} disabled={profileSaving} className="btn-primary w-full justify-center" style={{ padding: "10px 0" }}>
+                {profileSaving ? "Saving…" : "Save Changes"}
+              </button>
+              <button onClick={() => { setShowProfileModal(false); setIsLoggedIn(false); setCurrentUser(null); setCurrentWorkspace(null); localStorage.removeItem("eiden_session"); }} className="flash-button" style={{ marginBottom: 0, borderColor: "rgba(139,58,58,0.4)", color: "var(--danger)" }}>Log out</button>
+            </div>
+          </Modal>
+        )}
       </AnimatePresence>
 
       {/* ── Mobile floating notification bell (bottom-right) ── */}
@@ -3973,7 +3972,7 @@ export default function App() {
               );
             })}
             {/* Profile shortcut */}
-            <button onClick={() => setShowProfileModal(true)}
+            <button onClick={() => { setProfileName(currentUser?.name ?? ""); setProfileEmail(currentUser?.email ?? ""); setProfilePass(""); setProfileMsg(null); setShowProfileModal(true); }}
               className="flex flex-col items-center justify-center gap-1 flex-shrink-0 ml-auto"
               style={{ minWidth: 64, padding: "0 10px", background: "none", border: "none", cursor: "pointer", color: "rgba(244,235,208,0.38)", borderTop: "2px solid transparent" }}>
               <Settings size={20} />
