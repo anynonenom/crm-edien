@@ -1322,7 +1322,7 @@ export default function App() {
   const overdueTasks = filteredTasks.filter(t => isOverdue(t.due_date, t.status));
 
   return (
-    <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%", overflow: "hidden", background: "var(--silk-creme)" }}>
+    <div className="app-shell">
 
       {/* Grain overlay */}
       <svg className="grain-overlay">
@@ -1332,9 +1332,8 @@ export default function App() {
         <rect width="100%" height="100%" filter="url(#noiseFilter)" />
       </svg>
 
-      {/* ── Sidebar — desktop only ── */}
-      <div className="max-lg:hidden flex flex-col shrink-0"
-        style={{ width: 220, background: "var(--deep-forest)", height: "100%" }}>
+      {/* ── Sidebar — desktop only (hidden via CSS media query in index.css) ── */}
+      <div className="app-sidebar">
         {/* Brand */}
         <div className="flex items-center justify-between gap-3 px-6 py-0" style={{ height: 64, borderBottom: "1px solid rgba(244,235,208,0.08)" }}>
           <div className="flex items-center gap-3">
@@ -1390,7 +1389,7 @@ export default function App() {
       </div>
 
       {/* ── Main content ── */}
-      <div style={{ flex: "1 1 0%", minWidth: 0, width: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div className="app-main">
         {/* Top bar */}
         <div className="shrink-0 flex items-center justify-between px-4 lg:px-8" style={{ height: 64, background: "var(--pure-white)", borderBottom: "1px solid rgba(18,38,32,0.08)" }}>
           <div className="flex items-center gap-3">
