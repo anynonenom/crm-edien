@@ -1,0 +1,24 @@
+{
+  "name": "EIDEN-BMS",
+  "short_name": "EIDEN-BMS",
+  "description": "Eiden Group Business Management System",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#122620",
+  "theme_color": "#122620",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://eiden-group.com/wp-content/uploads/2026/04/EIDEN-BMS.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://eiden-group.com/wp-content/uploads/2026/04/EIDEN-BMS.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
