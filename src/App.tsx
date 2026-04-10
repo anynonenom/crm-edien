@@ -396,7 +396,7 @@ export default function App() {
       setToasts(prev => [...prev.slice(-4), { id: n.id, type: n.type, title: n.title, body: n.body }]);
       setTimeout(() => setToasts(prev => prev.filter(t => t.id !== n.id)), 5500);
       if (document.hidden && "Notification" in window && Notification.permission === "granted") {
-        new Notification(n.title, { body: n.body, icon: "https://eiden-group.com/wp-content/uploads/2025/11/ChatGPT-Image-Nov-25-2025-03_46_55-PM.png" });
+        new Notification(n.title, { body: n.body, icon: "https://eiden-group.com/wp-content/uploads/2025/02/cropped-favicon-transparent.png" });
       }
     });
   }, [notifications]);
@@ -1047,7 +1047,7 @@ export default function App() {
         <div className="hidden md:flex relative overflow-hidden flex-col justify-between" style={{ width: "55%", background: "var(--deep-forest)", padding: "60px" }}>
           <div className="silk-texture" />
           <div style={{ position: "relative", zIndex: 10 }}>
-            <img src="https://eiden-group.com/wp-content/uploads/2025/11/ChatGPT-Image-Nov-25-2025-03_46_55-PM.png" alt="Eiden Group" style={{ height: 140, width: "auto", opacity: 0.95 }} />
+            <img src="https://eiden-group.com/wp-content/uploads/2025/02/cropped-favicon-transparent.png" alt="Eiden Group" style={{ height: 140, width: "auto", opacity: 0.95 }} />
           </div>
           <div style={{ position: "relative", zIndex: 10, color: "var(--silk-creme)" }}>
             <h1 style={{ fontSize: "clamp(3rem,7vw,5.5rem)", lineHeight: 0.9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "-2px" }}>
@@ -1274,7 +1274,7 @@ export default function App() {
         {/* Brand */}
         <div className="flex items-center justify-between gap-3 px-6 py-0" style={{ height: 64, borderBottom: "1px solid rgba(244,235,208,0.08)" }}>
           <div className="flex items-center gap-3">
-            <img src="https://eiden-group.com/wp-content/uploads/2025/11/ChatGPT-Image-Nov-25-2025-03_46_55-PM.png" alt="Eiden Group" style={{ height: 38, width: "auto", opacity: 0.92 }} />
+            <img src="https://eiden-group.com/wp-content/uploads/2025/02/cropped-favicon-transparent.png" alt="Eiden Group" style={{ height: 38, width: "auto", opacity: 0.92 }} />
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "var(--silk-creme)", opacity: 0.8 }}>Eiden BSM</div>
           </div>
         </div>
