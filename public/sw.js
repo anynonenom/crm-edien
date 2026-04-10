@@ -34,8 +34,8 @@ self.addEventListener("push", e => {
   e.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: "https://eiden-group.com/wp-content/uploads/2026/04/EIDEN-BMS.png",
-      badge: "https://eiden-group.com/wp-content/uploads/2026/04/EIDEN-BMS.png",
+      icon: "/icon.png",
+      badge: "/icon.png",
       vibrate: [200, 100, 200],
       data: { url: "/" }
     })
