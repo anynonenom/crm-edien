@@ -586,6 +586,9 @@ export default function App() {
             if (parsed?.action && parsed?.data) {
               const act = parsed.action;
               const d = parsed.data;
+              // Block task/deal creation or deletion for users without permission
+              if ((act === "create_task" || act === "delete_task") && !perms.canCreate) return;
+              if ((act === "delete_task" || act === "delete_deal" || act === "delete_contact") && !perms.canDelete) return;
               // Build a human-readable summary for the confirmation prompt
               const summaries: Record<string, string> = {
                 create_task: `Create task "${d.title}" → ${d.assignee || "me"} · ${d.priority || "Medium"} · due ${d.due_date || "in 7 days"}`,
@@ -3298,58 +3301,95 @@ export default function App() {
 
         {/* New Task */}
         {showNewTaskModal && (
-          <Modal title={selectedDealForTask ? `New Task for "${selectedDealForTask.title}"` : "New Task"} onClose={() => { setShowNewTaskModal(false); setSelectedDealForTask(null); setNewTaskAssignees([]); }}>
-            <form onSubmit={handleCreateTask} className="space-y-4">
-              <Field label="Task Title"><input name="title" required className="field-input" placeholder="What needs to be done?" /></Field>
-              <Field label="Description (optional)"><textarea name="description" className="field-input resize-none h-16" placeholder="Additional context..." /></Field>
-              {/* Multi-assignee selector */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[0.65rem] font-bold uppercase tracking-wider" style={{ color: "rgba(18,38,32,0.5)" }}>
-                    Assignees {newTaskAssignees.length > 0 && <span style={{ color: "var(--deep-forest)" }}>· {newTaskAssignees.length} selected</span>}
-                  </label>
-                  {perms.canAssignAll && newTaskAssignees.length > 0 && (
-                    <button type="button" onClick={() => setNewTaskAssignees([])} className="text-[0.6rem] hover:underline" style={{ color: "rgba(18,38,32,0.4)" }}>Clear all</button>
-                  )}
-                </div>
-                <div className="overflow-y-auto" style={{ maxHeight: 140, border: "1px solid var(--border)", borderRadius: 6, padding: "4px" }}>
-                  {(perms.canAssignAll ? users.filter(u => u.workspace_id === currentWorkspace?.id) : users.filter(u => u.id === currentUser?.id)).map(u => {
-                    const checked = newTaskAssignees.includes(u.id);
-                    return (
-                      <label key={u.id} className="flex items-center gap-2.5 px-2 py-1.5 cursor-pointer rounded-sm" style={{ background: checked ? "rgba(18,38,32,0.06)" : "transparent" }}>
-                        <input type="checkbox" checked={checked}
-                          onChange={() => setNewTaskAssignees(prev => checked ? prev.filter(id => id !== u.id) : [...prev, u.id])} />
-                        <span className="text-[0.78rem] font-medium flex-1" style={{ color: "var(--deep-forest)" }}>{u.name}</span>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(18,38,32,0.35)" }}>{u.role}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-                {newTaskAssignees.length === 0 && (
-                  <div className="text-[0.62rem] mt-1" style={{ color: "rgba(18,38,32,0.35)", fontStyle: "italic" }}>Select at least one assignee</div>
-                )}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(18,38,32,0.6)", backdropFilter: "blur(6px)" }}>
+            <motion.div initial={{ opacity: 0, scale: 0.97, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }}
+              className="relative w-full"
+              style={{ maxWidth: 860, maxHeight: "92vh", background: "var(--pure-white)", boxShadow: "0 32px 80px rgba(0,0,0,0.25)", display: "flex", flexDirection: "column" }}>
+              {/* Corner accent */}
+              <div className="absolute bottom-0 right-0 w-8 h-8 pointer-events-none" style={{ borderBottom: "1.5px solid rgba(18,38,32,0.2)", borderRight: "1.5px solid rgba(18,38,32,0.2)" }} />
+              {/* Header */}
+              <div className="flex items-center justify-between px-8 pt-7 pb-5 shrink-0" style={{ borderBottom: "1px solid rgba(18,38,32,0.08)" }}>
+                <h2 style={{ fontSize: "1.1rem", fontWeight: 700, letterSpacing: "-0.3px", color: "var(--deep-forest)", textTransform: "uppercase" }}>
+                  {selectedDealForTask ? `New Task — ${selectedDealForTask.title}` : "New Task"}
+                </h2>
+                <button onClick={() => { setShowNewTaskModal(false); setSelectedDealForTask(null); setNewTaskAssignees([]); }}
+                  style={{ color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", fontSize: "1.3rem", lineHeight: 1, transition: "color 0.2s" }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "var(--danger)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(18,38,32,0.35)")}>×</button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Priority">
-                  <select name="priority" className="field-input">
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                  </select>
-                </Field>
-                <Field label="Client / Company">
-                  <select name="client_id" className="field-input">
-                    <option value="">None</option>
-                    {clients.filter(c => c.workspace_id === currentWorkspace?.id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </Field>
-              </div>
-              <Field label="Due Date & Time"><input name="due_date" type="datetime-local" required className="field-input" /></Field>
-              <button type="submit" disabled={newTaskAssignees.length === 0} className="flash-button mb-0" style={{ opacity: newTaskAssignees.length === 0 ? 0.5 : 1 }}>
-                {newTaskAssignees.length > 1 ? `Create ${newTaskAssignees.length} Tasks` : "Create Task"}
-              </button>
-            </form>
-          </Modal>
+              {/* Body — two columns */}
+              <form onSubmit={handleCreateTask} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+                <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-0" style={{ minHeight: 0 }}>
+                  {/* Left column */}
+                  <div className="flex flex-col gap-5 px-8 py-7" style={{ borderRight: "1px solid rgba(18,38,32,0.07)" }}>
+                    <Field label="Task Title">
+                      <input name="title" required className="field-input" placeholder="What needs to be done?" style={{ fontSize: "1rem", paddingBottom: 12 }} />
+                    </Field>
+                    <Field label="Description">
+                      <textarea name="description" className="field-input resize-none" placeholder="Add more detail..." style={{ minHeight: 140, border: "1px solid rgba(18,38,32,0.12)", padding: "12px", fontSize: "0.85rem", lineHeight: 1.6 }} />
+                    </Field>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Priority">
+                        <select name="priority" className="field-input">
+                          <option value="Low">Low</option>
+                          <option value="Medium">Medium</option>
+                          <option value="High">High</option>
+                        </select>
+                      </Field>
+                      <Field label="Client / Company">
+                        <select name="client_id" className="field-input">
+                          <option value="">None</option>
+                          {clients.filter(c => c.workspace_id === currentWorkspace?.id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </Field>
+                    </div>
+                    <Field label="Due Date & Time">
+                      <input name="due_date" type="datetime-local" required className="field-input" />
+                    </Field>
+                  </div>
+                  {/* Right column */}
+                  <div className="flex flex-col gap-5 px-8 py-7">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[0.65rem] font-bold uppercase tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.5)" }}>
+                          Assignees {newTaskAssignees.length > 0 && <span style={{ color: "var(--deep-forest)" }}>· {newTaskAssignees.length} selected</span>}
+                        </label>
+                        {perms.canAssignAll && newTaskAssignees.length > 0 && (
+                          <button type="button" onClick={() => setNewTaskAssignees([])} className="text-[0.6rem] hover:underline" style={{ color: "rgba(18,38,32,0.4)" }}>Clear all</button>
+                        )}
+                      </div>
+                      <div className="overflow-y-auto" style={{ border: "1px solid rgba(18,38,32,0.1)", padding: "6px", maxHeight: 320 }}>
+                        {(perms.canAssignAll ? users.filter(u => u.workspace_id === currentWorkspace?.id) : users.filter(u => u.id === currentUser?.id)).map(u => {
+                          const checked = newTaskAssignees.includes(u.id);
+                          return (
+                            <label key={u.id} className="flex items-center gap-3 px-3 py-2 cursor-pointer" style={{ background: checked ? "rgba(18,38,32,0.06)" : "transparent", borderBottom: "1px solid rgba(18,38,32,0.04)" }}>
+                              <input type="checkbox" checked={checked}
+                                onChange={() => setNewTaskAssignees(prev => checked ? prev.filter(id => id !== u.id) : [...prev, u.id])} />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[0.82rem] font-medium truncate" style={{ color: "var(--deep-forest)" }}>{u.name}</div>
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(18,38,32,0.38)" }}>{u.role}</div>
+                              </div>
+                              {checked && <div className="shrink-0 w-4 h-4 flex items-center justify-center text-[0.6rem] font-bold" style={{ background: "var(--deep-forest)", color: "var(--silk-creme)", borderRadius: 2 }}>✓</div>}
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {newTaskAssignees.length === 0 && (
+                        <div className="text-[0.62rem] mt-1.5" style={{ color: "rgba(18,38,32,0.35)", fontStyle: "italic" }}>Select at least one assignee</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {/* Footer */}
+                <div className="shrink-0 flex gap-3 px-8 py-5" style={{ borderTop: "1px solid rgba(18,38,32,0.08)" }}>
+                  <button type="submit" disabled={newTaskAssignees.length === 0} className="flash-button mb-0 flex-1" style={{ opacity: newTaskAssignees.length === 0 ? 0.5 : 1 }}>
+                    {newTaskAssignees.length > 1 ? `Create ${newTaskAssignees.length} Tasks →` : "Create Task →"}
+                  </button>
+                  <button type="button" onClick={() => { setShowNewTaskModal(false); setSelectedDealForTask(null); setNewTaskAssignees([]); }}
+                    className="btn-mini" style={{ padding: "12px 24px", fontSize: "0.65rem" }}>Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
         )}
 
         {/* Task Detail */}
