@@ -551,10 +551,15 @@ export default function App() {
     if (!isLoggedIn || !currentUser || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
     const subscribe = async () => {
       try {
+        // Request permission first — required before subscribe()
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") return;
+
         const reg = await navigator.serviceWorker.ready;
         const vapidRes = await fetch("/api/push/vapid-key");
         const { publicKey } = await vapidRes.json();
         if (!publicKey) return;
+
         const existing = await reg.pushManager.getSubscription();
         let sub = existing;
         if (!sub) {
