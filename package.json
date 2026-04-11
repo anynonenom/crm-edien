@@ -1,14 +1,27 @@
 {
-  "name": "react-example",
+  "name": "eiden-crm",
+  "productName": "Eiden CRM",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "start": "node server.ts"
+    "start": "node server.ts",
+
+    "icons": "node scripts/generate-icons.cjs",
+
+    "electron": "electron electron/main.cjs",
+    "electron:build:win":   "electron-builder --win   --config electron-builder.yml",
+    "electron:build:mac":   "electron-builder --mac   --config electron-builder.yml",
+    "electron:build:linux": "electron-builder --linux --config electron-builder.yml",
+
+    "cap:sync":    "npx cap sync",
+    "cap:android": "npx cap open android",
+    "cap:ios":     "npx cap open ios"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -31,12 +44,17 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/ws": "^8.18.1",
     "@vercel/node": "^5.0.0",
     "autoprefixer": "^10.4.21",
+    "electron": "^41.2.0",
+    "electron-builder": "^26.8.1",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

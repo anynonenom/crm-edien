@@ -3,17 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>EIDEN-BMS</title>
+    <title>Eiden CRM</title>
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#122620" />
+    <meta name="application-name" content="Eiden CRM" />
+    <meta name="description" content="Eiden Group — AI-powered CRM & Business Management System" />
     <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- iOS / Safari full-screen install -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="EIDEN-BMS" />
-    <link rel="apple-touch-icon" href="/icon.png" />
-    <link rel="icon" type="image/png" href="/icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Eiden CRM" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png" />
+
+    <!-- Windows tiles -->
+    <meta name="msapplication-TileColor" content="#122620" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144.png" />
+    <meta name="msapplication-config" content="none" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="96x96"   href="/icons/icon-96.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,14 +41,11 @@
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           navigator.serviceWorker.register("/sw.js").then(reg => {
-            // Poll every 30 seconds
             setInterval(() => reg.update(), 30000);
-            // Also check when the user switches back to the tab
             document.addEventListener("visibilitychange", () => {
               if (document.visibilityState === "visible") reg.update();
             });
           }).catch(() => {});
-          // Reload automatically when new SW takes control
           navigator.serviceWorker.addEventListener("controllerchange", () => {
             window.location.reload();
           });

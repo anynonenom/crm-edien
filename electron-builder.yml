@@ -1,0 +1,53 @@
+appId: com.eidengroup.crm
+productName: Eiden CRM
+copyright: Copyright © 2025 Eiden Group
+
+# Build output
+directories:
+  output: dist-electron
+  buildResources: public
+
+# Only ship what's needed
+files:
+  - electron/**/*
+  - public/icons/**/*
+  - package.json
+
+icon: public/icons/icon-512.png
+
+# Windows — produces an NSIS installer .exe
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+  icon: public/icons/icon-512.png
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: public/icons/icon-512.png
+  uninstallerIcon: public/icons/icon-512.png
+  shortcutName: Eiden CRM
+
+# macOS — produces a .dmg + .zip for auto-update
+mac:
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+  icon: public/icons/icon-512.png
+  category: public.app-category.business
+
+dmg:
+  title: Eiden CRM
+
+# Linux — produces AppImage (runs on any distro) + deb + rpm
+linux:
+  target:
+    - AppImage
+    - deb
+    - rpm
+  icon: public/icons/icon-512.png
+  category: Office
+  description: Eiden Group AI-powered CRM
