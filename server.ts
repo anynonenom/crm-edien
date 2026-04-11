@@ -7,8 +7,28 @@ import bcrypt from "bcryptjs";
 import { WebSocketServer, WebSocket } from "ws";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import webpush from "web-push";
 
 dotenv.config();
+
+// ─── VAPID / Web Push setup ───────────────────────────────────────────────────
+let vapidPublicKey: string;
+let vapidPrivateKey: string;
+
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+  vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+} else {
+  const keys = webpush.generateVAPIDKeys();
+  vapidPublicKey = keys.publicKey;
+  vapidPrivateKey = keys.privateKey;
+  console.log("\n⚠️  No VAPID keys found in .env — generated ephemeral keys (push won't survive restart).");
+  console.log("   Add these to your .env to make push persistent:");
+  console.log(`   VAPID_PUBLIC_KEY=${vapidPublicKey}`);
+  console.log(`   VAPID_PRIVATE_KEY=${vapidPrivateKey}\n`);
+}
+
+webpush.setVapidDetails("mailto:admin@eiden-group.com", vapidPublicKey, vapidPrivateKey);
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -142,6 +162,13 @@ async function startServer() {
     if (!room) return;
     const data = JSON.stringify(payload);
     for (const client of room) { if (client.readyState === WebSocket.OPEN) client.send(data); }
+  };
+
+  const broadcastToAll = (payload: any) => {
+    const data = JSON.stringify(payload);
+    for (const room of wsRooms.values()) {
+      for (const client of room) { if (client.readyState === WebSocket.OPEN) client.send(data); }
+    }
   };
 
   wss.on("connection", (ws, req) => {
@@ -702,6 +729,56 @@ async function startServer() {
     } catch { res.status(500).json({ error: "Server error" }); }
   });
 
+  // ─── Push Notifications ───────────────────────────────────────────────────────
+  app.get("/api/push/vapid-key", (_req, res) => {
+    res.json({ publicKey: vapidPublicKey });
+  });
+
+  app.post("/api/push/subscribe", async (req, res) => {
+    const { userId, subscription } = req.body;
+    if (!userId || !subscription?.endpoint) return res.status(400).json({ error: "Missing data" });
+    try {
+      await supabase.from("push_subscriptions").upsert({
+        user_id: Number(userId),
+        endpoint: subscription.endpoint,
+        p256dh: subscription.keys?.p256dh || "",
+        auth: subscription.keys?.auth || "",
+      }, { onConflict: "user_id,endpoint" });
+      res.json({ success: true });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.post("/api/push/send-meeting", async (req, res) => {
+    const { title = "Team Meeting", message, workspaceId, sentBy } = req.body;
+    if (!message) return res.status(400).json({ error: "message required" });
+    try {
+      // Record in DB
+      if (workspaceId) {
+        await supabase.from("meeting_alerts").insert({ workspace_id: Number(workspaceId), sent_by: sentBy || null, title, message });
+      }
+      // Broadcast in-app via WebSocket to ALL connected clients
+      broadcastToAll({ type: "meeting_alert", data: { title, message } });
+      // Send push to all subscribed devices
+      const { data: subs } = await supabase.from("push_subscriptions").select("*");
+      let sent = 0;
+      for (const sub of subs || []) {
+        try {
+          await webpush.sendNotification(
+            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+            JSON.stringify({ title: `📅 ${title}`, body: message, icon: "/icon.png", badge: "/icon.png" })
+          );
+          sent++;
+        } catch (e: any) {
+          // Remove expired/invalid subscriptions
+          if (e.statusCode === 410 || e.statusCode === 404) {
+            await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+          }
+        }
+      }
+      res.json({ success: true, pushed: sent });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
   // ─── AI Provider switcher ─────────────────────────────────────────────────────
   app.get("/api/ai/providers", (_req, res) => {
     const list = [
@@ -728,63 +805,94 @@ async function startServer() {
 
     const today = new Date().toISOString().split("T")[0];
     const TASK_CREATOR_ROLES = ["Admin","Eiden HQ","Eiden Global","Operational Manager","Admin Coordinator","Brand Manager","Branding and Strategy Manager","Solution Architect"];
-    const [{ data: dealsData }, { data: tasksRaw }, { data: kbData }, { data: usersRaw }] = await Promise.all([
-      supabase.from("deals").select("title, value, stage, risk_score, contacts(name)").order("created_at", { ascending: false }).limit(10),
-      supabase.from("tasks").select("title, status, priority, due_date, users!assignee_id(name)").neq("status", "Completed").order("due_date").limit(15),
-      supabase.from("knowledge_base").select("title, content, category"),
-      supabase.from("users").select("name, role"),
-    ]);
-    const assignableUsers = (usersRaw || []).filter((u: any) => TASK_CREATOR_ROLES.includes(u.role));
 
+    const [
+      { data: dealsData }, { data: tasksRaw }, { data: kbData }, { data: usersRaw },
+      { data: contactsData }, { data: clientsData }, { data: allTasksData }
+    ] = await Promise.all([
+      supabase.from("deals").select("id, title, value, stage, risk_score, win_probability, contacts(name)").order("created_at", { ascending: false }).limit(20),
+      supabase.from("tasks").select("id, title, status, priority, due_date, users!assignee_id(name, role)").neq("status", "Completed").order("due_date").limit(30),
+      supabase.from("knowledge_base").select("title, content, category"),
+      supabase.from("users").select("id, name, role, email"),
+      supabase.from("contacts").select("id, name, company, status, source, ltv").order("created_at", { ascending: false }).limit(15),
+      supabase.from("clients").select("id, name, industry, status, monthly_value, onboarding_stage, contact_person").order("created_at", { ascending: false }).limit(15),
+      supabase.from("tasks").select("id, title, status, priority, due_date, users!assignee_id(name)").order("due_date", { ascending: false }).limit(50),
+    ]);
+
+    const assignableUsers = (usersRaw || []).filter((u: any) => TASK_CREATOR_ROLES.includes(u.role));
     const d = dealsData || [];
     const t = (tasksRaw || []).map((x: any) => ({ ...x, assignee: x.users?.name || "Unassigned" }));
+    const allTasks = (allTasksData || []).map((x: any) => ({ ...x, assignee: x.users?.name || "Unassigned" }));
     const kb = kbData || [];
+    const allContacts = contactsData || [];
+    const allClients = clientsData || [];
+    const allUsers = usersRaw || [];
+
     const pipelineValue = d.reduce((s: number, x: any) => s + (x.value || 0), 0);
     const wonDeals = d.filter((x: any) => x.stage === "Won").length;
     const closedDeals = d.filter((x: any) => ["Won","Lost"].includes(x.stage)).length;
     const winRate = closedDeals > 0 ? Math.round((wonDeals / closedDeals) * 100) : 0;
     const overdueTasks = t.filter((x: any) => x.due_date && x.due_date < today);
-    const activeTasks = t;
+    const completedCount = allTasks.filter((x: any) => x.status === "Completed").length;
+    const totalRevenue = d.filter((x: any) => x.stage === "Won").reduce((s: number, x: any) => s + (x.value || 0), 0);
+    const totalMRR = allClients.filter((c: any) => c.status === "Active").reduce((s: number, c: any) => s + (c.monthly_value || 0), 0);
 
     const systemPrompt = `You are EIDEN AI, an intelligent CRM assistant for Eiden Group — a growth engineering and revenue architecture firm.
 
-Your role: Help employees manage their work, monitor tasks, analyze deals, track pipeline health, and make smart decisions. Be concise, professional, and data-driven.
+Your role: Help employees manage their work, monitor tasks, analyze deals, track pipeline health, answer questions about contacts/clients, and make smart decisions. Be concise, professional, and data-driven.
 
 ## LIVE CRM DATA (Today: ${today})
-**Pipeline:** $${pipelineValue.toLocaleString()} total value
-**Active Deals:** ${d.filter((x: any) => !["Won","Lost"].includes(x.stage)).length} | **Win Rate:** ${winRate}%
-**Overdue Tasks:** ${overdueTasks.length}
+**Pipeline:** MAD ${pipelineValue.toLocaleString()} total | Won Revenue: MAD ${totalRevenue.toLocaleString()} | MRR: MAD ${totalMRR.toLocaleString()}
+**Deals:** ${d.length} total | Active: ${d.filter((x: any) => !["Won","Lost"].includes(x.stage)).length} | Win Rate: ${winRate}%
+**Tasks:** ${t.length} active | ${overdueTasks.length} overdue | ${completedCount} completed
+**Team:** ${allUsers.length} members | **Contacts:** ${allContacts.length} | **Clients:** ${allClients.length}
 
-**ACTIVE TASKS (${activeTasks.length}):**
-${activeTasks.map((t: any) => `- [${t.priority}${t.due_date < today ? " OVERDUE" : ""}] ${t.title} → ${t.assignee} (due: ${t.due_date}, ${t.status})`).join("\n") || "None"}
+**ALL ACTIVE TASKS (${t.length}):**
+${t.map((x: any) => `- [#${x.id}][${x.priority}${x.due_date < today ? " ⚠OVERDUE" : ""}] "${x.title}" → ${x.assignee} (due: ${x.due_date}, ${x.status})`).join("\n") || "None"}
 
-**RECENT DEALS:**
-${d.map((x: any) => `- ${x.title}: $${(x.value || 0).toLocaleString()} [${x.stage}] risk:${x.risk_score}% contact:${(x.contacts as any)?.name || "N/A"}`).join("\n") || "None"}
+**ALL DEALS (${d.length}):**
+${d.map((x: any) => `- [#${x.id}] "${x.title}": MAD ${(x.value||0).toLocaleString()} [${x.stage}] risk:${x.risk_score||0}% win_prob:${x.win_probability||0}% contact:${(x.contacts as any)?.name||"N/A"}`).join("\n") || "None"}
+
+**CONTACTS (${allContacts.length}):**
+${allContacts.map((c: any) => `- [#${c.id}] ${c.name} @ ${c.company||"—"} | ${c.status} | LTV: MAD ${(c.ltv||0).toLocaleString()}`).join("\n") || "None"}
+
+**CLIENTS (${allClients.length}):**
+${allClients.map((c: any) => `- [#${c.id}] ${c.name} | ${c.industry||"—"} | ${c.status} | MAD ${(c.monthly_value||0).toLocaleString()}/mo | ${c.onboarding_stage||"—"}`).join("\n") || "None"}
+
+**TEAM MEMBERS (${allUsers.length}):**
+${allUsers.map((u: any) => `- ${u.name} (${u.role})`).join("\n") || "None"}
 
 **KNOWLEDGE BASE:**
-${kb.map((k: any) => `[${k.category}] ${k.title}: ${k.content.slice(0, 120)}...`).join("\n")}
+${kb.map((k: any) => `[${k.category}] ${k.title}: ${k.content.slice(0, 150)}`).join("\n")}
 
-## CAPABILITIES
-You can interpret natural language to take actions. When a user wants to create or update data, respond with a JSON action block anywhere in your response:
+## ACTION CAPABILITIES
+When a user wants to create or update data, include a JSON action block in your response:
 
-For creating a task (only assign to team members listed in ASSIGNABLE TEAM MEMBERS below):
-{"action":"create_task","data":{"title":"...","assignee":"...","due_date":"YYYY-MM-DD","priority":"High|Medium|Low","description":"..."}}
+Create task (canCreate users only, assign to ASSIGNABLE MEMBERS below):
+{"action":"create_task","data":{"title":"...","assignee":"name","due_date":"YYYY-MM-DD","priority":"High|Medium|Low","description":"..."}}
 
-**ASSIGNABLE TEAM MEMBERS (managers/coordinators only):**
-${assignableUsers.map((u: any) => `- ${u.name} (${u.role})`).join("\n") || "None available"}
+Update task:
+{"action":"update_task","data":{"id":123,"status":"Completed|In Progress|Pending","priority":"High|Medium|Low","due_date":"YYYY-MM-DD"}}
 
-For creating a deal:
+Create deal:
 {"action":"create_deal","data":{"title":"...","value":0,"stage":"Lead|Proposal|Negotiation"}}
 
-You can include normal text AND an action block in the same response. Example:
-"Sure! I'll create that task for you. {"action":"create_task","data":{"title":"Review proposal","assignee":"Sarah Dev","due_date":"2026-03-20","priority":"High"}}"
+Update deal:
+{"action":"update_deal","data":{"id":123,"stage":"Won|Lost|Negotiation","value":0}}
+
+Create contact:
+{"action":"create_contact","data":{"name":"...","company":"...","status":"Lead|Active|Inactive"}}
+
+**ASSIGNABLE TEAM MEMBERS:**
+${assignableUsers.map((u: any) => `- ${u.name} (${u.role})`).join("\n") || "None available"}
 
 ## GUIDELINES
-- Be concise — no lengthy preambles
-- Highlight overdue tasks and high-risk deals proactively
-- For briefings, use bullet points
-- If you don't know something, say so clearly
-- Always ground analysis in the actual data provided above`;
+- Be concise — lead with the answer, then detail
+- Use bullet points for lists and briefings
+- Proactively highlight overdue tasks and at-risk deals
+- Reference actual data (IDs, names, values) when answering
+- If asked about an employee's tasks, filter the task list by their name
+- Always ground analysis in the data provided above`;
 
     try {
       const text = await sendToAI(systemPrompt, messages.map((m: any) => ({ role: m.role, content: String(m.content) })));
