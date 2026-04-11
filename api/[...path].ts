@@ -1,9 +1,17 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import bcrypt from "bcryptjs";
+import webpush from "web-push";
 import supabase from "./_lib/supabase";
 import { sendToAI } from "./_lib/ai";
 import { getZoomAccessToken } from "./_lib/zoom";
 import { logActivity } from "./_lib/helpers";
+
+// ─── VAPID setup ──────────────────────────────────────────────────────────────
+const vapidPublicKey  = process.env.VAPID_PUBLIC_KEY  || "";
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || "";
+if (vapidPublicKey && vapidPrivateKey) {
+  webpush.setVapidDetails("mailto:admin@eiden-group.com", vapidPublicKey, vapidPrivateKey);
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const rawPath = req.query.path;
@@ -563,6 +571,54 @@ Delete contact: {"action":"delete_contact","data":{"id":123}}
         } catch (err: any) {
           return res.status(500).json({ error: "AI request failed", details: err.message });
         }
+      }
+    }
+
+    // ─── Push notifications ────────────────────────────────────────────────────
+    if (r0 === "push") {
+      // GET /api/push/vapid-key
+      if (r1 === "vapid-key" && method === "GET") {
+        return res.json({ publicKey: vapidPublicKey });
+      }
+      // POST /api/push/subscribe
+      if (r1 === "subscribe" && method === "POST") {
+        const { userId, subscription } = req.body;
+        if (!subscription?.endpoint) return res.status(400).json({ error: "subscription required" });
+        const { endpoint, keys } = subscription;
+        await supabase.from("push_subscriptions").upsert(
+          { user_id: userId || null, endpoint, p256dh: keys.p256dh, auth: keys.auth },
+          { onConflict: "endpoint" }
+        );
+        return res.json({ success: true });
+      }
+      // POST /api/push/send-meeting
+      if (r1 === "send-meeting" && method === "POST") {
+        const { title = "Team Meeting", message, workspaceId, sentBy } = req.body;
+        if (!message) return res.status(400).json({ error: "message required" });
+        // Always insert so Supabase realtime fires for all connected clients
+        await supabase.from("meeting_alerts").insert({
+          workspace_id: workspaceId ? Number(workspaceId) : null,
+          sent_by: sentBy || null,
+          title,
+          message,
+        });
+        // Also send web-push to background devices
+        const { data: subs } = await supabase.from("push_subscriptions").select("*");
+        let sent = 0;
+        for (const sub of subs || []) {
+          try {
+            await webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+              JSON.stringify({ title: `📅 ${title}`, body: message, icon: "/icon.png" })
+            );
+            sent++;
+          } catch (e: any) {
+            if (e.statusCode === 410 || e.statusCode === 404) {
+              await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+            }
+          }
+        }
+        return res.json({ success: true, pushed: sent });
       }
     }
 
