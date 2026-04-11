@@ -11,6 +11,7 @@ import {
   Clock, Target, Zap, BookOpen, Shield, Search
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { supabase } from "./lib/supabase";
 import { useAiChatStore } from "./stores/aiChatStore";
 import type { AiMessage } from "./stores/aiChatStore";
@@ -4482,6 +4483,7 @@ export default function App() {
           </Modal>
         )}
       </AnimatePresence>
+      <SpeedInsights />
     </div>
   );
 }
