@@ -127,6 +127,14 @@ const stageColor = (s: string) =>
   : s === "Negotiation" ? "text-[var(--warning)]"
   : "text-[var(--deep-forest)]";
 
+// Helper: convert VAPID public key for push subscription
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const savedSession = (() => { try { const s = localStorage.getItem("eiden_session"); return s ? JSON.parse(s) : null; } catch { return null; } })();
@@ -201,6 +209,17 @@ export default function App() {
   // Deadline edit modal (Admin Coordinator)
   const [deadlineEditTask, setDeadlineEditTask] = useState<Task | null>(null);
   const [deadlineEditValue, setDeadlineEditValue] = useState("");
+
+  // Meeting alerts
+  const [meetingAlert, setMeetingAlert] = useState<{ title: string; message: string } | null>(null);
+  const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [meetingTitle, setMeetingTitle] = useState("Team Meeting");
+  const [meetingMessage, setMeetingMessage] = useState("");
+  const [meetingSending, setMeetingSending] = useState(false);
+
+  // Sidebar task board (canCreate view)
+  const [sidebarTaskStatus, setSidebarTaskStatus] = useState<"Overdue" | "Pending" | "In Progress" | "Completed">("Overdue");
+  const [sidebarTaskEmployee, setSidebarTaskEmployee] = useState<number | null>(null);
 
   // Time tracker
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
@@ -526,6 +545,46 @@ export default function App() {
     return () => { supabase.removeChannel(channel); };
   }, [isLoggedIn, currentWorkspace?.id, currentUser?.name]);
 
+  // ─── Push notification subscription (on login) ─────────────────────────────
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    const subscribe = async () => {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const vapidRes = await fetch("/api/push/vapid-key");
+        const { publicKey } = await vapidRes.json();
+        if (!publicKey) return;
+        const existing = await reg.pushManager.getSubscription();
+        let sub = existing;
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey),
+          });
+        }
+        await fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: currentUser.id, subscription: sub.toJSON() }),
+        });
+      } catch { /* Push not supported or blocked */ }
+    };
+    subscribe();
+  }, [isLoggedIn, currentUser?.id]);
+
+  // ─── Meeting alert via Supabase realtime ────────────────────────────────────
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const channel = supabase
+      .channel("meeting_alerts_global")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "meeting_alerts" }, (payload) => {
+        const row = payload.new as any;
+        setMeetingAlert({ title: row.title, message: row.message });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [isLoggedIn]);
+
   // Scroll AI chat to bottom
   useEffect(() => {
     aiEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -846,11 +905,13 @@ export default function App() {
     if (profilePass.trim().length >= 6) body.password = profilePass.trim();
     if (Object.keys(body).length === 0) { setProfileSaving(false); setProfileMsg("No changes to save."); return; }
     const res = await fetch(`/api/users/${currentUser.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const resData = await res.json().catch(() => ({}));
     if (res.ok) {
       if (body.name) setCurrentUser((u: any) => u ? { ...u, name: body.name } : u);
       if (body.email) setCurrentUser((u: any) => u ? { ...u, email: body.email } : u);
-      setProfilePass(""); setProfileMsg("Saved successfully.");
-    } else { setProfileMsg("Error saving. Try again."); }
+      setProfilePass("");
+      setProfileMsg(body.password ? "Password updated. Log out and back in to use new password." : "Saved successfully.");
+    } else { setProfileMsg(`Error: ${resData.error || "Save failed. Try again."}`); }
     setProfileSaving(false);
   };
 
@@ -1450,6 +1511,81 @@ export default function App() {
               <div className="mx-6 my-3" style={{ height: 1, background: "rgba(244,235,208,0.06)" }} />
               <NavItem active={activeTab === "admin"} onClick={() => { setActiveTab("admin"); setSidebarOpen(false); }} icon={<Shield size={14} />} label="Admin Panel" />
             </>
+          )}
+
+          {/* ── Meeting button (all users) ── */}
+          <div className="mx-6 my-3" style={{ height: 1, background: "rgba(244,235,208,0.06)" }} />
+          <button onClick={() => setShowMeetingModal(true)}
+            className="w-full flex items-center gap-3 px-6 py-2.5 text-left transition-all"
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(244,235,208,0.6)", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Meeting
+          </button>
+
+          {/* ── Task board by employee (canCreate only) ── */}
+          {perms.canCreate && (
+            <div className="mx-3 mt-3 mb-2">
+              <div className="px-3 mb-2" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "2px", color: "rgba(244,235,208,0.25)" }}>Task Board</div>
+              {/* Status tabs */}
+              <div className="flex gap-1 px-3 mb-2 flex-wrap">
+                {(["Overdue","Pending","In Progress","Completed"] as const).map(s => {
+                  const count = s === "Overdue"
+                    ? tasks.filter(t => t.workspace_id === currentWorkspace?.id && isOverdue(t.due_date, t.status)).length
+                    : tasks.filter(t => t.workspace_id === currentWorkspace?.id && t.status === s).length;
+                  return (
+                    <button key={s} onClick={() => { setSidebarTaskStatus(s); setSidebarTaskEmployee(null); }}
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace", fontSize: "0.5rem", fontWeight: 600,
+                        textTransform: "uppercase", letterSpacing: "0.5px", padding: "2px 6px", border: "1px solid",
+                        cursor: "pointer", transition: "all 0.2s",
+                        borderColor: sidebarTaskStatus === s ? "var(--silk-creme)" : "rgba(244,235,208,0.15)",
+                        background: sidebarTaskStatus === s ? "rgba(244,235,208,0.12)" : "transparent",
+                        color: sidebarTaskStatus === s ? "var(--silk-creme)"
+                          : s === "Overdue" ? "rgba(200,100,100,0.7)" : "rgba(244,235,208,0.4)",
+                      }}>
+                      {s === "In Progress" ? "Active" : s} {count > 0 ? `·${count}` : ""}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Employee list */}
+              <div className="overflow-y-auto" style={{ maxHeight: 220 }}>
+                {users.filter(u => u.workspace_id === currentWorkspace?.id).map(u => {
+                  const uTasks = sidebarTaskStatus === "Overdue"
+                    ? tasks.filter(t => t.workspace_id === currentWorkspace?.id && t.assignee_id === u.id && isOverdue(t.due_date, t.status))
+                    : tasks.filter(t => t.workspace_id === currentWorkspace?.id && t.assignee_id === u.id && t.status === sidebarTaskStatus);
+                  if (uTasks.length === 0) return null;
+                  const expanded = sidebarTaskEmployee === u.id;
+                  return (
+                    <div key={u.id}>
+                      <button onClick={() => { setSidebarTaskEmployee(expanded ? null : u.id); }}
+                        className="w-full flex items-center justify-between px-3 py-1.5"
+                        style={{ background: expanded ? "rgba(244,235,208,0.06)" : "transparent", border: "none", cursor: "pointer", borderLeft: expanded ? "2px solid rgba(244,235,208,0.4)" : "2px solid transparent" }}>
+                        <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "0.7rem", fontWeight: 600, color: "rgba(244,235,208,0.75)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 130 }}>{u.name}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", fontWeight: 700, color: sidebarTaskStatus === "Overdue" ? "rgba(200,100,100,0.8)" : "rgba(244,235,208,0.4)", flexShrink: 0, marginLeft: 4 }}>{uTasks.length}</span>
+                      </button>
+                      {expanded && (
+                        <div className="px-3 pb-1">
+                          {uTasks.map(t => (
+                            <div key={t.id} onClick={() => { setSelectedTaskDetail(t); setShowTaskDetailModal(true); }} className="py-1 px-2 mb-0.5 cursor-pointer" style={{ borderLeft: "1px solid rgba(244,235,208,0.1)", fontSize: "0.62rem", color: "rgba(244,235,208,0.5)", lineHeight: 1.4 }}>
+                              {t.title.length > 28 ? t.title.slice(0, 28) + "…" : t.title}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {users.filter(u => {
+                  const uTasks = sidebarTaskStatus === "Overdue"
+                    ? tasks.filter(t => t.workspace_id === currentWorkspace?.id && t.assignee_id === u.id && isOverdue(t.due_date, t.status))
+                    : tasks.filter(t => t.workspace_id === currentWorkspace?.id && t.assignee_id === u.id && t.status === sidebarTaskStatus);
+                  return u.workspace_id === currentWorkspace?.id && uTasks.length > 0;
+                }).length === 0 && (
+                  <div className="px-3 py-2" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(244,235,208,0.2)" }}>No tasks</div>
+                )}
+              </div>
+            </div>
           )}
         </nav>
 
@@ -3207,7 +3343,7 @@ export default function App() {
                                   <div className="flex items-center gap-1.5">
                                     {isInfoDirty && (
                                       <button onClick={saveInfo}
-                                        style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", fontWeight: 700, textTransform: "uppercase", padding: "3px 7px", background: "var(--success)", color: "var(--silk-creme)", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>SAVE</button>
+                                        style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", fontWeight: 700, textTransform: "uppercase", padding: "3px 7px", background: "var(--pure-white)", color: "var(--success)", border: "1.5px solid var(--success)", cursor: "pointer", whiteSpace: "nowrap" }}>SAVE</button>
                                     )}
                                     {u.id !== currentUser?.id && (
                                       <button onClick={async () => { if (confirm(`Delete user "${u.name}"?`)) { await fetch(`/api/users/${u.id}`, { method: "DELETE" }); fetchAdminData(); } }}
@@ -4197,6 +4333,72 @@ export default function App() {
             </>
           );
         })()}
+      </AnimatePresence>
+
+      {/* ── Meeting Alert Overlay (shown to all users) ── */}
+      <AnimatePresence>
+        {meetingAlert && (
+          <motion.div initial={{ opacity: 0, y: -60 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -60 }}
+            className="fixed inset-0 z-[9999] flex items-start justify-center pt-8 px-4"
+            style={{ background: "rgba(18,38,32,0.75)", backdropFilter: "blur(8px)" }}>
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }}
+              className="w-full max-w-lg text-center"
+              style={{ background: "var(--deep-forest)", padding: "40px 48px", boxShadow: "0 40px 80px rgba(0,0,0,0.5)", border: "1px solid rgba(244,235,208,0.15)" }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 600, letterSpacing: "3px", textTransform: "uppercase", color: "rgba(244,235,208,0.4)", marginBottom: 16 }}>📅 Meeting Alert</div>
+              <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--silk-creme)", marginBottom: 12, letterSpacing: "-0.5px" }}>{meetingAlert.title}</div>
+              <div style={{ fontSize: "0.9rem", color: "rgba(244,235,208,0.65)", lineHeight: 1.7, marginBottom: 32 }}>{meetingAlert.message}</div>
+              <button onClick={() => setMeetingAlert(null)}
+                style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", padding: "12px 32px", background: "var(--silk-creme)", color: "var(--deep-forest)", border: "none", cursor: "pointer" }}>
+                Got it →
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Meeting Modal — send alert (admin) / view info (employees) ── */}
+      <AnimatePresence>
+        {showMeetingModal && (
+          <Modal title="Meeting" onClose={() => setShowMeetingModal(false)}>
+            {perms.canCreate ? (
+              <div className="space-y-5">
+                <p style={{ fontSize: "0.78rem", color: "rgba(18,38,32,0.5)", lineHeight: 1.6 }}>
+                  Send a meeting alert to all employees. It will pop up on their screen immediately — even if the app is in the background.
+                </p>
+                <Field label="Meeting Title">
+                  <input className="field-input" value={meetingTitle} onChange={e => setMeetingTitle(e.target.value)} placeholder="e.g. Daily Stand-Up" />
+                </Field>
+                <Field label="Message">
+                  <textarea className="field-input resize-none" rows={4} value={meetingMessage} onChange={e => setMeetingMessage(e.target.value)} placeholder="e.g. We have a team meeting right now in the main room. Please join immediately." style={{ border: "1px solid rgba(18,38,32,0.12)", padding: "10px 12px" }} />
+                </Field>
+                <button
+                  disabled={meetingSending || !meetingMessage.trim()}
+                  onClick={async () => {
+                    if (!meetingMessage.trim()) return;
+                    setMeetingSending(true);
+                    await fetch("/api/push/send-meeting", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ title: meetingTitle, message: meetingMessage, workspaceId: currentWorkspace?.id, sentBy: currentUser?.id }),
+                    });
+                    setMeetingSending(false);
+                    setMeetingMessage("");
+                    setShowMeetingModal(false);
+                  }}
+                  className="flash-button mb-0" style={{ opacity: meetingSending || !meetingMessage.trim() ? 0.5 : 1 }}>
+                  {meetingSending ? "Sending…" : "Send Alert to All Employees →"}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4 text-center py-4">
+                <div style={{ fontSize: "2rem" }}>📅</div>
+                <div style={{ fontSize: "0.85rem", color: "rgba(18,38,32,0.55)", lineHeight: 1.7 }}>
+                  You'll receive a pop-up notification when a meeting is scheduled by your manager. Make sure notifications are enabled in your browser.
+                </div>
+              </div>
+            )}
+          </Modal>
+        )}
       </AnimatePresence>
     </div>
   );
