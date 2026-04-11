@@ -143,7 +143,7 @@ export default function App() {
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(savedSession?.workspace ?? null);
   const [view, setView] = useState<"login" | "register" | "recovery">("login");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "pipeline" | "contacts" | "clients" | "tasks" | "analytics" | "time" | "knowledge_base" | "admin" | "team">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "pipeline" | "contacts" | "clients" | "tasks" | "task_board" | "analytics" | "time" | "knowledge_base" | "admin" | "team">("dashboard");
   const [showTfa, setShowTfa] = useState(false);
   const [tfaProgress, setTfaProgress] = useState(0);
 
@@ -218,8 +218,9 @@ export default function App() {
   const [meetingSending, setMeetingSending] = useState(false);
 
   // Sidebar task board (canCreate view)
-  const [sidebarTaskStatus, setSidebarTaskStatus] = useState<"Overdue" | "Pending" | "In Progress" | "Completed">("Overdue");
-  const [sidebarTaskEmployee, setSidebarTaskEmployee] = useState<number | null>(null);
+  const [boardStatus, setBoardStatus] = useState<"Overdue" | "Pending" | "In Progress" | "Completed">("Overdue");
+  const [boardSearch, setBoardSearch] = useState("");
+  const [expandedEmp, setExpandedEmp] = useState<number | null>(null);
 
   // Time tracker
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
@@ -1513,80 +1514,17 @@ export default function App() {
             </>
           )}
 
-          {/* ── Meeting button (all users) ── */}
+          {/* ── Task Board (canCreate only) + Meeting ── */}
           <div className="mx-6 my-3" style={{ height: 1, background: "rgba(244,235,208,0.06)" }} />
+          {perms.canCreate && (
+            <NavItem active={activeTab === "task_board"} onClick={() => { setActiveTab("task_board"); setSidebarOpen(false); }} icon={<BarChart2 size={14} />} label="Task Board" badge={overdueTasks.length > 0 ? overdueTasks.length : undefined} badgeColor="danger" />
+          )}
           <button onClick={() => setShowMeetingModal(true)}
-            className="w-full flex items-center gap-3 px-6 py-2.5 text-left transition-all"
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(244,235,208,0.6)", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.68rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            className={`nav-item-eiden`}
+            style={{ borderLeftColor: "transparent" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             Meeting
           </button>
-
-          {/* ── Task board by employee (canCreate only) ── */}
-          {perms.canCreate && (
-            <div className="mx-3 mt-3 mb-2">
-              <div className="px-3 mb-2" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "2px", color: "rgba(244,235,208,0.25)" }}>Task Board</div>
-              {/* Status tabs */}
-              <div className="flex gap-1 px-3 mb-2 flex-wrap">
-                {(["Overdue","Pending","In Progress","Completed"] as const).map(s => {
-                  const count = s === "Overdue"
-                    ? tasks.filter(t => t.workspace_id === currentWorkspace?.id && isOverdue(t.due_date, t.status)).length
-                    : tasks.filter(t => t.workspace_id === currentWorkspace?.id && t.status === s).length;
-                  return (
-                    <button key={s} onClick={() => { setSidebarTaskStatus(s); setSidebarTaskEmployee(null); }}
-                      style={{
-                        fontFamily: "'JetBrains Mono', monospace", fontSize: "0.5rem", fontWeight: 600,
-                        textTransform: "uppercase", letterSpacing: "0.5px", padding: "2px 6px", border: "1px solid",
-                        cursor: "pointer", transition: "all 0.2s",
-                        borderColor: sidebarTaskStatus === s ? "var(--silk-creme)" : "rgba(244,235,208,0.15)",
-                        background: sidebarTaskStatus === s ? "rgba(244,235,208,0.12)" : "transparent",
-                        color: sidebarTaskStatus === s ? "var(--silk-creme)"
-                          : s === "Overdue" ? "rgba(200,100,100,0.7)" : "rgba(244,235,208,0.4)",
-                      }}>
-                      {s === "In Progress" ? "Active" : s} {count > 0 ? `·${count}` : ""}
-                    </button>
-                  );
-                })}
-              </div>
-              {/* Employee list */}
-              <div className="overflow-y-auto" style={{ maxHeight: 220 }}>
-                {users.filter(u => u.workspace_id === currentWorkspace?.id).map(u => {
-                  const uTasks = sidebarTaskStatus === "Overdue"
-                    ? tasks.filter(t => t.workspace_id === currentWorkspace?.id && t.assignee_id === u.id && isOverdue(t.due_date, t.status))
-                    : tasks.filter(t => t.workspace_id === currentWorkspace?.id && t.assignee_id === u.id && t.status === sidebarTaskStatus);
-                  if (uTasks.length === 0) return null;
-                  const expanded = sidebarTaskEmployee === u.id;
-                  return (
-                    <div key={u.id}>
-                      <button onClick={() => { setSidebarTaskEmployee(expanded ? null : u.id); }}
-                        className="w-full flex items-center justify-between px-3 py-1.5"
-                        style={{ background: expanded ? "rgba(244,235,208,0.06)" : "transparent", border: "none", cursor: "pointer", borderLeft: expanded ? "2px solid rgba(244,235,208,0.4)" : "2px solid transparent" }}>
-                        <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "0.7rem", fontWeight: 600, color: "rgba(244,235,208,0.75)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 130 }}>{u.name}</span>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", fontWeight: 700, color: sidebarTaskStatus === "Overdue" ? "rgba(200,100,100,0.8)" : "rgba(244,235,208,0.4)", flexShrink: 0, marginLeft: 4 }}>{uTasks.length}</span>
-                      </button>
-                      {expanded && (
-                        <div className="px-3 pb-1">
-                          {uTasks.map(t => (
-                            <div key={t.id} onClick={() => { setSelectedTaskDetail(t); setShowTaskDetailModal(true); }} className="py-1 px-2 mb-0.5 cursor-pointer" style={{ borderLeft: "1px solid rgba(244,235,208,0.1)", fontSize: "0.62rem", color: "rgba(244,235,208,0.5)", lineHeight: 1.4 }}>
-                              {t.title.length > 28 ? t.title.slice(0, 28) + "…" : t.title}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {users.filter(u => {
-                  const uTasks = sidebarTaskStatus === "Overdue"
-                    ? tasks.filter(t => t.workspace_id === currentWorkspace?.id && t.assignee_id === u.id && isOverdue(t.due_date, t.status))
-                    : tasks.filter(t => t.workspace_id === currentWorkspace?.id && t.assignee_id === u.id && t.status === sidebarTaskStatus);
-                  return u.workspace_id === currentWorkspace?.id && uTasks.length > 0;
-                }).length === 0 && (
-                  <div className="px-3 py-2" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(244,235,208,0.2)" }}>No tasks</div>
-                )}
-              </div>
-            </div>
-          )}
         </nav>
 
 
@@ -1626,6 +1564,7 @@ export default function App() {
                : activeTab === "pipeline" ? "Pipeline"
                : activeTab === "contacts" ? "Contacts"
                : activeTab === "tasks" ? "Tasks"
+               : activeTab === "task_board" ? "Task Board"
                : activeTab === "team" ? "Team"
                : activeTab === "analytics" ? "Analytics"
                : activeTab === "clients" ? "Clients"
@@ -2407,6 +2346,136 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+              </motion.div>
+            )}
+
+            {/* ── Task Board ───────────────────────────────────── */}
+            {activeTab === "task_board" && perms.canCreate && (
+              <motion.div key="task_board" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col overflow-hidden">
+                {(() => {
+                  const wsTasks = tasks.filter(t => t.workspace_id === currentWorkspace?.id);
+                  const wsUsers = users.filter(u => u.workspace_id === currentWorkspace?.id);
+                  const statusCounts = {
+                    "Overdue": wsTasks.filter(t => isOverdue(t.due_date, t.status)).length,
+                    "Pending": wsTasks.filter(t => t.status === "Pending").length,
+                    "In Progress": wsTasks.filter(t => t.status === "In Progress").length,
+                    "Completed": wsTasks.filter(t => t.status === "Completed").length,
+                  };
+                  const getEmpTasks = (uid: number) => boardStatus === "Overdue"
+                    ? wsTasks.filter(t => t.assignee_id === uid && isOverdue(t.due_date, t.status))
+                    : wsTasks.filter(t => t.assignee_id === uid && t.status === boardStatus);
+                  const visibleUsers = wsUsers.filter(u => {
+                    const uTasks = getEmpTasks(u.id);
+                    if (uTasks.length === 0) return false;
+                    if (!boardSearch.trim()) return true;
+                    const q = boardSearch.toLowerCase();
+                    return u.name.toLowerCase().includes(q) || uTasks.some((t: any) => t.title.toLowerCase().includes(q));
+                  });
+                  return (
+                    <>
+                      {/* Header bar */}
+                      <div className="shrink-0 flex flex-wrap items-center gap-3 px-4 lg:px-8 py-4" style={{ borderBottom: "1px solid rgba(18,38,32,0.08)", background: "var(--pure-white)" }}>
+                        {/* Status tabs */}
+                        <div className="flex gap-1 flex-wrap">
+                          {(["Overdue","Pending","In Progress","Completed"] as const).map(s => (
+                            <button key={s} onClick={() => { setBoardStatus(s); setExpandedEmp(null); setBoardSearch(""); }}
+                              style={{
+                                fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", fontWeight: 700,
+                                textTransform: "uppercase", letterSpacing: "1px", padding: "6px 14px", cursor: "pointer", transition: "all 0.2s",
+                                border: "1.5px solid",
+                                borderColor: boardStatus === s ? "var(--deep-forest)" : "rgba(18,38,32,0.12)",
+                                background: boardStatus === s ? "var(--deep-forest)" : "transparent",
+                                color: boardStatus === s ? "var(--silk-creme)"
+                                  : s === "Overdue" ? "var(--danger)" : "rgba(18,38,32,0.5)",
+                              }}>
+                              {s} <span style={{ opacity: 0.7 }}>· {statusCounts[s]}</span>
+                            </button>
+                          ))}
+                        </div>
+                        {/* Search */}
+                        <div className="flex-1 min-w-[160px] relative">
+                          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "rgba(18,38,32,0.3)" }} />
+                          <input value={boardSearch} onChange={e => setBoardSearch(e.target.value)}
+                            placeholder="Search employee or task…"
+                            style={{ width: "100%", paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8, border: "1.5px solid rgba(18,38,32,0.12)", background: "transparent", fontFamily: "'Space Grotesk', sans-serif", fontSize: "0.8rem", color: "var(--deep-forest)", outline: "none" }} />
+                        </div>
+                        {perms.canCreate && (
+                          <button onClick={() => { setSelectedDealForTask(null); setShowNewTaskModal(true); }} className="btn-primary text-[0.68rem] px-3 py-2 shrink-0">+ Task</button>
+                        )}
+                      </div>
+
+                      {/* Employee list */}
+                      <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-4 pb-24 lg:pb-4">
+                        {visibleUsers.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: "rgba(18,38,32,0.3)" }}>
+                            <CheckCircle2 size={32} style={{ opacity: 0.3 }} />
+                            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "1px" }}>
+                              No {boardStatus.toLowerCase()} tasks
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {visibleUsers.map(u => {
+                              const uTasks = getEmpTasks(u.id).filter((t: any) => {
+                                if (!boardSearch.trim()) return true;
+                                const q = boardSearch.toLowerCase();
+                                return u.name.toLowerCase().includes(q) || t.title.toLowerCase().includes(q);
+                              });
+                              const expanded = expandedEmp === u.id;
+                              return (
+                                <div key={u.id} style={{ border: "1px solid rgba(18,38,32,0.1)", background: "var(--pure-white)" }}>
+                                  {/* Employee row */}
+                                  <button onClick={() => setExpandedEmp(expanded ? null : u.id)}
+                                    className="w-full flex items-center gap-4 px-5 py-4 text-left"
+                                    style={{ background: "none", border: "none", cursor: "pointer", borderLeft: `3px solid ${boardStatus === "Overdue" ? "var(--danger)" : boardStatus === "Completed" ? "var(--success)" : boardStatus === "In Progress" ? "#2a9d8f" : "var(--warning)"}` }}>
+                                    <div className="shrink-0 w-9 h-9 flex items-center justify-center font-bold text-[0.85rem]" style={{ background: "var(--deep-forest)", color: "var(--silk-creme)" }}>
+                                      {u.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-semibold text-[0.85rem] truncate" style={{ color: "var(--deep-forest)" }}>{u.name}</div>
+                                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.57rem", color: "rgba(18,38,32,0.4)", marginTop: 2 }}>{u.role}</div>
+                                    </div>
+                                    <div className="shrink-0 flex items-center gap-3">
+                                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 700, color: boardStatus === "Overdue" ? "var(--danger)" : "var(--deep-forest)" }}>
+                                        {uTasks.length} task{uTasks.length !== 1 ? "s" : ""}
+                                      </span>
+                                      <span style={{ color: "rgba(18,38,32,0.3)", fontSize: "1rem", transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▾</span>
+                                    </div>
+                                  </button>
+                                  {/* Task list */}
+                                  {expanded && (
+                                    <div style={{ borderTop: "1px solid rgba(18,38,32,0.06)" }}>
+                                      {uTasks.map((t: any) => (
+                                        <div key={t.id} onClick={() => { setSelectedTaskDetail(t); setShowTaskDetailModal(true); }}
+                                          className="flex items-start gap-4 px-5 py-3 cursor-pointer transition-all"
+                                          style={{ borderBottom: "1px solid rgba(18,38,32,0.04)", borderLeft: "3px solid transparent" }}
+                                          onMouseEnter={e => (e.currentTarget.style.background = "rgba(18,38,32,0.02)")}
+                                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="font-medium text-[0.82rem]" style={{ color: isOverdue(t.due_date, t.status) ? "var(--danger)" : "var(--deep-forest)" }}>
+                                              {t.title}
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(18,38,32,0.4)" }}>Due {formatDueDate(t.due_date)}</span>
+                                              {t.overdue_reason && <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "var(--warning)" }}>· reason submitted</span>}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2 shrink-0">
+                                            <span className={`px-2 py-0.5 text-[0.55rem] font-bold uppercase border ${priorityColor(t.priority)}`}>{t.priority}</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </motion.div>
             )}
 
@@ -4091,6 +4160,7 @@ export default function App() {
           { key: "dashboard", icon: <ActivityIcon size={20} />, label: "Home" },
           ...(perms.tabs.includes("pipeline") ? [{ key: "pipeline", icon: <TrendingUp size={20} />, label: "Pipeline" }] : []),
           { key: "tasks", icon: <CheckCircle2 size={20} />, label: "Tasks", badge: overdueTasks.length > 0 ? overdueTasks.length : 0 },
+          ...(perms.canCreate ? [{ key: "task_board", icon: <BarChart2 size={20} />, label: "Board", badge: overdueTasks.length > 0 ? overdueTasks.length : 0 }] : []),
           ...(perms.tabs.includes("analytics") ? [{ key: "analytics", icon: <BarChart2 size={20} />, label: "Analytics" }] : []),
           ...(perms.tabs.includes("contacts") ? [{ key: "contacts", icon: <Users size={20} />, label: "Contacts" }] : []),
           ...(perms.tabs.includes("clients") ? [{ key: "clients", icon: <Target size={20} />, label: "Clients" }] : []),
