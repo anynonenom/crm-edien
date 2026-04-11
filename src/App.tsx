@@ -4190,9 +4190,16 @@ export default function App() {
                 </button>
               );
             })}
+            {/* Meeting shortcut */}
+            <button onClick={() => setShowMeetingModal(true)}
+              className="flex flex-col items-center justify-center gap-1 flex-shrink-0"
+              style={{ minWidth: 64, padding: "0 10px", background: "none", border: "none", cursor: "pointer", color: "rgba(244,235,208,0.38)", borderTop: "2px solid transparent" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem" }}>Meeting</span>
+            </button>
             {/* Profile shortcut */}
             <button onClick={() => { setProfileName(currentUser?.name ?? ""); setProfileEmail(currentUser?.email ?? ""); setProfilePass(""); setProfileMsg(null); setShowProfileModal(true); }}
-              className="flex flex-col items-center justify-center gap-1 flex-shrink-0 ml-auto"
+              className="flex flex-col items-center justify-center gap-1 flex-shrink-0"
               style={{ minWidth: 64, padding: "0 10px", background: "none", border: "none", cursor: "pointer", color: "rgba(244,235,208,0.38)", borderTop: "2px solid transparent" }}>
               <Settings size={20} />
               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem" }}>Profile</span>
