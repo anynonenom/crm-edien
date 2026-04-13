@@ -1,16 +1,16 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.eidengroup.crm',
-  appName: 'Eiden CRM',
+  appId: 'com.eidengroup.bms',
+  appName: 'Eiden BMS',
   webDir: 'dist',
 
   // Load from production URL so all API calls work.
   // Replace with your actual Vercel URL (or custom domain).
   server: {
-    url: 'https://crm-edien.vercel.app',
+    url: 'https://bms.eiden-group.com',
     cleartext: false,
-    allowNavigation: ['crm-edien.vercel.app'],
+    allowNavigation: ['bms.eiden-group.com'],
   },
 
   plugins: {

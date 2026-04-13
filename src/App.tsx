@@ -1,5 +1,5 @@
 /**
- * Eiden AI BSM — powered by Claude (Anthropic)
+ * Eiden AI BMS — powered by Claude (Anthropic)
  * @license Apache-2.0
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -789,7 +789,7 @@ export default function App() {
             if (useAiChatStore.getState().getMessages(user.id, ws.id).length === 0) {
               useAiChatStore.getState().addMessage(user.id, ws.id, {
                 role: "assistant",
-                content: `Welcome back, ${user.name}! I'm EIDEN AI, your BSM assistant. I can help you manage tasks, analyze your pipeline, and keep your team on track.\n\nTry asking me:\n• "What tasks are overdue?"\n• "Give me a morning briefing"\n• "What deals are at risk?"\n• "Create a task to review the proposal for Sarah"`
+                content: `Welcome back, ${user.name}! I'm EIDEN AI, your BMS assistant. I can help you manage tasks, analyze your pipeline, and keep your team on track.\n\nTry asking me:\n• "What tasks are overdue?"\n• "Give me a morning briefing"\n• "What deals are at risk?"\n• "Create a task to review the proposal for Sarah"`
               });
             }
           }, 400);
@@ -1497,7 +1497,7 @@ export default function App() {
         <div className="flex items-center justify-between gap-3 px-6 py-0" style={{ height: 64, borderBottom: "1px solid rgba(244,235,208,0.08)" }}>
           <div className="flex items-center gap-3">
             <img src="https://eiden-group.com/wp-content/uploads/2026/04/EIDEN-BMS.png" alt="Eiden Group" style={{ height: 38, width: "auto", opacity: 0.92 }} />
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "var(--silk-creme)", opacity: 0.8 }}>Eiden BSM</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "var(--silk-creme)", opacity: 0.8 }}>Eiden BMS</div>
           </div>
         </div>
 

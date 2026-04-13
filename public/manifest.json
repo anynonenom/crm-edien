@@ -1,6 +1,6 @@
 {
-  "name": "Eiden CRM",
-  "short_name": "Eiden CRM",
+  "name": "Eiden BMS",
+  "short_name": "Eiden BMS",
   "description": "Eiden Group — AI-powered CRM & Business Management System",
   "start_url": "/",
   "scope": "/",
@@ -31,21 +31,21 @@
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Eiden CRM Dashboard"
+      "label": "Eiden BMS Dashboard"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Eiden CRM Mobile"
+      "label": "Eiden BMS Mobile"
     }
   ],
   "shortcuts": [
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
-      "description": "Open the CRM Dashboard",
+      "description": "Open the BMS Dashboard",
       "url": "/",
       "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
     }

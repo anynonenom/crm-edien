@@ -1,5 +1,5 @@
-appId: com.eidengroup.crm
-productName: Eiden CRM
+appId: com.eidengroup.bms
+productName: Eiden BMS
 copyright: Copyright © 2025 Eiden Group
 
 # Build output
@@ -27,7 +27,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   installerIcon: public/icons/icon-512.png
   uninstallerIcon: public/icons/icon-512.png
-  shortcutName: Eiden CRM
+  shortcutName: Eiden BMS
 
 # macOS — produces a .dmg + .zip for auto-update
 mac:
@@ -40,7 +40,7 @@ mac:
   category: public.app-category.business
 
 dmg:
-  title: Eiden CRM
+  title: Eiden BMS
 
 # Linux — produces AppImage (runs on any distro) + deb + rpm
 linux:

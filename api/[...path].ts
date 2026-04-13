@@ -535,9 +535,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const closedDeals = d.filter((x: any) => ["Won", "Lost"].includes(x.stage)).length;
         const winRate = closedDeals > 0 ? Math.round((wonDeals / closedDeals) * 100) : 0;
         const overdueTasks = t.filter((x: any) => x.due_date && x.due_date < today);
-        const systemPrompt = `You are EIDEN AI, an intelligent CRM assistant for Eiden Group — a growth engineering and revenue architecture firm.
+        const systemPrompt = `You are EIDEN AI, an intelligent BMS assistant for Eiden Group — a growth engineering and revenue architecture firm.
 Your role: Help employees manage their work, monitor tasks, analyze deals, track pipeline health, and make smart decisions. Be concise, professional, and data-driven.
-## LIVE CRM DATA (Today: ${today})
+## LIVE BMS DATA (Today: ${today})
 **Pipeline:** $${pipelineValue.toLocaleString()} total value
 **Active Deals:** ${d.filter((x: any) => !["Won","Lost"].includes(x.stage)).length} | **Win Rate:** ${winRate}%
 **Overdue Tasks:** ${overdueTasks.length}
@@ -635,7 +635,7 @@ Delete contact: {"action":"delete_contact","data":{"id":123}}
         { name: "Hassan Elkhadiri",   email: "hassan@eiden.group",     role: "Brand Manager", workspace_id: wsId, username: "hassan",      password: defaultPass },
         { name: "Abdelhakim Akhidar", email: "abdelhakim@eiden.group", role: "Web Developer", workspace_id: wsId, username: "abdelhakim",  password: defaultPass },
       ]);
-      await supabase.from("activity_log").insert({ user_id: null, action: "System initialized", related_to: "Eiden AI CRM", type: "system" });
+      await supabase.from("activity_log").insert({ user_id: null, action: "System initialized", related_to: "Eiden AI BMS", type: "system" });
       return res.json({ message: "Seeded successfully", workspace_id: wsId });
     }
 

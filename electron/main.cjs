@@ -2,7 +2,7 @@ const { app, BrowserWindow, shell, Menu, nativeImage } = require('electron');
 const path = require('path');
 
 // Production URL — change to your custom domain if you have one
-const APP_URL = 'https://crm-edien.vercel.app';
+const APP_URL = 'https://bms.eiden-group.com';
 
 function createWindow() {
   const icon = nativeImage.createFromPath(path.join(__dirname, '../public/icons/icon-512.png'));
@@ -13,7 +13,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     icon,
-    title: 'Eiden CRM',
+    title: 'Eiden BMS',
     backgroundColor: '#122620',
     webPreferences: {
       nodeIntegration: false,
