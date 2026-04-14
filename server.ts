@@ -140,7 +140,7 @@ async function startServer() {
       { name: "Maryam Ha",          email: "maryam@eiden.group",      role: "Marketing Strategy",  workspace_id: wsId, username: "maryam",      password: defaultPass },
       { name: "Abdelhakim Akhidar", email: "abdelhakim@eiden.group",  role: "Web / IT Developer",  workspace_id: wsId, username: "abdelhakim",  password: defaultPass },
     ]);
-    await logActivity(1, "System initialized", "Eiden AI CRM", "system");
+    await logActivity(1, "System initialized", "Eiden AI BMS", "system");
     console.log("  DB: ✓ Seeded Supabase with default workspace + team");
   }
 
@@ -837,11 +837,11 @@ async function startServer() {
     const totalRevenue = d.filter((x: any) => x.stage === "Won").reduce((s: number, x: any) => s + (x.value || 0), 0);
     const totalMRR = allClients.filter((c: any) => c.status === "Active").reduce((s: number, c: any) => s + (c.monthly_value || 0), 0);
 
-    const systemPrompt = `You are EIDEN AI, an intelligent CRM assistant for Eiden Group — a growth engineering and revenue architecture firm.
+    const systemPrompt = `You are EIDEN AI, an intelligent BMS assistant for Eiden Group — a growth engineering and revenue architecture firm.
 
 Your role: Help employees manage their work, monitor tasks, analyze deals, track pipeline health, answer questions about contacts/clients, and make smart decisions. Be concise, professional, and data-driven.
 
-## LIVE CRM DATA (Today: ${today})
+## LIVE BMS DATA (Today: ${today})
 **Pipeline:** MAD ${pipelineValue.toLocaleString()} total | Won Revenue: MAD ${totalRevenue.toLocaleString()} | MRR: MAD ${totalMRR.toLocaleString()}
 **Deals:** ${d.length} total | Active: ${d.filter((x: any) => !["Won","Lost"].includes(x.stage)).length} | Win Rate: ${winRate}%
 **Tasks:** ${t.length} active | ${overdueTasks.length} overdue | ${completedCount} completed
@@ -923,7 +923,7 @@ ${assignableUsers.map((u: any) => `- ${u.name} (${u.role})`).join("\n") || "None
   }
 
   server.listen(PORT, "0.0.0.0", () => {
-    console.log(`\n🚀 Eiden AI CRM running → http://localhost:${PORT}`);
+    console.log(`\n🚀 Eiden AI BMS running → http://localhost:${PORT}`);
     console.log(`   AI: ${process.env.ANTHROPIC_API_KEY ? "✓ Claude configured" : "✗ Set ANTHROPIC_API_KEY in .env"}`);
     console.log(`   DB: ${process.env.SUPABASE_URL ? "✓ Supabase connected" : "✗ Set SUPABASE_URL in .env"}\n`);
   });

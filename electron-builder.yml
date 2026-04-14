@@ -50,4 +50,4 @@ linux:
     - rpm
   icon: public/icons/icon-512.png
   category: Office
-  description: Eiden Group AI-powered CRM
+  description: Eiden Group AI-powered BMS

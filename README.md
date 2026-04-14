@@ -1,6 +1,6 @@
-# Eiden Group CRM // Forensic Revenue Architecture
+# Eiden Group BMS // Forensic Revenue Architecture
 
-A high-fidelity, AI-driven CRM designed for the Eiden Group. This application provides a futuristic "Flash UI" interface for managing sales pipelines, contacts, tasks, and forensic revenue analytics.
+A high-fidelity, AI-driven BMS designed for the Eiden Group. This application provides a futuristic "Flash UI" interface for managing sales pipelines, contacts, tasks, and forensic revenue analytics.
 
 ## Core Objective
 To provide a unified, secure, and intelligent platform for managing the organization's commercial operations with a focus on forensic data visualization and AI-driven insights.
@@ -32,7 +32,7 @@ To provide a unified, secure, and intelligent platform for managing the organiza
 - `/src/App.tsx`: Main application logic and view management.
 - `/src/index.css`: Global styles and "Flash UI" theme definitions.
 - `/server.ts`: Express server and SQLite database management.
-- `/crm.db`: SQLite database file (generated on first run).
+- `/bms.db`: SQLite database file (generated on first run).
 
 ## Acceptance Criteria
 - [x] Multi-step authentication and registration.

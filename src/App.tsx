@@ -3511,33 +3511,33 @@ export default function App() {
 
         {/* New Task */}
         {showNewTaskModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(18,38,32,0.6)", backdropFilter: "blur(6px)" }}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6" style={{ background: "rgba(18,38,32,0.6)", backdropFilter: "blur(6px)" }}>
             <motion.div initial={{ opacity: 0, scale: 0.97, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }}
               className="relative w-full"
-              style={{ maxWidth: 860, maxHeight: "92vh", background: "var(--pure-white)", boxShadow: "0 32px 80px rgba(0,0,0,0.25)", display: "flex", flexDirection: "column" }}>
+              style={{ maxWidth: "min(100vw - 1rem, 860px)", maxHeight: "92vh", background: "var(--pure-white)", boxShadow: "0 32px 80px rgba(0,0,0,0.25)", display: "flex", flexDirection: "column" }}>
               {/* Corner accent */}
-              <div className="absolute bottom-0 right-0 w-8 h-8 pointer-events-none" style={{ borderBottom: "1.5px solid rgba(18,38,32,0.2)", borderRight: "1.5px solid rgba(18,38,32,0.2)" }} />
+              <div className="absolute bottom-0 right-0 w-6 h-6 sm:w-8 sm:h-8 pointer-events-none" style={{ borderBottom: "1.5px solid rgba(18,38,32,0.2)", borderRight: "1.5px solid rgba(18,38,32,0.2)" }} />
               {/* Header */}
-              <div className="flex items-center justify-between px-8 pt-7 pb-5 shrink-0" style={{ borderBottom: "1px solid rgba(18,38,32,0.08)" }}>
-                <h2 style={{ fontSize: "1.1rem", fontWeight: 700, letterSpacing: "-0.3px", color: "var(--deep-forest)", textTransform: "uppercase" }}>
+              <div className="flex items-center justify-between px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-7 pb-3 sm:pb-4 md:pb-5 shrink-0" style={{ borderBottom: "1px solid rgba(18,38,32,0.08)" }}>
+                <h2 style={{ fontSize: "1rem", fontWeight: 700, letterSpacing: "-0.3px", color: "var(--deep-forest)", textTransform: "uppercase" }}>
                   {selectedDealForTask ? `New Task — ${selectedDealForTask.title}` : "New Task"}
                 </h2>
                 <button onClick={() => { setShowNewTaskModal(false); setSelectedDealForTask(null); setNewTaskAssignees([]); }}
-                  style={{ color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", fontSize: "1.3rem", lineHeight: 1, transition: "color 0.2s" }}
+                  style={{ color: "rgba(18,38,32,0.35)", background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem", lineHeight: 1, transition: "color 0.2s" }}
                   onMouseEnter={e => (e.currentTarget.style.color = "var(--danger)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(18,38,32,0.35)")}>×</button>
               </div>
               {/* Body — two columns */}
               <form onSubmit={handleCreateTask} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
-                <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-0" style={{ minHeight: 0 }}>
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-0" style={{ minHeight: 0 }}>
                   {/* Left column */}
-                  <div className="flex flex-col gap-5 px-8 py-7" style={{ borderRight: "1px solid rgba(18,38,32,0.07)" }}>
+                  <div className="flex flex-col gap-4 sm:gap-5 px-4 sm:px-6 md:px-8 py-4 sm:py-6 md:py-7" style={{ borderRight: window.innerWidth >= 768 ? "1px solid rgba(18,38,32,0.07)" : "none" }}>
                     <Field label="Task Title">
                       <input name="title" required className="field-input" placeholder="What needs to be done?" style={{ fontSize: "1rem", paddingBottom: 12 }} />
                     </Field>
                     <Field label="Description">
-                      <textarea name="description" className="field-input resize-none" placeholder="Add more detail..." style={{ minHeight: 140, border: "1px solid rgba(18,38,32,0.12)", padding: "12px", fontSize: "0.85rem", lineHeight: 1.6 }} />
+                      <textarea name="description" className="field-input resize-none" placeholder="Add more detail..." style={{ minHeight: 120, border: "1px solid rgba(18,38,32,0.12)", padding: "12px", fontSize: "0.85rem", lineHeight: 1.6 }} />
                     </Field>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <Field label="Priority">
                         <select name="priority" className="field-input">
                           <option value="Low">Low</option>
@@ -3557,45 +3557,45 @@ export default function App() {
                     </Field>
                   </div>
                   {/* Right column */}
-                  <div className="flex flex-col gap-5 px-8 py-7">
+                  <div className="flex flex-col gap-4 sm:gap-5 px-4 sm:px-6 md:px-8 py-4 sm:py-6 md:py-7">
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="text-[0.65rem] font-bold uppercase tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.5)" }}>
+                        <label className="text-[0.6rem] sm:text-[0.65rem] font-bold uppercase tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.5)" }}>
                           Assignees {newTaskAssignees.length > 0 && <span style={{ color: "var(--deep-forest)" }}>· {newTaskAssignees.length} selected</span>}
                         </label>
                         {perms.canAssignAll && newTaskAssignees.length > 0 && (
-                          <button type="button" onClick={() => setNewTaskAssignees([])} className="text-[0.6rem] hover:underline" style={{ color: "rgba(18,38,32,0.4)" }}>Clear all</button>
+                          <button type="button" onClick={() => setNewTaskAssignees([])} className="text-[0.55rem] sm:text-[0.6rem] hover:underline" style={{ color: "rgba(18,38,32,0.4)" }}>Clear all</button>
                         )}
                       </div>
-                      <div className="overflow-y-auto" style={{ border: "1px solid rgba(18,38,32,0.1)", padding: "6px", maxHeight: 320 }}>
+                      <div className="overflow-y-auto" style={{ border: "1px solid rgba(18,38,32,0.1)", padding: "6px", maxHeight: 280 }}>
                         {(perms.canAssignAll ? users.filter(u => u.workspace_id === currentWorkspace?.id) : users.filter(u => u.id === currentUser?.id)).map(u => {
                           const checked = newTaskAssignees.includes(u.id);
                           return (
-                            <label key={u.id} className="flex items-center gap-3 px-3 py-2 cursor-pointer" style={{ background: checked ? "rgba(18,38,32,0.06)" : "transparent", borderBottom: "1px solid rgba(18,38,32,0.04)" }}>
+                            <label key={u.id} className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 cursor-pointer" style={{ background: checked ? "rgba(18,38,32,0.06)" : "transparent", borderBottom: "1px solid rgba(18,38,32,0.04)" }}>
                               <input type="checkbox" checked={checked}
                                 onChange={() => setNewTaskAssignees(prev => checked ? prev.filter(id => id !== u.id) : [...prev, u.id])} />
                               <div className="flex-1 min-w-0">
-                                <div className="text-[0.82rem] font-medium truncate" style={{ color: "var(--deep-forest)" }}>{u.name}</div>
-                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(18,38,32,0.38)" }}>{u.role}</div>
+                                <div className="text-[0.75rem] sm:text-[0.82rem] font-medium truncate" style={{ color: "var(--deep-forest)" }}>{u.name}</div>
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", color: "rgba(18,38,32,0.38)" }}>{u.role}</div>
                               </div>
-                              {checked && <div className="shrink-0 w-4 h-4 flex items-center justify-center text-[0.6rem] font-bold" style={{ background: "var(--deep-forest)", color: "var(--silk-creme)", borderRadius: 2 }}>✓</div>}
+                              {checked && <div className="shrink-0 w-3 h-3 sm:w-4 sm:h-4 flex items-center justify-center text-[0.5rem] sm:text-[0.6rem] font-bold" style={{ background: "var(--deep-forest)", color: "var(--silk-creme)", borderRadius: 2 }}>✓</div>}
                             </label>
                           );
                         })}
                       </div>
                       {newTaskAssignees.length === 0 && (
-                        <div className="text-[0.62rem] mt-1.5" style={{ color: "rgba(18,38,32,0.35)", fontStyle: "italic" }}>Select at least one assignee</div>
+                        <div className="text-[0.55rem] sm:text-[0.62rem] mt-1.5" style={{ color: "rgba(18,38,32,0.35)", fontStyle: "italic" }}>Select at least one assignee</div>
                       )}
                     </div>
                   </div>
                 </div>
                 {/* Footer */}
-                <div className="shrink-0 flex gap-3 px-8 py-5" style={{ borderTop: "1px solid rgba(18,38,32,0.08)" }}>
+                <div className="shrink-0 flex flex-col sm:flex-row gap-2 sm:gap-3 px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-5" style={{ borderTop: "1px solid rgba(18,38,32,0.08)" }}>
                   <button type="submit" disabled={newTaskAssignees.length === 0} className="flash-button mb-0 flex-1" style={{ opacity: newTaskAssignees.length === 0 ? 0.5 : 1 }}>
                     {newTaskAssignees.length > 1 ? `Create ${newTaskAssignees.length} Tasks →` : "Create Task →"}
                   </button>
                   <button type="button" onClick={() => { setShowNewTaskModal(false); setSelectedDealForTask(null); setNewTaskAssignees([]); }}
-                    className="btn-mini" style={{ padding: "12px 24px", fontSize: "0.65rem" }}>Cancel</button>
+                    className="btn-mini" style={{ padding: "10px 20px", fontSize: "0.6rem" }}>Cancel</button>
                 </div>
               </form>
             </motion.div>
