@@ -3527,8 +3527,8 @@ export default function App() {
                   onMouseEnter={e => (e.currentTarget.style.color = "var(--danger)")} onMouseLeave={e => (e.currentTarget.style.color = "rgba(18,38,32,0.35)")}>×</button>
               </div>
               {/* Body — two columns */}
-              <form onSubmit={handleCreateTask} style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-                <div className="flex-1 overflow-y-auto pb-24" style={{ minHeight: 0 }}>
+              <form onSubmit={handleCreateTask} style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+                <div className="flex-1 overflow-y-auto pb-28" style={{ minHeight: 0 }}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-0" style={{ minHeight: 0 }}>
                     {/* Left column */}
                     <div className="flex flex-col gap-4 sm:gap-5 px-4 sm:px-6 md:px-8 py-4 sm:py-6 md:py-7" style={{ borderRight: "1px solid rgba(18,38,32,0.07)" }}>
@@ -3592,7 +3592,7 @@ export default function App() {
                   </div>
                 </div>
                 {/* Footer */}
-                <div className="sticky bottom-0 z-10 flex flex-col sm:flex-row gap-2 sm:gap-3 px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-5 bg-white/95 backdrop-blur-sm" style={{ borderTop: "1px solid rgba(18,38,32,0.08)" }}>
+                <div className="flex-shrink-0 flex flex-col sm:flex-row gap-2 sm:gap-3 px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-5 bg-white" style={{ borderTop: "1px solid rgba(18,38,32,0.08)" }}>
                   <button type="submit" disabled={newTaskAssignees.length === 0} className="flash-button mb-0 flex-1" style={{ opacity: newTaskAssignees.length === 0 ? 0.5 : 1 }}>
                     {newTaskAssignees.length > 1 ? `Create ${newTaskAssignees.length} Tasks →` : "Create Task →"}
                   </button>
