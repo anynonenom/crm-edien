@@ -4,6 +4,7 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
+import { randomUUID } from "crypto";
 import { WebSocketServer, WebSocket } from "ws";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
@@ -92,6 +93,88 @@ async function logActivity(userId: number, action: string, relatedTo: string, ty
     await supabase.from("activity_log").insert({ user_id: userId, action, related_to: relatedTo, type });
   } catch {}
 }
+
+type WorkflowRun = {
+  runId: string;
+  workflowName: string;
+  status: "running" | "completed" | "failed";
+  payload: any;
+  startedAt: string;
+  completedAt?: string;
+  error?: string;
+};
+
+const workflowRuns = new Map<string, WorkflowRun>();
+
+const toNumberOrNull = (value: any): number | null => {
+  if (value === undefined || value === null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
+const parseActorId = (req: express.Request): number => {
+  const headerUserId = toNumberOrNull(req.headers["x-user-id"]);
+  const queryUserId = toNumberOrNull(req.query.user_id);
+  const bodyUserId = toNumberOrNull((req.body || {}).user_id);
+  return headerUserId || queryUserId || bodyUserId || 1;
+};
+
+const estimateTokenCount = (text: string): number => {
+  if (!text) return 0;
+  return Math.ceil(text.length / 4);
+};
+
+const isMissingColumnError = (error: any): boolean => {
+  const msg = String(error?.message || "").toLowerCase();
+  return msg.includes("column") && msg.includes("does not exist");
+};
+
+const isMissingRelationError = (error: any): boolean => {
+  const msg = String(error?.message || "").toLowerCase();
+  return msg.includes("relation") && msg.includes("does not exist");
+};
+
+async function emitEvent(topic: string, payload: any) {
+  try {
+    await supabase.from("event_log").insert({ topic, payload });
+  } catch {
+    // Event log table is optional; keep runtime resilient if not migrated yet.
+  }
+}
+
+async function storeAiUsageLog(args: {
+  endpoint: string;
+  model: string;
+  promptText: string;
+  completionText: string;
+  userId?: number | null;
+}) {
+  try {
+    await supabase.from("ai_usage_logs").insert({
+      endpoint: args.endpoint,
+      model: args.model,
+      prompt_tokens: estimateTokenCount(args.promptText),
+      completion_tokens: estimateTokenCount(args.completionText),
+      user_id: args.userId || null,
+      cost_micro_usd: 0,
+    });
+  } catch {
+    // ai_usage_logs may not exist yet in older environments.
+  }
+}
+
+const onboardingStageToProgress = (stage?: string | null): number => {
+  const normalized = String(stage || "").toLowerCase().trim();
+  if (!normalized) return 0;
+  if (normalized.includes("completed")) return 100;
+  if (normalized.includes("contract") || normalized.includes("signature")) return 90;
+  if (normalized.includes("review")) return 75;
+  if (normalized.includes("document")) return 55;
+  if (normalized.includes("kyc") || normalized.includes("verification")) return 35;
+  if (normalized.includes("negotiation")) return 25;
+  if (normalized.includes("new") || normalized.includes("started")) return 10;
+  return 50;
+};
 
 // ─── Zoom OAuth Helper ────────────────────────────────────────────────────────
 async function getZoomAccessToken(workspaceId: number): Promise<string | null> {
@@ -296,6 +379,146 @@ async function startServer() {
     } catch { res.status(500).json({ error: "Server error" }); }
   });
 
+  // ─── Clients ─────────────────────────────────────────────────────────────────
+  app.get("/api/clients", async (_req, res) => {
+    try {
+      const { data, error } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
+      if (error && isMissingRelationError(error)) return res.json([]);
+      if (error) return res.status(500).json({ error: error.message });
+      res.json(data || []);
+    } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
+  app.post("/api/clients", async (req, res) => {
+    const {
+      name,
+      industry,
+      status,
+      onboarding_stage,
+      contact_person,
+      contact_email,
+      contact_phone,
+      monthly_value,
+      notes,
+      workspace_id,
+    } = req.body || {};
+    if (!name) return res.status(400).json({ error: "name is required" });
+    try {
+      const payload = {
+        name: String(name).trim(),
+        industry: industry || null,
+        status: status || "Onboarding",
+        onboarding_stage: onboarding_stage || "New",
+        contact_person: contact_person || null,
+        contact_email: contact_email || null,
+        contact_phone: contact_phone || null,
+        monthly_value: Number(monthly_value || 0),
+        notes: notes || null,
+        workspace_id: toNumberOrNull(workspace_id),
+      };
+      const { data, error } = await supabase.from("clients").insert(payload).select().single();
+      if (error && isMissingRelationError(error)) {
+        return res.status(501).json({ error: "clients table is missing. Run supabase_ibms_core_migration.sql first." });
+      }
+      if (error) return res.status(500).json({ error: error.message });
+      await emitEvent("client.created", { client_id: data?.id, workspace_id: payload.workspace_id });
+      await logActivity(parseActorId(req), `Created client: ${payload.name}`, payload.name, "client");
+      res.json({ id: data?.id });
+    } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
+  app.patch("/api/clients/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+      const updates: any = {};
+      for (const f of ["name","industry","status","onboarding_stage","contact_person","contact_email","contact_phone","monthly_value","notes","workspace_id"]) {
+        if (Object.prototype.hasOwnProperty.call(req.body, f)) updates[f] = req.body[f] ?? null;
+      }
+      if (updates.monthly_value !== undefined && updates.monthly_value !== null) {
+        updates.monthly_value = Number(updates.monthly_value || 0);
+      }
+      if (updates.name !== undefined && !String(updates.name).trim()) {
+        return res.status(400).json({ error: "name cannot be empty" });
+      }
+      const { error } = await supabase.from("clients").update(updates).eq("id", id);
+      if (error && isMissingRelationError(error)) {
+        return res.status(501).json({ error: "clients table is missing. Run supabase_ibms_core_migration.sql first." });
+      }
+      if (error) return res.status(500).json({ error: error.message });
+      await emitEvent("client.updated", { client_id: Number(id), changes: Object.keys(updates) });
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
+  app.delete("/api/clients/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+      const { error } = await supabase.from("clients").delete().eq("id", id);
+      if (error && isMissingRelationError(error)) {
+        return res.status(501).json({ error: "clients table is missing. Run supabase_ibms_core_migration.sql first." });
+      }
+      if (error) return res.status(500).json({ error: error.message });
+      await emitEvent("client.deleted", { client_id: Number(id) });
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
+  // ─── Time Logs ───────────────────────────────────────────────────────────────
+  app.get("/api/time-logs", async (req, res) => {
+    const workspaceId = toNumberOrNull(req.query.workspace_id);
+    try {
+      let query = supabase.from("time_logs").select("*").order("created_at", { ascending: false }).limit(500);
+      if (workspaceId) query = query.eq("workspace_id", workspaceId);
+      const { data, error } = await query;
+      if (error && isMissingRelationError(error)) return res.json([]);
+      if (error) return res.status(500).json({ error: error.message });
+      res.json(data || []);
+    } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
+  app.post("/api/time-logs", async (req, res) => {
+    const { user_id, user_name, task_id, task_title, start_time, workspace_id, notes } = req.body || {};
+    if (!user_id || !user_name || !workspace_id || !start_time) {
+      return res.status(400).json({ error: "user_id, user_name, workspace_id, start_time are required" });
+    }
+    try {
+      const payload = {
+        user_id: Number(user_id),
+        user_name: String(user_name),
+        task_id: toNumberOrNull(task_id),
+        task_title: task_title || null,
+        start_time,
+        end_time: null,
+        duration_minutes: 0,
+        notes: notes || null,
+        workspace_id: Number(workspace_id),
+      };
+      const { data, error } = await supabase.from("time_logs").insert(payload).select("id").single();
+      if (error && isMissingRelationError(error)) {
+        return res.status(501).json({ error: "time_logs table is missing. Run supabase_ibms_core_migration.sql first." });
+      }
+      if (error) return res.status(500).json({ error: error.message });
+      res.json({ id: data?.id });
+    } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
+  app.patch("/api/time-logs/:id", async (req, res) => {
+    const { id } = req.params;
+    const { end_time, duration_minutes, notes } = req.body || {};
+    try {
+      const updates: any = {};
+      if (end_time !== undefined) updates.end_time = end_time;
+      if (duration_minutes !== undefined) updates.duration_minutes = Number(duration_minutes || 0);
+      if (notes !== undefined) updates.notes = notes;
+      const { error } = await supabase.from("time_logs").update(updates).eq("id", id);
+      if (error && isMissingRelationError(error)) {
+        return res.status(501).json({ error: "time_logs table is missing. Run supabase_ibms_core_migration.sql first." });
+      }
+      if (error) return res.status(500).json({ error: error.message });
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
   // ─── Tasks ───────────────────────────────────────────────────────────────────
   app.get("/api/tasks", async (_req, res) => {
     try {
@@ -340,6 +563,426 @@ async function startServer() {
       await supabase.from("tasks").delete().eq("id", id);
       res.json({ success: true });
     } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
+  // ─── IBMS v1: Clients ───────────────────────────────────────────────────────
+  app.get("/api/v1/clients", async (req, res) => {
+    const page = Math.max(1, Number(req.query.page || 1));
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit || 50)));
+    const start = (page - 1) * limit;
+    const end = start + limit - 1;
+    const workspaceId = toNumberOrNull(req.query.workspace_id);
+    const tags = String(req.query.tags || "")
+      .split(",")
+      .map(t => t.trim())
+      .filter(Boolean);
+    try {
+      let query = supabase
+        .from("clients")
+        .select("*", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(start, end);
+      if (workspaceId) query = query.eq("workspace_id", workspaceId);
+      const { data, error, count } = await query;
+      if (error && isMissingRelationError(error)) {
+        return res.json({ page, limit, total: 0, tagFilterApplied: false, items: [] });
+      }
+      if (error) return res.status(500).json({ error: error.message });
+
+      let items = data || [];
+      let tagFilterApplied = false;
+      if (tags.length > 0 && items.length > 0) {
+        const ids = items.map((c: any) => c.id).filter(Boolean);
+        if (ids.length > 0) {
+          const { data: tagRows, error: tagError } = await supabase
+            .from("client_tags")
+            .select("client_id, tag")
+            .in("client_id", ids)
+            .in("tag", tags);
+          if (!tagError) {
+            const allowed = new Set((tagRows || []).map((r: any) => r.client_id));
+            items = items.filter((c: any) => allowed.has(c.id));
+            tagFilterApplied = true;
+          }
+        }
+      }
+
+      res.json({
+        page,
+        limit,
+        total: count ?? items.length,
+        tagFilterApplied,
+        items,
+      });
+    } catch {
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  app.post("/api/v1/clients", async (req, res) => {
+    const {
+      name,
+      legal_name,
+      tax_id,
+      industry,
+      status,
+      risk_score,
+      custom_fields,
+      tags,
+      workspace_id,
+      onboarding_stage,
+      contact_person,
+      contact_email,
+      contact_phone,
+      monthly_value,
+      notes,
+    } = req.body || {};
+
+    if (!name) return res.status(400).json({ error: "name is required" });
+
+    try {
+      const fullPayload = {
+        name: String(name).trim(),
+        legal_name: legal_name || null,
+        tax_id: tax_id || null,
+        industry: industry || null,
+        status: status || "active",
+        risk_score: risk_score === undefined || risk_score === null ? null : Number(risk_score),
+        custom_fields: custom_fields && typeof custom_fields === "object" ? custom_fields : {},
+        workspace_id: toNumberOrNull(workspace_id),
+        onboarding_stage: onboarding_stage || "New",
+        contact_person: contact_person || null,
+        contact_email: contact_email || null,
+        contact_phone: contact_phone || null,
+        monthly_value: Number(monthly_value || 0),
+        notes: notes || null,
+      };
+
+      let { data, error } = await supabase.from("clients").insert(fullPayload).select().single();
+      if (error && isMissingColumnError(error)) {
+        const fallbackPayload = {
+          name: fullPayload.name,
+          industry: fullPayload.industry,
+          status: fullPayload.status,
+          workspace_id: fullPayload.workspace_id,
+          onboarding_stage: fullPayload.onboarding_stage,
+          contact_person: fullPayload.contact_person,
+          contact_email: fullPayload.contact_email,
+          contact_phone: fullPayload.contact_phone,
+          monthly_value: fullPayload.monthly_value,
+          notes: fullPayload.notes,
+        };
+        const fallback = await supabase.from("clients").insert(fallbackPayload).select().single();
+        data = fallback.data;
+        error = fallback.error;
+      }
+      if (error && isMissingRelationError(error)) {
+        return res.status(501).json({ error: "clients table is missing. Run supabase_ibms_core_migration.sql first." });
+      }
+      if (error) return res.status(500).json({ error: error.message });
+
+      const clientId = data?.id;
+      if (clientId && Array.isArray(tags) && tags.length > 0) {
+        const tagRows = tags
+          .map((t: any) => String(t || "").trim())
+          .filter(Boolean)
+          .map((tag: string) => ({ client_id: clientId, tag }));
+        if (tagRows.length > 0) {
+          await supabase.from("client_tags").upsert(tagRows, { onConflict: "client_id,tag" });
+        }
+      }
+
+      await emitEvent("client.created", { client_id: clientId, workspace_id: fullPayload.workspace_id });
+      await logActivity(parseActorId(req), `Created client(v1): ${fullPayload.name}`, fullPayload.name, "client");
+      res.json({ id: clientId });
+    } catch {
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  app.get("/api/v1/clients/:id/onboarding/progress", async (req, res) => {
+    const clientId = Number(req.params.id);
+    if (!clientId) return res.status(400).json({ error: "Invalid client id" });
+    try {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name, status, onboarding_stage, created_at, updated_at")
+        .eq("id", clientId)
+        .maybeSingle();
+      if (error && isMissingRelationError(error)) {
+        return res.status(501).json({ error: "clients table is missing. Run supabase_ibms_core_migration.sql first." });
+      }
+      if (error) return res.status(500).json({ error: error.message });
+      if (!data) return res.status(404).json({ error: "Client not found" });
+
+      const status = String(data.status || "");
+      const progress = /active|completed/i.test(status)
+        ? 100
+        : onboardingStageToProgress(data.onboarding_stage);
+
+      res.json({
+        clientId: data.id,
+        clientName: data.name,
+        stage: data.onboarding_stage || null,
+        status: data.status || null,
+        progress,
+        updatedAt: data.updated_at || data.created_at || null,
+      });
+    } catch {
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  app.put("/api/v1/clients/:id/custom-fields", async (req, res) => {
+    const clientId = Number(req.params.id);
+    const customFields = req.body || {};
+    if (!clientId) return res.status(400).json({ error: "Invalid client id" });
+    if (!customFields || typeof customFields !== "object" || Array.isArray(customFields)) {
+      return res.status(400).json({ error: "Body must be a JSON object" });
+    }
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({ custom_fields: customFields, updated_at: new Date().toISOString() })
+        .eq("id", clientId);
+      if (error && isMissingRelationError(error)) {
+        return res.status(501).json({ error: "clients table is missing. Run supabase_ibms_core_migration.sql first." });
+      }
+      if (error && isMissingColumnError(error)) {
+        return res.status(501).json({ error: "custom_fields column is missing. Run the IBMS core migration first." });
+      }
+      if (error) return res.status(500).json({ error: error.message });
+      await emitEvent("client.custom_fields_updated", { client_id: clientId });
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  // ─── IBMS v1: Tasks & SLA ───────────────────────────────────────────────────
+  app.get("/api/v1/tasks/assigned/me", async (req, res) => {
+    const userId = toNumberOrNull(req.query.user_id ?? req.headers["x-user-id"]);
+    const status = String(req.query.status || "").trim();
+    if (!userId) return res.status(400).json({ error: "user_id is required (query or x-user-id header)" });
+    try {
+      let query = supabase.from("tasks").select("*").eq("assignee_id", userId).order("due_date", { ascending: true });
+      if (status) query = query.ilike("status", status);
+      const { data, error } = await query;
+      if (error && isMissingRelationError(error)) return res.json([]);
+      if (error) return res.status(500).json({ error: error.message });
+      res.json(data || []);
+    } catch {
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  app.post("/api/v1/tasks/:id/complete", async (req, res) => {
+    const taskId = Number(req.params.id);
+    if (!taskId) return res.status(400).json({ error: "Invalid task id" });
+    try {
+      const { error } = await supabase.from("tasks").update({ status: "Completed" }).eq("id", taskId);
+      if (error && isMissingRelationError(error)) {
+        return res.status(501).json({ error: "tasks table is missing. Run supabase_migration.sql first." });
+      }
+      if (error) return res.status(500).json({ error: error.message });
+      await emitEvent("task.completed", { task_id: taskId });
+      await logActivity(parseActorId(req), `Completed task #${taskId}`, String(taskId), "task");
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  app.post("/api/v1/tasks/:id/escalate", async (req, res) => {
+    const taskId = Number(req.params.id);
+    if (!taskId) return res.status(400).json({ error: "Invalid task id" });
+    try {
+      const { error } = await supabase.from("tasks").update({ priority: "High" }).eq("id", taskId);
+      if (error && isMissingRelationError(error)) {
+        return res.status(501).json({ error: "tasks table is missing. Run supabase_migration.sql first." });
+      }
+      if (error) return res.status(500).json({ error: error.message });
+      await emitEvent("task.escalated", { task_id: taskId, reason: req.body?.reason || null });
+      await logActivity(parseActorId(req), `Escalated task #${taskId}`, String(taskId), "task");
+      res.json({ success: true, escalated: true });
+    } catch {
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  // ─── IBMS v1: Workflows ─────────────────────────────────────────────────────
+  app.post("/api/v1/workflows/trigger", async (req, res) => {
+    const workflowName = String(req.body?.workflowName || req.body?.name || "").trim();
+    const payload = req.body?.payload || {};
+    if (!workflowName) return res.status(400).json({ error: "workflowName is required" });
+
+    const runId = randomUUID();
+    const startedAt = new Date().toISOString();
+    const run: WorkflowRun = {
+      runId,
+      workflowName,
+      status: "running",
+      payload,
+      startedAt,
+    };
+    workflowRuns.set(runId, run);
+
+    try {
+      await supabase.from("workflow_executions").insert({
+        id: runId,
+        workflow_id: workflowName,
+        temporal_run_id: runId,
+        status: "running",
+        context: payload,
+        started_at: startedAt,
+      });
+    } catch {
+      // Keep in-memory fallback when DB workflow table is missing.
+    }
+
+    setTimeout(async () => {
+      const current = workflowRuns.get(runId);
+      if (!current || current.status !== "running") return;
+      current.status = "completed";
+      current.completedAt = new Date().toISOString();
+      workflowRuns.set(runId, current);
+      try {
+        await supabase
+          .from("workflow_executions")
+          .update({ status: "completed", completed_at: current.completedAt })
+          .eq("id", runId);
+      } catch {}
+    }, 1500);
+
+    await emitEvent("workflow.triggered", { run_id: runId, workflow_name: workflowName });
+    res.json({ runId, workflowName, status: "running", startedAt });
+  });
+
+  app.get("/api/v1/workflows/:runId/status", async (req, res) => {
+    const runId = String(req.params.runId || "").trim();
+    if (!runId) return res.status(400).json({ error: "Invalid runId" });
+    try {
+      const { data, error } = await supabase
+        .from("workflow_executions")
+        .select("id, workflow_id, temporal_run_id, status, context, started_at, completed_at")
+        .eq("id", runId)
+        .maybeSingle();
+      if (error && !isMissingRelationError(error)) {
+        return res.status(500).json({ error: error.message });
+      }
+      if (data) {
+        return res.json({
+          runId: data.id,
+          workflowName: data.workflow_id,
+          temporalRunId: data.temporal_run_id,
+          status: data.status,
+          startedAt: data.started_at,
+          completedAt: data.completed_at || null,
+          context: data.context || {},
+        });
+      }
+    } catch {
+      // Fall back to memory map below.
+    }
+
+    const inMemory = workflowRuns.get(runId);
+    if (!inMemory) return res.status(404).json({ error: "Workflow run not found" });
+    res.json({
+      runId: inMemory.runId,
+      workflowName: inMemory.workflowName,
+      status: inMemory.status,
+      startedAt: inMemory.startedAt,
+      completedAt: inMemory.completedAt || null,
+      context: inMemory.payload || {},
+      source: "memory",
+    });
+  });
+
+  // ─── IBMS v1: Billing ───────────────────────────────────────────────────────
+  app.post("/api/v1/billing/subscriptions/:clientId/create", async (req, res) => {
+    const clientId = Number(req.params.clientId);
+    if (!clientId) return res.status(400).json({ error: "Invalid clientId" });
+
+    const now = new Date();
+    const nextPeriodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const subscriptionId = `sub_${clientId}_${Date.now()}`;
+    const status = String(req.body?.status || "active");
+
+    try {
+      let { data, error } = await supabase
+        .from("subscriptions")
+        .insert({
+          client_id: clientId,
+          stripe_subscription_id: subscriptionId,
+          status,
+          current_period_end: nextPeriodEnd,
+        })
+        .select()
+        .single();
+
+      if (error && isMissingColumnError(error)) {
+        const fallback = await supabase
+          .from("subscriptions")
+          .insert({ client_id: clientId, status })
+          .select()
+          .single();
+        data = fallback.data;
+        error = fallback.error;
+      }
+      if (error && isMissingRelationError(error)) {
+        return res.status(501).json({ error: "subscriptions table is missing. Run supabase_ibms_core_migration.sql first." });
+      }
+      if (error) return res.status(500).json({ error: error.message });
+
+      await emitEvent("billing.subscription_created", { client_id: clientId, subscription_id: subscriptionId });
+      res.json({
+        id: data?.id,
+        client_id: clientId,
+        stripe_subscription_id: data?.stripe_subscription_id || subscriptionId,
+        status: data?.status || status,
+        current_period_end: data?.current_period_end || nextPeriodEnd,
+      });
+    } catch {
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  app.get("/api/v1/billing/invoices", async (req, res) => {
+    const status = String(req.query.status || "").trim();
+    try {
+      let query = supabase.from("invoices").select("*").order("issued_at", { ascending: false }).limit(200);
+      if (status) query = query.eq("status", status);
+      const { data, error } = await query;
+      if (error && isMissingRelationError(error)) return res.json([]);
+      if (error) return res.status(500).json({ error: error.message });
+      res.json(data || []);
+    } catch {
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  app.post("/api/v1/billing/webhooks/stripe", async (req, res) => {
+    const event = req.body || {};
+    const eventType = String(event.type || "").trim();
+    const externalInvoiceId = event?.data?.object?.id || req.body?.invoice_id || null;
+
+    try {
+      if (eventType === "invoice.payment_succeeded" && externalInvoiceId) {
+        const update = await supabase.from("invoices").update({ status: "paid" }).eq("stripe_invoice_id", externalInvoiceId);
+        if (update.error && !isMissingRelationError(update.error) && !isMissingColumnError(update.error)) {
+          return res.status(500).json({ error: update.error.message });
+        }
+      } else if (eventType === "invoice.payment_failed" && externalInvoiceId) {
+        const update = await supabase.from("invoices").update({ status: "overdue" }).eq("stripe_invoice_id", externalInvoiceId);
+        if (update.error && !isMissingRelationError(update.error) && !isMissingColumnError(update.error)) {
+          return res.status(500).json({ error: update.error.message });
+        }
+      }
+      await emitEvent("billing.webhook_received", { type: eventType || "unknown", id: event.id || null });
+      res.json({ received: true, type: eventType || "unknown" });
+    } catch {
+      res.status(500).json({ error: "Server error" });
+    }
   });
 
   // ─── Users ───────────────────────────────────────────────────────────────────
@@ -796,6 +1439,140 @@ async function startServer() {
     if (!valid.includes(provider)) return res.status(400).json({ error: "Invalid provider" });
     aiProvider = provider;
     res.json({ active: aiProvider });
+  });
+
+  // ─── AI Gateway (IBMS Blueprint endpoints) ─────────────────────────────────
+  app.post("/api/ai/chat", async (req, res) => {
+    const { messages, model, systemPrompt, user_id } = req.body || {};
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: "messages array is required" });
+    }
+
+    const normalized = messages
+      .map((m: any) => ({
+        role: String(m?.role || "user"),
+        content: String(m?.content || ""),
+      }))
+      .filter((m: any) => m.content.trim().length > 0);
+    if (normalized.length === 0) return res.status(400).json({ error: "messages must contain content" });
+
+    const selectedModel = String(model || aiProvider);
+    const promptText = normalized.map((m: any) => `${m.role}: ${m.content}`).join("\n");
+    const started = Date.now();
+    try {
+      const text = await sendToAI(
+        String(systemPrompt || "You are an internal business assistant. Be concise and accurate."),
+        normalized
+      );
+      await storeAiUsageLog({
+        endpoint: "/api/ai/chat",
+        model: selectedModel,
+        promptText,
+        completionText: text,
+        userId: toNumberOrNull(user_id),
+      });
+      res.json({
+        text,
+        model: selectedModel,
+        provider: aiProvider,
+        latency_ms: Date.now() - started,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: "AI request failed", details: err?.message || "Unknown error" });
+    }
+  });
+
+  app.post("/api/ai/extract", async (req, res) => {
+    const { documentUrl, fields, text, user_id } = req.body || {};
+    if (!documentUrl) return res.status(400).json({ error: "documentUrl is required" });
+    if (!Array.isArray(fields) || fields.length === 0) {
+      return res.status(400).json({ error: "fields array is required" });
+    }
+
+    const sourceText = String(text || "");
+    const extracted: Record<string, any> = {};
+    for (const rawField of fields) {
+      const field = String(rawField || "").trim();
+      if (!field) continue;
+      const lower = field.toLowerCase();
+      let value: any = null;
+      if (sourceText) {
+        if (lower.includes("invoice") && /invoice[\s_:-]*#?\s*([a-z0-9-]+)/i.test(sourceText)) {
+          value = sourceText.match(/invoice[\s_:-]*#?\s*([a-z0-9-]+)/i)?.[1] || null;
+        } else if ((lower.includes("total") || lower.includes("amount")) && /(?:total|amount)[^\d]{0,10}(\d+(?:[.,]\d{1,2})?)/i.test(sourceText)) {
+          value = sourceText.match(/(?:total|amount)[^\d]{0,10}(\d+(?:[.,]\d{1,2})?)/i)?.[1] || null;
+        } else if ((lower.includes("vat") || lower.includes("tax")) && /(?:vat|tax)[^\d]{0,10}(\d+(?:[.,]\d{1,2})?)/i.test(sourceText)) {
+          value = sourceText.match(/(?:vat|tax)[^\d]{0,10}(\d+(?:[.,]\d{1,2})?)/i)?.[1] || null;
+        } else if (lower.includes("date") && /(\d{4}-\d{2}-\d{2})/.test(sourceText)) {
+          value = sourceText.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || null;
+        }
+      }
+      extracted[field] = value;
+    }
+
+    const completionText = JSON.stringify(extracted);
+    await storeAiUsageLog({
+      endpoint: "/api/ai/extract",
+      model: "regex-stub",
+      promptText: String(sourceText || documentUrl),
+      completionText,
+      userId: toNumberOrNull(user_id),
+    });
+
+    res.json({
+      documentUrl,
+      extracted,
+      mode: sourceText ? "regex+stub" : "stub",
+      note: sourceText
+        ? "Extraction used simple server-side patterns. For OCR and robust parsing, connect a document AI provider."
+        : "No source text provided. Returned null placeholders only.",
+    });
+  });
+
+  app.post("/api/ai/classify", async (req, res) => {
+    const { text, classes, user_id } = req.body || {};
+    if (!text) return res.status(400).json({ error: "text is required" });
+    if (!Array.isArray(classes) || classes.length === 0) {
+      return res.status(400).json({ error: "classes array is required" });
+    }
+
+    const input = String(text).toLowerCase();
+    const cleaned = classes.map((c: any) => String(c || "").trim()).filter(Boolean);
+    if (cleaned.length === 0) return res.status(400).json({ error: "classes array is empty after normalization" });
+
+    const keywordHints: Record<string, string[]> = {
+      billing: ["invoice", "payment", "subscription", "refund", "charge", "billing", "price"],
+      technical: ["bug", "error", "api", "server", "down", "crash", "issue", "technical"],
+      sales: ["quote", "proposal", "demo", "pricing", "contract", "lead", "opportunity", "sales"],
+      support: ["help", "support", "problem", "cannot", "unable", "ticket"],
+      legal: ["nda", "compliance", "legal", "terms", "contract", "privacy"],
+    };
+
+    const scores: Record<string, number> = {};
+    for (const cls of cleaned) {
+      const normalized = cls.toLowerCase();
+      let score = 0;
+      if (input.includes(normalized)) score += 0.7;
+      for (const kw of (keywordHints[normalized] || [])) {
+        if (input.includes(kw)) score += 0.18;
+      }
+      scores[cls] = Number(Math.min(0.99, score).toFixed(2));
+    }
+
+    const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+    const top = ranked[0];
+    const label = top && top[1] > 0 ? top[0] : cleaned[0];
+    const confidence = top ? top[1] : 0;
+
+    await storeAiUsageLog({
+      endpoint: "/api/ai/classify",
+      model: "heuristic-stub",
+      promptText: String(text),
+      completionText: JSON.stringify({ label, confidence, scores }),
+      userId: toNumberOrNull(user_id),
+    });
+
+    res.json({ label, confidence, scores });
   });
 
   // ─── AI Assistant ─────────────────────────────────────────────────────────────
