@@ -804,12 +804,19 @@ export default function App() {
       setResetError("Password must be at least 6 characters");
       return;
     }
+    // Get token from URL to ensure it's always current
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token") || resetToken;
+    if (!token) {
+      setResetError("Reset link is invalid or expired");
+      return;
+    }
     setIsResetLoading(true);
     try {
       const res = await fetch("/api/users/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: resetToken, password: resetPassword })
+        body: JSON.stringify({ token, password: resetPassword })
       });
       const result = await res.json();
       if (!res.ok) {
@@ -835,8 +842,6 @@ export default function App() {
     if (token) {
       setResetToken(token);
       setView("reset-password");
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
