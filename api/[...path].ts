@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import bcrypt from "bcryptjs";
 import { createHmac, randomUUID, timingSafeEqual } from "crypto";
 import webpush from "web-push";
+import { Resend } from "resend";
 import supabase from "./_lib/supabase";
 import { sendToAI } from "./_lib/ai";
 import { getZoomAccessToken } from "./_lib/zoom";
@@ -232,6 +233,53 @@ const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || "";
 if (vapidPublicKey && vapidPrivateKey) {
   webpush.setVapidDetails("mailto:admin@eiden-group.com", vapidPublicKey, vapidPrivateKey);
 }
+
+// ─── Email setup (Resend) ─────────────────────────────────────────────────────
+const resendApiKey = process.env.RESEND_API_KEY || "";
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const emailFrom = process.env.EMAIL_FROM_ADDRESS || "noreply@eiden-group.com";
+const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+
+const sendPasswordResetEmail = async (email: string, name: string, resetToken: string): Promise<boolean> => {
+  if (!resend) {
+    console.warn("Resend not configured. Skipping email send.");
+    return false;
+  }
+  
+  const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
+  
+  try {
+    const result = await resend.emails.send({
+      from: emailFrom,
+      to: email,
+      subject: "Reset your Eiden BMS password",
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px;">
+          <h2>Password Reset Request</h2>
+          <p>Hi ${name},</p>
+          <p>We received a request to reset your password for your Eiden BMS account. Click the button below to set a new password.</p>
+          <p style="margin: 30px 0;">
+            <a href="${resetLink}" style="background-color: #122620; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">
+              Reset Password
+            </a>
+          </p>
+          <p style="color: #666; font-size: 14px;">
+            Or copy this link: <br/>
+            <code style="background: #f5f5f5; padding: 8px; display: inline-block; word-break: break-all;">${resetLink}</code>
+          </p>
+          <p style="color: #999; font-size: 12px; margin-top: 30px;">
+            This link expires in 24 hours. If you didn't request this, you can safely ignore this email.
+          </p>
+        </div>
+      `
+    });
+    
+    return !!result.id;
+  } catch (error: any) {
+    console.error("Failed to send reset email:", error.message);
+    return false;
+  }
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const rawPath = req.query.path;
@@ -862,14 +910,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (insertError && insertError.code === "PGRST116") {
           return res.json({ success: true, message: "If email exists, a reset link has been sent" });
         }
-        // In production, send email here with: reset link = {baseUrl}/reset-password?token={resetToken}
-        // For now, we'll just return the token for demo purposes (remove in production)
+        // Send email with reset link
+        await sendPasswordResetEmail(user.email, user.name, resetToken);
         await logActivity(user.id, "Requested password reset", user.email, "auth");
         return res.json({ 
           success: true, 
-          message: "If email exists, a reset link has been sent",
-          // Remove this in production - only for testing:
-          _demo_token: process.env.NODE_ENV === "development" ? resetToken : undefined
+          message: "If email exists, a reset link has been sent"
         });
       }
       if (r1 === "reset-password" && method === "POST") {
