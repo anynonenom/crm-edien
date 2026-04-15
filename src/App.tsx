@@ -141,7 +141,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(!!savedSession);
   const [currentUser, setCurrentUser] = useState<User | null>(savedSession?.user ?? null);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(savedSession?.workspace ?? null);
-  const [view, setView] = useState<"login" | "register" | "recovery">("login");
+  const [view, setView] = useState<"login" | "register" | "recovery" | "reset-password">("login");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "pipeline" | "contacts" | "clients" | "tasks" | "task_board" | "analytics" | "time" | "knowledge_base" | "admin" | "team">("dashboard");
   const [showTfa, setShowTfa] = useState(false);
@@ -317,6 +317,14 @@ export default function App() {
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [isRecoveryLoading, setIsRecoveryLoading] = useState(false);
   const [showRecoveryDone, setShowRecoveryDone] = useState(false);
+  
+  // Reset password state
+  const [resetToken, setResetToken] = useState<string|"">("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [isResetLoading, setIsResetLoading] = useState(false);
+  const [showResetDone, setShowResetDone] = useState(false);
 
   // ─── Filtered data by workspace ─────────────────────────────────────────────
   const perms = getPerms(currentUser?.role);
@@ -781,6 +789,56 @@ export default function App() {
       setIsRecoveryLoading(false);
     }
   };
+
+  const handleResetPassword = async () => {
+    setResetError(null);
+    if (!resetPassword.trim()) {
+      setResetError("Please enter a new password");
+      return;
+    }
+    if (resetPassword !== resetConfirmPassword) {
+      setResetError("Passwords do not match");
+      return;
+    }
+    if (resetPassword.length < 6) {
+      setResetError("Password must be at least 6 characters");
+      return;
+    }
+    setIsResetLoading(true);
+    try {
+      const res = await fetch("/api/users/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: resetToken, password: resetPassword })
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        setResetError(result.error || "An error occurred");
+        setIsResetLoading(false);
+        return;
+      }
+      // Success - show confirmation
+      setShowResetDone(true);
+      setResetPassword("");
+      setResetConfirmPassword("");
+    } catch (err) {
+      setResetError("Connection failed. Please try again.");
+    } finally {
+      setIsResetLoading(false);
+    }
+  };
+
+  // Check for reset token in URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    if (token) {
+      setResetToken(token);
+      setView("reset-password");
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   // ─── Auth ────────────────────────────────────────────────────────────────────
   const handleLogin = async () => {
@@ -1517,6 +1575,53 @@ export default function App() {
                   </button>
                 )}
                 <button onClick={() => { setView("login"); setShowRecoveryDone(false); setRecoveryEmail(""); setRecoveryError(null); }} className="mt-6 block" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.35)", textTransform: "uppercase", letterSpacing: "1px", background: "none", border: "none", cursor: "pointer" }}>← Back to sign in</button>
+              </div>
+            )}
+
+            {view === "reset-password" && (
+              <div>
+                <p className="mb-10" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem", color: "rgba(18,38,32,0.5)", lineHeight: 1.6 }}>Enter your new password below. The password must be at least 6 characters long.</p>
+                <AuthField label="New Password">
+                  <input 
+                    type="password" 
+                    placeholder="••••••••" 
+                    className="flash-input" 
+                    value={resetPassword}
+                    onChange={e => { setResetPassword(e.target.value); setResetError(null); }}
+                    disabled={showResetDone}
+                  />
+                </AuthField>
+                <AuthField label="Confirm Password">
+                  <input 
+                    type="password" 
+                    placeholder="••••••••" 
+                    className="flash-input" 
+                    value={resetConfirmPassword}
+                    onChange={e => { setResetConfirmPassword(e.target.value); setResetError(null); }}
+                    onKeyDown={e => e.key === "Enter" && handleResetPassword()}
+                    disabled={showResetDone}
+                  />
+                </AuthField>
+                {resetError && (
+                  <motion.div initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} className="mb-6 px-4 py-3 text-[0.78rem]"
+                    style={{ border: "1px solid rgba(139,58,58,0.3)", color: "var(--danger)", background: "rgba(139,58,58,0.04)" }}>
+                    {resetError}
+                  </motion.div>
+                )}
+                {showResetDone ? (
+                  <div className="mt-8 px-4 py-4 text-[0.78rem] text-center" style={{ border: "1px solid rgba(45,90,71,0.4)", color: "var(--success)", background: "rgba(45,90,71,0.04)", borderRadius: "4px" }}>
+                    <div style={{ fontWeight: 600, marginBottom: "4px" }}>✅ Password reset successfully!</div>
+                    <div>You can now log in with your new password.</div>
+                  </div>
+                ) : (
+                  <button onClick={handleResetPassword} disabled={isResetLoading} className="flash-button mt-14">
+                    <span>{isResetLoading ? "RESETTING..." : "RESET PASSWORD"}</span>
+                    {!isResetLoading && <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>}
+                  </button>
+                )}
+                {showResetDone && (
+                  <button onClick={() => { setView("login"); setShowResetDone(false); setResetPassword(""); setResetConfirmPassword(""); setResetToken(""); setResetError(null); }} className="mt-6 block" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.35)", textTransform: "uppercase", letterSpacing: "1px", background: "none", border: "none", cursor: "pointer" }}>Return to sign in →</button>
+                )}
               </div>
             )}
 
