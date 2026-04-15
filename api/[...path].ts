@@ -274,7 +274,7 @@ const sendPasswordResetEmail = async (email: string, name: string, resetToken: s
       `
     });
     
-    return !!result.id;
+    return !!result;
   } catch (error: any) {
     console.error("Failed to send reset email:", error.message);
     return false;
