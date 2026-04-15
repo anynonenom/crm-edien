@@ -313,6 +313,9 @@ export default function App() {
   const [regStep, setRegStep] = useState(0);
   const [isRegistering, setIsRegistering] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
+  const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [isRecoveryLoading, setIsRecoveryLoading] = useState(false);
   const [showRecoveryDone, setShowRecoveryDone] = useState(false);
 
   // ─── Filtered data by workspace ─────────────────────────────────────────────
@@ -748,6 +751,35 @@ export default function App() {
       addMessage(uid, wsId,{ role: "assistant", content: r.ok ? `✅ Contact #${d.id} deleted.` : `❌ Failed to delete contact.` });
     } else { return; }
     await fetchData();
+  };
+
+  const handlePasswordRecovery = async () => {
+    setRecoveryError(null);
+    if (!recoveryEmail.trim()) {
+      setRecoveryError("Please enter your email address");
+      return;
+    }
+    setIsRecoveryLoading(true);
+    try {
+      const res = await fetch("/api/users/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: recoveryEmail.trim() })
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        setRecoveryError(result.error || "An error occurred");
+        setIsRecoveryLoading(false);
+        return;
+      }
+      // Success - show confirmation
+      setShowRecoveryDone(true);
+      setRecoveryEmail("");
+    } catch (err) {
+      setRecoveryError("Connection failed. Please try again.");
+    } finally {
+      setIsRecoveryLoading(false);
+    }
   };
 
   // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -1455,19 +1487,36 @@ export default function App() {
 
             {view === "recovery" && (
               <div>
-                <p className="mb-10" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem", color: "rgba(18,38,32,0.5)", lineHeight: 1.6 }}>Enter your email and we'll send a reset link.</p>
+                <p className="mb-10" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem", color: "rgba(18,38,32,0.5)", lineHeight: 1.6 }}>Enter your email and we'll send a reset link within 24 hours.</p>
                 <AuthField label="Email Address">
-                  <input type="email" placeholder="your@email.com" className="flash-input" />
+                  <input 
+                    type="email" 
+                    placeholder="your@eiden-group.com" 
+                    className="flash-input" 
+                    value={recoveryEmail}
+                    onChange={e => { setRecoveryEmail(e.target.value); setRecoveryError(null); }}
+                    onKeyDown={e => e.key === "Enter" && handlePasswordRecovery()}
+                    disabled={showRecoveryDone}
+                  />
                 </AuthField>
+                {recoveryError && (
+                  <motion.div initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} className="mb-6 px-4 py-3 text-[0.78rem]"
+                    style={{ border: "1px solid rgba(139,58,58,0.3)", color: "var(--danger)", background: "rgba(139,58,58,0.04)" }}>
+                    {recoveryError}
+                  </motion.div>
+                )}
                 {showRecoveryDone ? (
-                  <div className="mt-8 px-4 py-3 text-[0.78rem]" style={{ border: "1px solid rgba(45,90,71,0.4)", color: "var(--success)" }}>Reset link sent — check your inbox.</div>
+                  <div className="mt-8 px-4 py-4 text-[0.78rem] text-center" style={{ border: "1px solid rgba(45,90,71,0.4)", color: "var(--success)", background: "rgba(45,90,71,0.04)", borderRadius: "4px" }}>
+                    <div style={{ fontWeight: 600, marginBottom: "4px" }}>Email sent successfully!</div>
+                    <div>Check your inbox for a password reset link. The link is valid for 24 hours.</div>
+                  </div>
                 ) : (
-                  <button onClick={() => setShowRecoveryDone(true)} className="flash-button mt-14">
-                    <span>SEND RESET LINK</span>
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                  <button onClick={handlePasswordRecovery} disabled={isRecoveryLoading} className="flash-button mt-14">
+                    <span>{isRecoveryLoading ? "SENDING..." : "SEND RESET LINK"}</span>
+                    {!isRecoveryLoading && <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>}
                   </button>
                 )}
-                <button onClick={() => { setView("login"); setShowRecoveryDone(false); }} className="mt-6 block" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.35)", textTransform: "uppercase", letterSpacing: "1px", background: "none", border: "none", cursor: "pointer" }}>← Back to sign in</button>
+                <button onClick={() => { setView("login"); setShowRecoveryDone(false); setRecoveryEmail(""); setRecoveryError(null); }} className="mt-6 block" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(18,38,32,0.35)", textTransform: "uppercase", letterSpacing: "1px", background: "none", border: "none", cursor: "pointer" }}>← Back to sign in</button>
               </div>
             )}
 

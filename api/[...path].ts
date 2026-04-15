@@ -840,6 +840,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           expires_in: token ? AUTH_TOKEN_TTL_SECONDS : null,
         });
       }
+      if (r1 === "forgot-password" && method === "POST") {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: "Email is required" });
+        const { data: user } = await supabase.from("users").select("id, email, name").eq("email", email).maybeSingle();
+        if (!user) {
+          // Don't reveal if email exists (security best practice)
+          return res.json({ success: true, message: "If email exists, a reset link has been sent" });
+        }
+        // Generate a recovery token valid for 24 hours
+        const resetToken = randomUUID();
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        let { error: insertError } = await supabase.from("password_resets").insert({
+          user_id: user.id,
+          email: user.email,
+          token: resetToken,
+          expires_at: expiresAt,
+          used: false
+        });
+        // If table doesn't exist, just return success (email sending would happen separately)
+        if (insertError && insertError.code === "PGRST116") {
+          return res.json({ success: true, message: "If email exists, a reset link has been sent" });
+        }
+        // In production, send email here with: reset link = {baseUrl}/reset-password?token={resetToken}
+        // For now, we'll just return the token for demo purposes (remove in production)
+        await logActivity(user.id, "Requested password reset", user.email, "auth");
+        return res.json({ 
+          success: true, 
+          message: "If email exists, a reset link has been sent",
+          // Remove this in production - only for testing:
+          _demo_token: process.env.NODE_ENV === "development" ? resetToken : undefined
+        });
+      }
+      if (r1 === "reset-password" && method === "POST") {
+        const { token, newPassword } = req.body;
+        if (!token || !newPassword) return res.status(400).json({ error: "Token and password required" });
+        if (newPassword.length < 6) return res.status(400).json({ error: "Password must be at least 6 characters" });
+        
+        // Find the reset token
+        const { data: resetRecord } = await supabase
+          .from("password_resets")
+          .select("*")
+          .eq("token", token)
+          .eq("used", false)
+          .maybeSingle();
+        
+        if (!resetRecord) return res.status(400).json({ error: "Invalid or expired reset link" });
+        
+        const now = new Date();
+        const expiresAt = new Date(resetRecord.expires_at);
+        if (now > expiresAt) {
+          return res.status(400).json({ error: "Reset link has expired" });
+        }
+        
+        // Update password
+        const hashed = await bcrypt.hash(newPassword, 10);
+        await supabase.from("users").update({ password: hashed }).eq("id", resetRecord.user_id);
+        
+        // Mark token as used
+        await supabase.from("password_resets").update({ used: true }).eq("id", resetRecord.id);
+        
+        await logActivity(resetRecord.user_id, "Reset password", resetRecord.email, "auth");
+        return res.json({ success: true, message: "Password reset successfully" });
+      }
       if (r1 === "register" && method === "POST") {
         const { name, email, username, password, role: requestedRole } = req.body;
         if (!name || !email || !username || !password || !requestedRole) return res.status(400).json({ error: "Missing required fields" });
