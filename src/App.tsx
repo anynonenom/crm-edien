@@ -8,8 +8,9 @@ import {
   LogOut, Activity as ActivityIcon, CheckCircle2,
   AlertTriangle, Trash2, Edit3, ChevronRight, Send,
   MessageSquare, BarChart2, Bot, X, RefreshCw,
-  Clock, Target, Zap, BookOpen, Shield, Search
+  Clock, Target, Zap, BookOpen, Shield, Search, FileText
 } from "lucide-react";
+import ContractTab from "./ContractTab";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "./lib/supabase";
 import { useAiChatStore } from "./stores/aiChatStore";
@@ -72,25 +73,25 @@ interface ZoomMeeting { id: number; topic: string; start_time: string; duration:
 // canAssignAll  → can assign tasks to any user (not just themselves)
 // ownTasksOnly  → only see tasks assigned to them
 const PERMISSIONS: Record<string, { tabs: string[]; canCreate: boolean; canDelete: boolean; canViewAnalytics: boolean; canAssignAll: boolean; ownTasksOnly: boolean }> = {
-  "Admin":                        { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team","admin"], canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Eiden HQ":                     { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],   canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Eiden Global":                  { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],   canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Operational Manager":           { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],   canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Admin Coordinator":             { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"], canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Brand Manager":                 { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Branding and Strategy Manager": { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Solution Architect":            { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
-  "Designer":                      { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Video Editor":                  { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Web Developer":                 { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Community Manager":             { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Content Creator":               { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Content Strategy":              { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Marketing Strategy":            { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "DevOps":                        { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Intern":                        { tabs: ["dashboard","tasks","time","knowledge_base","team"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
-  "Sales":                         { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],  canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
-  "Commercial":                    { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team"],  canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
+  "Admin":                        { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team","admin","contracts"], canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Eiden HQ":                     { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team","contracts"],   canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Eiden Global":                  { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team","contracts"],   canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Operational Manager":           { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team","contracts"],   canCreate: true,  canDelete: true,  canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Admin Coordinator":             { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team","contracts"], canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Brand Manager":                 { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team","contracts"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Branding and Strategy Manager": { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team","contracts"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Solution Architect":            { tabs: ["dashboard","tasks","analytics","time","knowledge_base","team","contracts"],                                  canCreate: true,  canDelete: false, canViewAnalytics: true,  canAssignAll: true,  ownTasksOnly: false },
+  "Designer":                      { tabs: ["dashboard","tasks","time","knowledge_base","team","contracts"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Video Editor":                  { tabs: ["dashboard","tasks","time","knowledge_base","team","contracts"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Web Developer":                 { tabs: ["dashboard","tasks","time","knowledge_base","team","contracts"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Community Manager":             { tabs: ["dashboard","tasks","time","knowledge_base","team","contracts"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Content Creator":               { tabs: ["dashboard","tasks","time","knowledge_base","team","contracts"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Content Strategy":              { tabs: ["dashboard","tasks","time","knowledge_base","team","contracts"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Marketing Strategy":            { tabs: ["dashboard","tasks","time","knowledge_base","team","contracts"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "DevOps":                        { tabs: ["dashboard","tasks","time","knowledge_base","team","contracts"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Intern":                        { tabs: ["dashboard","tasks","time","knowledge_base","team","contracts"],                                             canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true  },
+  "Sales":                         { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team","contracts"],  canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
+  "Commercial":                    { tabs: ["dashboard","pipeline","contacts","clients","tasks","analytics","time","knowledge_base","team","contracts"],  canCreate: false, canDelete: false, canViewAnalytics: true,  canAssignAll: false, ownTasksOnly: true  },
 };
 const getPerms = (role?: string | null) => PERMISSIONS[role ?? ""] ?? { tabs: ["dashboard","tasks","knowledge_base"], canCreate: false, canDelete: false, canViewAnalytics: false, canAssignAll: false, ownTasksOnly: true };
 
@@ -143,7 +144,7 @@ export default function App() {
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(savedSession?.workspace ?? null);
   const [view, setView] = useState<"login" | "register" | "recovery" | "reset-password">("login");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "pipeline" | "contacts" | "clients" | "tasks" | "task_board" | "analytics" | "time" | "knowledge_base" | "admin" | "team">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "pipeline" | "contacts" | "clients" | "tasks" | "task_board" | "analytics" | "time" | "knowledge_base" | "admin" | "team" | "contracts">("dashboard");
   const [showTfa, setShowTfa] = useState(false);
   const [tfaProgress, setTfaProgress] = useState(0);
 
@@ -1671,6 +1672,7 @@ export default function App() {
           {perms.tabs.includes("clients") && <NavItem active={activeTab === "clients"} onClick={() => { setActiveTab("clients"); setSidebarOpen(false); }} icon={<Target size={14} />} label="Client Management" />}
           {perms.tabs.includes("time") && <NavItem active={activeTab === "time"} onClick={() => { setActiveTab("time"); setSidebarOpen(false); }} icon={<BarChart2 size={14} />} label="Task Analytics" />}
           {perms.tabs.includes("knowledge_base") && <NavItem active={activeTab === "knowledge_base"} onClick={() => { setActiveTab("knowledge_base"); setSidebarOpen(false); }} icon={<BookOpen size={14} />} label="Knowledge Base" />}
+          {perms.tabs.includes("contracts") && <NavItem active={activeTab === "contracts"} onClick={() => { setActiveTab("contracts"); setSidebarOpen(false); }} icon={<FileText size={14} />} label="Contracts / NDA" />}
           {perms.tabs.includes("admin") && (
             <>
               <div className="mx-6 my-3" style={{ height: 1, background: "rgba(244,235,208,0.06)" }} />
@@ -1735,6 +1737,7 @@ export default function App() {
                : activeTab === "time" ? "Task Analytics"
                : activeTab === "knowledge_base" ? "Knowledge Base"
                : activeTab === "admin" ? "Admin"
+               : activeTab === "contracts" ? "Contracts / NDA"
                : ""}
             </h1>
             <div className="hidden sm:block w-px h-4 opacity-20" style={{ background: "var(--deep-forest)" }} />
@@ -3595,6 +3598,13 @@ export default function App() {
                 </div>
               </motion.div>
             )}
+
+            {/* ── Contracts / NDA ──────────────────────────────────── */}
+            {activeTab === "contracts" && (
+              <motion.div key="contracts" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full">
+                <ContractTab currentUserName={currentUser?.name} />
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
       </div>
@@ -4333,6 +4343,7 @@ export default function App() {
           ...(perms.tabs.includes("team") ? [{ key: "team", icon: <Users size={20} />, label: "Team" }] : []),
           ...(perms.tabs.includes("time") ? [{ key: "time", icon: <Clock size={20} />, label: "Time" }] : []),
           ...(perms.tabs.includes("knowledge_base") ? [{ key: "knowledge_base", icon: <BookOpen size={20} />, label: "Docs" }] : []),
+          ...(perms.tabs.includes("contracts") ? [{ key: "contracts", icon: <FileText size={20} />, label: "NDA" }] : []),
           ...(perms.tabs.includes("admin") ? [{ key: "admin", icon: <Shield size={20} />, label: "Admin" }] : []),
         ] as { key: string; icon: React.ReactNode; label: string; badge?: number }[];
         return (
