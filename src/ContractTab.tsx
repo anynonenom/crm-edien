@@ -19,6 +19,7 @@ const AGREEMENT_SECTIONS = [
         text: 'EIDEN GROUP / EIDEN SARL, with registered address at Bloc B - B101 - Technopole 1 Agadir Bay, Morocco (the "Company"), and the undersigned individual ("Team Member") agree as follows:',
       },
       {
+        
         heading: "1. Confidential Information",
         text: "Includes all non-public information relating to the Company's business, including but not limited to: internal systems, software frameworks, proprietary code, algorithms, web applications, client/customer data, financial records, strategic plans, trade secrets, methodologies, and any information disclosed in the Internal Code of Conduct.",
       },
@@ -272,7 +273,7 @@ export default function ContractTab({ currentUserName }: ContractTabProps) {
         doc.rect(0, pageH - FOOTER_H, pageW, 0.7, "F");
         doc.setFontSize(6.5);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(160, 200, 185);
+        doc.setTextColor(...white);
         doc.text("EIDEN GROUP  |  Confidential", ML, pageH - 4);
         doc.text("Bloc B - B101  |  Technopole 1 Agadir Bay, Morocco", pageW / 2, pageH - 4, { align: "center" });
         doc.text(`Page ${pg} / ${total}`, pageW - MR, pageH - 4, { align: "right" });
@@ -296,13 +297,13 @@ export default function ContractTab({ currentUserName }: ContractTabProps) {
       // Left: address
       doc.setFontSize(7.5);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(160, 200, 185);
+      doc.setTextColor(...white);
       doc.text("Bloc B - B101  |  Technopole 1 Agadir Bay, Morocco", ML, 25);
 
       // Left: legal note
       doc.setFontSize(7);
       doc.setFont("helvetica", "italic");
-      doc.setTextColor(130, 175, 160);
+      doc.setTextColor(...white);
       doc.text("Electronically signed  |  Legally binding under Moroccan law", ML, 31);
 
       // Right: document title block
@@ -312,7 +313,7 @@ export default function ContractTab({ currentUserName }: ContractTabProps) {
       doc.text("NON-DISCLOSURE AGREEMENT", pageW - MR, 17, { align: "right" });
       doc.setFontSize(8.5);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(160, 200, 185);
+      doc.setTextColor(...white);
       doc.text("& Internal Code of Conduct", pageW - MR, 24, { align: "right" });
 
       // Right: document ref
@@ -320,7 +321,7 @@ export default function ContractTab({ currentUserName }: ContractTabProps) {
       const isoDate = today.toISOString().slice(0, 10);
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(110, 160, 145);
+      doc.setTextColor(...white);
       doc.text(`Ref: EIDEN-NDA-${cinUpper}-${isoDate}`, pageW - MR, 31, { align: "right" });
 
       y = 55;
@@ -381,16 +382,6 @@ export default function ContractTab({ currentUserName }: ContractTabProps) {
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...brand);
       doc.text("SIGNATURE CERTIFICATE", ML + 4, y + 4);
-
-      // Stamp circle top-right
-      doc.setFillColor(...brand);
-      doc.circle(pageW - MR - 8, y + 2, 7, "F");
-      doc.setFillColor(...gold);
-      doc.circle(pageW - MR - 8, y + 2, 5.5, "F");
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...brand);
-      doc.text("OK", pageW - MR - 10.5, y + 4.5);
 
       y += 14;
 
@@ -469,7 +460,7 @@ export default function ContractTab({ currentUserName }: ContractTabProps) {
         doc.rect(0, pageH - FOOTER_H, pageW, 0.7, "F");
         doc.setFontSize(6.5);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(160, 200, 185);
+        doc.setTextColor(...white);
         doc.text("EIDEN GROUP  |  Confidential", ML, pageH - 4);
         doc.text("Bloc B - B101  |  Technopole 1 Agadir Bay, Morocco", pageW / 2, pageH - 4, { align: "center" });
         doc.text(`Page ${i} / ${totalPages}`, pageW - MR, pageH - 4, { align: "right" });
