@@ -532,7 +532,7 @@ export default function ContractTab({ currentUserName }: ContractTabProps) {
                 Full Name (as per ID)
               </label>
               <input
-                style={{ border: "1px solid var(--border)", color: "var(--ink)" }}
+                style={{ border: "2px solid var(--border)", color: "#122620" }}
                 className="eiden-input"
                 type="text"
                 placeholder="e.g., Fatima El Fassi"
@@ -546,6 +546,7 @@ export default function ContractTab({ currentUserName }: ContractTabProps) {
                 CIN (Moroccan National ID)
               </label>
               <input
+
                 className="eiden-input"
                 type="text"
                 placeholder="e.g., AB123456"
@@ -554,7 +555,7 @@ export default function ContractTab({ currentUserName }: ContractTabProps) {
                   setCin(e.target.value);
                   setCinError(e.target.value.trim().length > 0 && !isValidCIN(e.target.value));
                 }}
-                style={{ borderColor: cinError ? "var(--danger)" : undefined }}
+                style={{ borderColor: cinError ? "var(--danger)" : undefined, color: "#122620" , border: "2px solid var(--border)"}}
                 autoComplete="off"
               />
               {cinError ? (
