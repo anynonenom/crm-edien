@@ -532,6 +532,7 @@ export default function ContractTab({ currentUserName }: ContractTabProps) {
                 Full Name (as per ID)
               </label>
               <input
+                style={{ border: "1px solid var(--border)", color: "var(--ink)" }}
                 className="eiden-input"
                 type="text"
                 placeholder="e.g., Fatima El Fassi"
