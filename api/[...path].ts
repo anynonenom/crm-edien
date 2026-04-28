@@ -764,8 +764,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (r0 === "tasks") {
       if (!r1) {
         if (method === "GET") {
-          const { data } = await supabase.from("tasks").select("*, users!assignee_id(name), deals!related_deal_id(title), clients!client_id(name)").order("due_date", { ascending: true });
-          return res.json((data || []).map((t: any) => ({ ...t, assignee_name: t.users?.name || "", deal_title: t.deals?.title || "", client_name: t.clients?.name || "" })));
+          const { data } = await supabase
+            .from("tasks")
+            .select("*, users!assignee_id(name), deals!related_deal_id(title), clients!client_id(name)")
+            .order("due_date", { ascending: true });
+
+          const tasks = (data || []).map((t: any) => ({
+            ...t,
+            assignee_name: t.users?.name || "",
+            deal_title: t.deals?.title || "",
+            client_name: t.clients?.name || "",
+          }));
+
+          const taskIds = tasks.map((t: any) => t.id).filter(Boolean);
+          if (taskIds.length === 0) return res.json(tasks);
+
+          const [{ data: subtasksRaw }, { data: commentsRaw }] = await Promise.all([
+            supabase.from("task_subtasks").select("*").in("task_id", taskIds).order("created_at", { ascending: true }),
+            supabase
+              .from("task_comments")
+              .select("*, users(name)")
+              .in("task_id", taskIds)
+              .order("created_at", { ascending: false }),
+          ]);
+
+          const subtasksByTask = new Map<number, any[]>();
+          for (const st of subtasksRaw || []) {
+            const key = Number((st as any).task_id);
+            if (!subtasksByTask.has(key)) subtasksByTask.set(key, []);
+            subtasksByTask.get(key)!.push(st);
+          }
+
+          const commentsByTask = new Map<number, any[]>();
+          for (const c of commentsRaw || []) {
+            const key = Number((c as any).task_id);
+            if (!commentsByTask.has(key)) commentsByTask.set(key, []);
+            commentsByTask.get(key)!.push({
+              ...(c as any),
+              user_name: (c as any).users?.name || "",
+            });
+          }
+
+          return res.json(
+            tasks.map((t: any) => ({
+              ...t,
+              subtasks: subtasksByTask.get(Number(t.id)) || [],
+              comments: commentsByTask.get(Number(t.id)) || [],
+            }))
+          );
         }
         if (method === "POST") {
           const { title, description, assignee_id, client_id, workspace_id, due_date, status, priority } = req.body;
@@ -777,8 +823,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
       if (r1) {
+        if (r2 === "comments") {
+          // GET /api/tasks/:id/comments
+          if (method === "GET") {
+            const { data, error } = await supabase
+              .from("task_comments")
+              .select("*, users(name)")
+              .eq("task_id", r1)
+              .order("created_at", { ascending: false });
+            if (error) return res.status(500).json({ error: error.message });
+            return res.json(
+              (data || []).map((c: any) => ({
+                ...c,
+                user_name: c.users?.name || "",
+              }))
+            );
+          }
+
+          // POST /api/tasks/:id/comments
+          if (method === "POST") {
+            const { content, user_id } = req.body || {};
+            if (!content) return res.status(400).json({ error: "Content is required" });
+            if (!user_id) return res.status(400).json({ error: "User ID is required" });
+
+            const actorId = parseActorId(req);
+            const [{ data: task, error: taskErr }, { data: actor, error: actorErr }] = await Promise.all([
+              supabase.from("tasks").select("assignee_id").eq("id", r1).maybeSingle(),
+              supabase.from("users").select("role").eq("id", actorId).maybeSingle(),
+            ]);
+            if (taskErr) return res.status(500).json({ error: taskErr.message });
+            if (actorErr) return res.status(500).json({ error: actorErr.message });
+            if (!task) return res.status(404).json({ error: "Task not found" });
+
+            const isManagement = !!(actor?.role && canManage(String(actor.role)));
+            const isAssignee = Number(task.assignee_id || 0) === Number(actorId || 0);
+            if (!isManagement && !isAssignee) {
+              return res.status(403).json({ error: "You can only comment on tasks assigned to you" });
+            }
+
+            const { data, error } = await supabase
+              .from("task_comments")
+              .insert({ task_id: Number(r1), user_id: Number(user_id), content: String(content) })
+              .select()
+              .single();
+            if (error) return res.status(500).json({ error: error.message });
+            return res.json({ id: data?.id });
+          }
+        }
+
         if (method === "PATCH") {
-          const { title, description, assignee_id, related_deal_id, client_id, due_date, status, priority, overdue_reason, overdue_reason_at } = req.body;
+          const { title, description, assignee_id, related_deal_id, client_id, due_date, status, priority, overdue_reason, overdue_reason_at, rejection_reason } = req.body;
           // Only update fields that were explicitly provided (prevents undefined from nullifying existing values)
           const updates: any = {};
           if (title !== undefined) updates.title = title;
@@ -791,6 +885,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (priority !== undefined) updates.priority = priority;
           if (overdue_reason !== undefined) updates.overdue_reason = overdue_reason;
           if (overdue_reason_at !== undefined) updates.overdue_reason_at = overdue_reason_at;
+          if (rejection_reason !== undefined) updates.rejection_reason = rejection_reason;
           await supabase.from("tasks").update(updates).eq("id", r1);
           return res.json({ success: true });
         }
@@ -798,6 +893,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           await supabase.from("tasks").delete().eq("id", r1);
           return res.json({ success: true });
         }
+      }
+    }
+
+    // ─── Comments (delete) ────────────────────────────────────────────────────
+    if (r0 === "comments" && r1) {
+      if (method === "DELETE") {
+        const actorId = parseActorId(req);
+        const [{ data: comment, error: commentErr }, { data: actor, error: actorErr }] = await Promise.all([
+          supabase.from("task_comments").select("user_id").eq("id", r1).maybeSingle(),
+          supabase.from("users").select("role").eq("id", actorId).maybeSingle(),
+        ]);
+        if (commentErr) return res.status(500).json({ error: commentErr.message });
+        if (actorErr) return res.status(500).json({ error: actorErr.message });
+        if (!comment) return res.status(404).json({ error: "Comment not found" });
+
+        const isManagement = !!(actor?.role && canManage(String(actor.role)));
+        const isOwner = Number(comment.user_id || 0) === Number(actorId || 0);
+        if (!isManagement && !isOwner) {
+          return res.status(403).json({ error: "You can only delete your own comments" });
+        }
+
+        const { error } = await supabase.from("task_comments").delete().eq("id", r1);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.json({ success: true });
       }
     }
 
