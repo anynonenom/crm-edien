@@ -522,13 +522,37 @@ async function startServer() {
   // ─── Tasks ───────────────────────────────────────────────────────────────────
   app.get("/api/tasks", async (_req, res) => {
     try {
-      const { data } = await supabase.from("tasks")
+      const { data: tasks } = await supabase.from("tasks")
         .select("*, users!assignee_id(name), deals!related_deal_id(title)")
         .order("due_date", { ascending: true });
-      res.json((data || []).map((t: any) => ({
+      
+      // Fetch subtasks and comments for all tasks
+      const taskIds = (tasks || []).map((t: any) => t.id);
+      const { data: subtasks } = taskIds.length > 0 ? await supabase.from("task_subtasks").select("*").in("task_id", taskIds) : { data: [] };
+      const { data: comments } = taskIds.length > 0 ? await supabase.from("task_comments").select("*, users(name)").in("task_id", taskIds).order("created_at", { ascending: false }) : { data: [] };
+      
+      // Group subtasks and comments by task_id
+      const subtasksByTask = (subtasks || []).reduce((acc: any, s: any) => {
+        if (!acc[s.task_id]) acc[s.task_id] = [];
+        acc[s.task_id].push(s);
+        return acc;
+      }, {});
+      
+      const commentsByTask = (comments || []).reduce((acc: any, c: any) => {
+        if (!acc[c.task_id]) acc[c.task_id] = [];
+        acc[c.task_id].push({
+          ...c,
+          user_name: c.users?.name || ""
+        });
+        return acc;
+      }, {});
+      
+      res.json((tasks || []).map((t: any) => ({
         ...t,
         assignee_name: t.users?.name || "",
-        deal_title: t.deals?.title || ""
+        deal_title: t.deals?.title || "",
+        subtasks: subtasksByTask[t.id] || [],
+        comments: commentsByTask[t.id] || []
       })));
     } catch { res.status(500).json({ error: "Server error" }); }
   });
@@ -548,7 +572,7 @@ async function startServer() {
     const { id } = req.params;
     try {
       const updates: any = {};
-      for (const f of ["title","description","assignee_id","related_deal_id","due_date","status","priority","overdue_reason","client_id"]) {
+      for (const f of ["title","description","assignee_id","related_deal_id","due_date","status","priority","overdue_reason","client_id","rejection_reason"]) {
         if (Object.prototype.hasOwnProperty.call(req.body, f)) updates[f] = req.body[f] ?? null;
       }
       const { error } = await supabase.from("tasks").update(updates).eq("id", id);
@@ -561,6 +585,120 @@ async function startServer() {
     const { id } = req.params;
     try {
       await supabase.from("tasks").delete().eq("id", id);
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
+  // ─── Subtasks ───────────────────────────────────────────────────────────────
+  app.get("/api/tasks/:id/subtasks", async (req, res) => {
+    const { id } = req.params;
+    try {
+      const { data } = await supabase.from("task_subtasks").select("*").eq("task_id", id).order("created_at", { ascending: true });
+      res.json(data || []);
+    } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
+  app.post("/api/tasks/:id/subtasks", async (req, res) => {
+    const { id } = req.params;
+    const { title, due_date, status } = req.body;
+    if (!title) return res.status(400).json({ error: "Title is required" });
+    try {
+      const { data, error } = await supabase.from("task_subtasks").insert({ 
+        task_id: Number(id), 
+        title, 
+        due_date: due_date || null, 
+        status: status || "Pending" 
+      }).select().single();
+      if (error) { console.error("Subtask insert error:", error); return res.status(500).json({ error: error.message }); }
+      res.json({ id: data?.id });
+    } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
+  app.patch("/api/subtasks/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+      const updates: any = {};
+      for (const f of ["title","due_date","status","rejection_reason"]) {
+        if (Object.prototype.hasOwnProperty.call(req.body, f)) updates[f] = req.body[f] ?? null;
+      }
+      const { error } = await supabase.from("task_subtasks").update(updates).eq("id", id);
+      if (error) { console.error("Subtask update error:", error); return res.status(500).json({ error: error.message }); }
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
+  app.delete("/api/subtasks/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+      await supabase.from("task_subtasks").delete().eq("id", id);
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
+  // ─── Comments ───────────────────────────────────────────────────────────────
+  app.get("/api/tasks/:id/comments", async (req, res) => {
+    const { id } = req.params;
+    try {
+      const { data } = await supabase.from("task_comments")
+        .select("*, users(name)")
+        .eq("task_id", id)
+        .order("created_at", { ascending: false });
+      res.json((data || []).map((c: any) => ({
+        ...c,
+        user_name: c.users?.name || ""
+      })));
+    } catch { res.status(500).json({ error: "Server error" }); }
+  });
+
+  app.post("/api/tasks/:id/comments", async (req, res) => {
+    const { id } = req.params;
+    const { content, user_id } = req.body;
+    if (!content) return res.status(400).json({ error: "Content is required" });
+    if (!user_id) return res.status(400).json({ error: "User ID is required" });
+    try {
+      // Permission check: user can only comment on tasks they're assigned to (unless admin or manager)
+      const actorId = parseActorId(req);
+      const { data: task } = await supabase.from("tasks").select("assignee_id").eq("id", id).single();
+      const { data: actor } = await supabase.from("users").select("role").eq("id", actorId).single();
+
+      // Management roles that can comment on any task
+      const managementRoles = ["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Admin Coordinator", "Brand Manager", "Branding and Strategy Manager", "Solution Architect"];
+      const isManagement = actor?.role && managementRoles.includes(actor.role);
+      const isAssignee = task?.assignee_id === actorId;
+
+      if (!isManagement && !isAssignee) {
+        return res.status(403).json({ error: "You can only comment on tasks assigned to you" });
+      }
+
+      const { data, error } = await supabase.from("task_comments").insert({
+        task_id: Number(id),
+        user_id: Number(user_id),
+        content
+      }).select().single();
+      if (error) { console.error("Comment insert error:", error); return res.status(500).json({ error: error.message }); }
+      res.json({ id: data?.id });
+    } catch (err) {
+      console.error("Comment insert error:", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  app.delete("/api/comments/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+      // Permission check: user can only delete their own comments (unless admin)
+      const actorId = parseActorId(req);
+      const { data: comment } = await supabase.from("task_comments").select("user_id").eq("id", id).single();
+      const { data: actor } = await supabase.from("users").select("role").eq("id", actorId).single();
+      
+      const isAdmin = actor?.role === "Admin";
+      const isOwner = comment?.user_id === actorId;
+      
+      if (!isAdmin && !isOwner) {
+        return res.status(403).json({ error: "You can only delete your own comments" });
+      }
+      
+      await supabase.from("task_comments").delete().eq("id", id);
       res.json({ success: true });
     } catch { res.status(500).json({ error: "Server error" }); }
   });

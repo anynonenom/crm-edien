@@ -33,6 +33,16 @@ interface Activity {
   id: number; user_name?: string; action: string;
   related_to?: string; type: string; time: string;
 }
+interface Subtask {
+  id: number; task_id: number; title: string; due_date?: string;
+  status: string; rejection_reason?: string; created_at?: string;
+}
+
+interface Comment {
+  id: number; task_id: number; user_id: number; user_name: string;
+  content: string; created_at?: string;
+}
+
 interface Task {
   id: number; title: string; description?: string;
   assignee_name: string; assignee_id: number; deal_title?: string;
@@ -40,6 +50,9 @@ interface Task {
   due_date: string; status: string;
   priority: string; workspace_id: number; created_at?: string;
   overdue_reason?: string; overdue_reason_at?: string;
+  rejection_reason?: string;
+  subtasks?: Subtask[];
+  comments?: Comment[];
 }
 interface Client {
   id: number; name: string; industry: string; status: string;
@@ -219,7 +232,7 @@ export default function App() {
   const [meetingSending, setMeetingSending] = useState(false);
 
   // Sidebar task board (canCreate view)
-  const [boardStatus, setBoardStatus] = useState<"Overdue" | "Pending" | "In Progress" | "Completed">("Overdue");
+  const [boardStatus, setBoardStatus] = useState<"Overdue" | "Pending" | "In Progress" | "Review" | "Completed">("Overdue");
   const [boardSearch, setBoardSearch] = useState("");
   const [expandedEmp, setExpandedEmp] = useState<number | null>(null);
 
@@ -290,6 +303,14 @@ export default function App() {
   const [newWsName, setNewWsName] = useState("");
   const [isCreatingWs, setIsCreatingWs] = useState(false);
 
+  // Subtasks and Comments
+  const [showSubtaskForm, setShowSubtaskForm] = useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [newSubtaskDueDate, setNewSubtaskDueDate] = useState("");
+  const [newCommentContent, setNewCommentContent] = useState("");
+  const [rejectingTask, setRejectingTask] = useState<Task | Subtask | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+
   // AI Assistant — persistent via Zustand + localStorage
   const { getMessages, addMessage, clearHistory } = useAiChatStore();
   const uid = currentUser?.id ?? 0;
@@ -299,7 +320,7 @@ export default function App() {
   const [pendingAiAction, setPendingAiAction] = useState<{ action: string; data: any; summary: string } | null>(null);
   const [taskSearch, setTaskSearch] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [mobileKanbanCol, setMobileKanbanCol] = useState<"Pending"|"In Progress"|"Completed">("Pending");
+  const [mobileKanbanCol, setMobileKanbanCol] = useState<"Pending"|"In Progress"|"Review"|"Completed">("Pending");
   const aiEndRef = useRef<HTMLDivElement>(null);
 
   // Auth forms
@@ -2011,9 +2032,10 @@ export default function App() {
             {activeTab === "tasks" && (
               <motion.div key="tasks" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col gap-4">
                 {/* Stats row */}
-                <div className="shrink-0 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="shrink-0 grid grid-cols-2 sm:grid-cols-5 gap-3">
                   <StatCard icon={<Clock size={15} />} label="Pending" value={String(filteredTasks.filter(t => t.status === "Pending").length)} color="warn" />
                   <StatCard icon={<Cpu size={15} />} label="In Progress" value={String(filteredTasks.filter(t => t.status === "In Progress").length)} color="teal" />
+                  <StatCard icon={<Search size={15} />} label="Review" value={String(filteredTasks.filter(t => t.status === "Review").length)} color="warn" />
                   <StatCard icon={<CheckCircle2 size={15} />} label="Completed" value={String(filteredTasks.filter(t => t.status === "Completed").length)} color="success" />
                   <StatCard icon={<AlertTriangle size={15} />} label="Overdue" value={String(overdueTasks.length)} color={overdueTasks.length > 0 ? "danger" : "muted"} />
                 </div>
@@ -2036,8 +2058,8 @@ export default function App() {
 
                 {/* Mobile column switcher */}
                 <div className="lg:hidden shrink-0 flex" style={{ borderBottom: "1px solid rgba(18,38,32,0.08)", background: "var(--pure-white)" }}>
-                  {(["Pending","In Progress","Completed"] as const).map(col => {
-                    const accent = col === "Pending" ? "var(--warning)" : col === "In Progress" ? "#2a9d8f" : "var(--success)";
+                  {(["Pending","In Progress","Review","Completed"] as const).map(col => {
+                    const accent = col === "Pending" ? "var(--warning)" : col === "In Progress" ? "#2a9d8f" : col === "Review" ? "#9b59b6" : "var(--success)";
                     const count = filteredTasks.filter(t => t.status === col).length;
                     const active = mobileKanbanCol === col;
                     return (
@@ -2055,7 +2077,7 @@ export default function App() {
                 <div className="lg:hidden flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
                   {filteredTasks.filter(t => t.status === mobileKanbanCol).map((task: Task): React.ReactElement => {
                     const overdue = isOverdue(task.due_date, task.status);
-                    const colAccent = mobileKanbanCol === "Pending" ? "var(--warning)" : mobileKanbanCol === "In Progress" ? "#2a9d8f" : "var(--success)";
+                    const colAccent = mobileKanbanCol === "Pending" ? "var(--warning)" : mobileKanbanCol === "In Progress" ? "#2a9d8f" : mobileKanbanCol === "Review" ? "#9b59b6" : "var(--success)";
                     return (
                       <div key={task.id}
                         onTouchStart={e => handleTouchDragStart(e, task)}
@@ -2082,10 +2104,15 @@ export default function App() {
                             </button>
                           )}
                             <span style={{ fontSize: "0.55rem", fontFamily: "'JetBrains Mono', monospace", color: "rgba(18,38,32,0.35)", textTransform: "uppercase", letterSpacing: "0.5px", alignSelf: "center", marginRight: 2 }}>Move →</span>
-                            {(["Pending","In Progress","Completed"] as const).filter(s => s !== mobileKanbanCol).map(targetStatus => {
-                              const accent = targetStatus === "Pending" ? "var(--warning)" : targetStatus === "In Progress" ? "#2a9d8f" : "var(--success)";
+                            {(["Pending","In Progress","Review","Completed"] as const).filter(s => s !== mobileKanbanCol).map(targetStatus => {
+                              const accent = targetStatus === "Pending" ? "var(--warning)" : targetStatus === "In Progress" ? "#2a9d8f" : targetStatus === "Review" ? "#9b59b6" : "var(--success)";
                               return (
                                 <button key={targetStatus} onClick={async () => {
+                                  // Prevent users from moving from Review to Completed
+                                  if (mobileKanbanCol === "Review" && targetStatus === "Completed" && !perms.canCreate) {
+                                    alert("Admin approval required to move from Review to Completed");
+                                    return;
+                                  }
                                   if (perms.canCreate) {
                                     await updateTaskStatus(task.id, targetStatus);
                                   } else if (task.assignee_id === currentUser?.id) {
@@ -2094,7 +2121,7 @@ export default function App() {
                                   setMobileKanbanCol(targetStatus);
                                 }}
                                   style={{ flex: 1, padding: "5px 4px", fontSize: "0.55rem", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "transparent", border: `1px solid ${accent}`, color: accent, cursor: "pointer" }}>
-                                  {targetStatus === "In Progress" ? "In Progress" : targetStatus}
+                                  {targetStatus === "In Progress" ? "In Progress" : targetStatus === "Review" ? "Review" : targetStatus}
                                 </button>
                               );
                             })}
@@ -2115,12 +2142,12 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Desktop: 3-column kanban */}
+                {/* Desktop: 4-column kanban */}
                 <div className="hidden lg:block flex-1 min-h-0 overflow-x-auto">
-                <div className="h-full grid grid-cols-3 gap-3" style={{ minWidth: 680 }}>
-                  {(["Pending","In Progress","Completed"] as const).map((colStatus): React.ReactElement => {
+                <div className="h-full grid grid-cols-4 gap-3" style={{ minWidth: 900 }}>
+                  {(["Pending","In Progress","Review","Completed"] as const).map((colStatus): React.ReactElement => {
                     const colTasks = filteredTasks.filter(t => t.status === colStatus);
-                    const colAccent = colStatus === "Pending" ? "var(--warning)" : colStatus === "In Progress" ? "#2a9d8f" : "var(--success)";
+                    const colAccent = colStatus === "Pending" ? "var(--warning)" : colStatus === "In Progress" ? "#2a9d8f" : colStatus === "Review" ? "#9b59b6" : "var(--success)";
                     return (
                       <div key={colStatus} className="flex flex-col min-h-0 overflow-hidden"
                         data-column={colStatus}
@@ -2132,6 +2159,11 @@ export default function App() {
                           if (!taskId) return;
                           const draggedTask = filteredTasks.find(t => t.id === taskId);
                           if (!draggedTask) return;
+                          // Prevent users from moving from Review to Completed
+                          if (draggedTask.status === "Review" && colStatus === "Completed" && !perms.canCreate) {
+                            alert("Admin approval required to move from Review to Completed");
+                            return;
+                          }
                           if (perms.canCreate) {
                             await updateTaskStatus(taskId, colStatus);
                           } else if (draggedTask.assignee_id === currentUser?.id) {
@@ -3826,6 +3858,245 @@ export default function App() {
                   )}
                 </div>
               )}
+              {selectedTaskDetail.rejection_reason && (
+                <div className="p-3" style={{ background: "rgba(155,89,182,0.04)", border: "1px solid rgba(155,89,182,0.15)", borderLeft: "3px solid #9b59b6" }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "#9b59b6", marginBottom: 5 }}>Rejection Reason</div>
+                  <div className="italic text-[0.78rem]" style={{ color: "rgba(18,38,32,0.65)" }}>"{selectedTaskDetail.rejection_reason}"</div>
+                </div>
+              )}
+
+              {/* Subtasks Section */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.38)" }}>Subtasks</div>
+                  <button onClick={() => setShowSubtaskForm(!showSubtaskForm)} className="text-[0.65rem] font-semibold px-2 py-1" style={{ color: "var(--deep-forest)", border: "1px solid rgba(18,38,32,0.2)", background: "transparent", cursor: "pointer" }}>
+                    {showSubtaskForm ? "Cancel" : "+ Add Subtask"}
+                  </button>
+                </div>
+                {showSubtaskForm && (
+                  <div className="space-y-2 mb-3 p-3" style={{ background: "rgba(18,38,32,0.025)", border: "1px solid rgba(18,38,32,0.08)" }}>
+                    <input
+                      type="text"
+                      placeholder="Subtask title"
+                      value={newSubtaskTitle}
+                      onChange={e => setNewSubtaskTitle(e.target.value)}
+                      className="field-input"
+                    />
+                    <input
+                      type="datetime-local"
+                      value={newSubtaskDueDate}
+                      onChange={e => setNewSubtaskDueDate(e.target.value)}
+                      className="field-input"
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!newSubtaskTitle.trim()) return;
+                        await fetch(`/api/tasks/${selectedTaskDetail.id}/subtasks`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ title: newSubtaskTitle, due_date: newSubtaskDueDate || null })
+                        });
+                        setNewSubtaskTitle("");
+                        setNewSubtaskDueDate("");
+                        setShowSubtaskForm(false);
+                        fetchData();
+                      }}
+                      className="flash-button mb-0"
+                    >
+                      Add Subtask
+                    </button>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  {(selectedTaskDetail.subtasks || []).map((subtask: Subtask) => (
+                    <div key={subtask.id} className="p-2.5" style={{ background: "rgba(18,38,32,0.015)", border: "1px solid rgba(18,38,32,0.06)" }}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--deep-forest)" }}>{subtask.title}</div>
+                          {subtask.due_date && (
+                            <div className="text-[0.62rem]" style={{ color: "rgba(18,38,32,0.4)", fontFamily: "'JetBrains Mono', monospace" }}>
+                              Due: {formatDueDate(subtask.due_date)}
+                            </div>
+                          )}
+                          {subtask.rejection_reason && (
+                            <div className="text-[0.62rem] italic mt-1" style={{ color: "#9b59b6" }}>
+                              Rejected: {subtask.rejection_reason}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={subtask.status}
+                            onChange={async (e) => {
+                              const newStatus = e.target.value;
+                              // Prevent users from moving from Review to Completed
+                              if (subtask.status === "Review" && newStatus === "Completed" && !perms.canCreate) {
+                                alert("Admin approval required to move from Review to Completed");
+                                return;
+                              }
+                              await fetch(`/api/subtasks/${subtask.id}`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ status: newStatus })
+                              });
+                              fetchData();
+                            }}
+                            className="text-[0.6rem] px-1.5 py-0.5 border"
+                            style={{ fontFamily: "'JetBrains Mono', monospace", background: "transparent", cursor: "pointer" }}
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Review">Review</option>
+                            <option value="Completed">Completed</option>
+                          </select>
+                          {perms.canCreate && (
+                            <button
+                              onClick={async () => {
+                                if (confirm("Delete this subtask?")) {
+                                  await fetch(`/api/subtasks/${subtask.id}`, { method: "DELETE" });
+                                  fetchData();
+                                }
+                              }}
+                              style={{ color: "var(--danger)", background: "none", border: "none", cursor: "pointer", padding: 2 }}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {/* Admin approval buttons for Review status */}
+                      {subtask.status === "Review" && perms.canCreate && (
+                        <div className="flex gap-2 mt-2 pt-2" style={{ borderTop: "1px solid rgba(18,38,32,0.06)" }}>
+                          <button
+                            onClick={async () => {
+                              await fetch(`/api/subtasks/${subtask.id}`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ status: "Completed", rejection_reason: null })
+                              });
+                              fetchData();
+                            }}
+                            className="text-[0.6rem] px-2 py-1"
+                            style={{ color: "var(--success)", border: "1px solid var(--success)", background: "transparent", cursor: "pointer" }}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => { setRejectingTask(subtask); setRejectionReason(""); }}
+                            className="text-[0.6rem] px-2 py-1"
+                            style={{ color: "var(--danger)", border: "1px solid var(--danger)", background: "transparent", cursor: "pointer" }}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {(!selectedTaskDetail.subtasks || selectedTaskDetail.subtasks.length === 0) && (
+                    <div className="text-[0.65rem] text-center py-3" style={{ color: "rgba(18,38,32,0.3)", fontFamily: "'JetBrains Mono', monospace" }}>
+                      No subtasks
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Comments Section */}
+              <div className="p-3" style={{ background: "rgba(18,38,32,0.015)", border: "1px solid rgba(18,38,32,0.08)" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.38)", marginBottom: 8 }}>Comments</div>
+                <div className="space-y-2 mb-3 max-h-48 overflow-y-auto">
+                  {(selectedTaskDetail.comments || []).map((comment: Comment) => (
+                    <div key={comment.id} className="p-2.5" style={{ background: "var(--pure-white)", border: "1px solid rgba(18,38,32,0.06)" }}>
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "var(--deep-forest)" }}>{comment.user_name}</span>
+                        <span className="text-[0.58rem]" style={{ color: "rgba(18,38,32,0.35)", fontFamily: "'JetBrains Mono', monospace" }}>
+                          {comment.created_at ? new Date(comment.created_at).toLocaleDateString() : ""}
+                        </span>
+                      </div>
+                      <div className="text-[0.75rem]" style={{ color: "rgba(18,38,32,0.6)", lineHeight: 1.4 }}>{comment.content}</div>
+                      {(perms.canCreate || comment.user_id === currentUser?.id) && (
+                        <button
+                          onClick={async () => {
+                            if (confirm("Delete this comment?")) {
+                              await fetch(`/api/comments/${comment.id}`, { method: "DELETE" });
+                              fetchData();
+                            }
+                          }}
+                          className="text-[0.55rem] mt-1"
+                          style={{ color: "rgba(18,38,32,0.3)", background: "none", border: "none", cursor: "pointer" }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {(!selectedTaskDetail.comments || selectedTaskDetail.comments.length === 0) && (
+                    <div className="text-[0.65rem] text-center py-3" style={{ color: "rgba(18,38,32,0.3)", fontFamily: "'JetBrains Mono', monospace" }}>
+                      No comments yet
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Add a comment..."
+                    value={newCommentContent}
+                    onChange={e => setNewCommentContent(e.target.value)}
+                    className="field-input"
+                    style={{ flex: 1, padding: "8px 12px", fontSize: "0.8rem" }}
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!newCommentContent.trim()) return;
+                      const res = await fetch(`/api/tasks/${selectedTaskDetail.id}/comments`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ content: newCommentContent, user_id: currentUser?.id })
+                      });
+                      if (!res.ok) {
+                        const error = await res.json();
+                        alert(error.error || "Failed to add comment");
+                        return;
+                      }
+                      setNewCommentContent("");
+                      fetchData();
+                    }}
+                    className="flash-button mb-0"
+                    style={{ padding: "8px 12px", fontSize: "0.8rem", width: "auto", minWidth: "60px" }}
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+
+              {/* Admin approval for parent task in Review */}
+              {selectedTaskDetail.status === "Review" && perms.canCreate && (
+                <div className="p-3" style={{ background: "rgba(155,89,182,0.04)", border: "1px solid rgba(155,89,182,0.15)" }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "#9b59b6", marginBottom: 8 }}>Admin Approval Required</div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        await fetch(`/api/tasks/${selectedTaskDetail.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ status: "Completed", rejection_reason: null })
+                        });
+                        fetchData();
+                      }}
+                      className="flash-button mb-0"
+                      style={{ borderColor: "var(--success)", color: "var(--success)" }}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => { setRejectingTask(selectedTaskDetail); setRejectionReason(""); }}
+                      className="flash-button mb-0"
+                      style={{ borderColor: "var(--danger)", color: "var(--danger)" }}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              )}
               {/* Overdue reason submit — for the assigned employee */}
               {isOverdue(selectedTaskDetail.due_date, selectedTaskDetail.status) && selectedTaskDetail.assignee_id === currentUser?.id && !selectedTaskDetail.overdue_reason && (
                 <button
@@ -3867,6 +4138,7 @@ export default function App() {
                 <select value={editTask.status} onChange={e => setEditTask({ ...editTask, status: e.target.value })} className="field-input">
                   <option value="Pending">Pending</option>
                   <option value="In Progress">In Progress</option>
+                  <option value="Review">Review</option>
                   <option value="Completed">Completed</option>
                 </select>
               </Field>
@@ -4022,6 +4294,47 @@ export default function App() {
               </Field>
               <button onClick={submitOverdueReason} disabled={overdueReasonSaving || !overdueReasonText.trim()} className="flash-button" style={{ marginBottom: 0 }}>
                 <span>{overdueReasonSaving ? "Submitting…" : "SUBMIT REASON"}</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {/* Rejection Reason Modal */}
+        {rejectingTask && (
+          <Modal title="Reject Task/Subtask" onClose={() => { setRejectingTask(null); setRejectionReason(""); }}>
+            <div className="space-y-4">
+              <div className="p-3" style={{ border: "1px solid #9b59b6", background: "rgba(155,89,182,0.05)", borderLeft: "3px solid #9b59b6" }}>
+                <div className="font-semibold text-[0.82rem]" style={{ color: "#9b59b6" }}>
+                  {"title" in rejectingTask ? rejectingTask.title : "Subtask"}
+                </div>
+                <div className="text-[0.7rem] mt-0.5" style={{ color: "rgba(18,38,32,0.5)" }}>
+                  Please provide a reason for rejection
+                </div>
+              </div>
+              <Field label="Rejection reason">
+                <textarea className="field-input resize-none" rows={4} placeholder="Explain why this is being rejected…"
+                  value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} />
+              </Field>
+              <button
+                onClick={async () => {
+                  if (!rejectionReason.trim()) return;
+                  const isSubtask = "task_id" in rejectingTask;
+                  const endpoint = isSubtask ? `/api/subtasks/${rejectingTask.id}` : `/api/tasks/${rejectingTask.id}`;
+                  await fetch(endpoint, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "In Progress", rejection_reason: rejectionReason.trim() })
+                  });
+                  setRejectingTask(null);
+                  setRejectionReason("");
+                  fetchData();
+                }}
+                disabled={!rejectionReason.trim()}
+                className="flash-button mb-0"
+                style={{ borderColor: "var(--danger)", color: "var(--danger)" }}
+              >
+                <span>REJECT & MOVE TO IN PROGRESS</span>
                 <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
               </button>
             </div>
