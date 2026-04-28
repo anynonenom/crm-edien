@@ -3869,9 +3869,11 @@ export default function App() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(18,38,32,0.38)" }}>Subtasks</div>
-                  <button onClick={() => setShowSubtaskForm(!showSubtaskForm)} className="text-[0.65rem] font-semibold px-2 py-1" style={{ color: "var(--deep-forest)", border: "1px solid rgba(18,38,32,0.2)", background: "transparent", cursor: "pointer" }}>
-                    {showSubtaskForm ? "Cancel" : "+ Add Subtask"}
-                  </button>
+                  {perms.canCreate && (
+                    <button onClick={() => setShowSubtaskForm(!showSubtaskForm)} className="text-[0.65rem] font-semibold px-2 py-1" style={{ color: "var(--deep-forest)", border: "1px solid rgba(18,38,32,0.2)", background: "transparent", cursor: "pointer" }}>
+                      {showSubtaskForm ? "Cancel" : "+ Add Subtask"}
+                    </button>
+                  )}
                 </div>
                 {showSubtaskForm && (
                   <div className="space-y-2 mb-3 p-3" style={{ background: "rgba(18,38,32,0.025)", border: "1px solid rgba(18,38,32,0.08)" }}>

@@ -603,11 +603,23 @@ async function startServer() {
     const { title, due_date, status } = req.body;
     if (!title) return res.status(400).json({ error: "Title is required" });
     try {
-      const { data, error } = await supabase.from("task_subtasks").insert({ 
-        task_id: Number(id), 
-        title, 
-        due_date: due_date || null, 
-        status: status || "Pending" 
+      // Permission check: only management can add subtasks
+      const actorId = parseActorId(req);
+      const { data: actor } = await supabase.from("users").select("role").eq("id", actorId).single();
+
+      // Management roles that can add subtasks
+      const managementRoles = ["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Admin Coordinator", "Brand Manager", "Branding and Strategy Manager", "Solution Architect"];
+      const isManagement = actor?.role && managementRoles.includes(actor.role);
+
+      if (!isManagement) {
+        return res.status(403).json({ error: "Only management can add subtasks" });
+      }
+
+      const { data, error } = await supabase.from("task_subtasks").insert({
+        task_id: Number(id),
+        title,
+        due_date: due_date || null,
+        status: status || "Pending"
       }).select().single();
       if (error) { console.error("Subtask insert error:", error); return res.status(500).json({ error: error.message }); }
       res.json({ id: data?.id });
