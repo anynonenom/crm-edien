@@ -4019,12 +4019,27 @@ export default function App() {
                         <button
                           onClick={async () => {
                             if (confirm("Delete this comment?")) {
-                              await fetch(`/api/comments/${comment.id}`, { method: "DELETE" });
+                              if (!currentUser?.id) {
+                                alert("You must be logged in to delete comments.");
+                                return;
+                              }
+                              const res = await fetch(`/api/comments/${comment.id}`, {
+                                method: "DELETE",
+                                headers: {
+                                  "x-user-id": String(currentUser.id),
+                                  "x-user-role": String(currentUser.role || ""),
+                                },
+                              });
+                              if (!res.ok) {
+                                const err = await res.json().catch(() => ({} as any));
+                                alert(err.error || "Failed to delete comment");
+                                return;
+                              }
                               fetchData();
                             }
                           }}
-                          className="text-[0.55rem] mt-1"
-                          style={{ color: "rgba(18,38,32,0.3)", background: "none", border: "none", cursor: "pointer" }}
+                          className="text-[0.62rem] font-semibold mt-2 px-2 py-1"
+                          style={{ color: "var(--danger)", background: "rgba(139,58,58,0.06)", border: "1px solid rgba(139,58,58,0.35)", cursor: "pointer" }}
                         >
                           Delete
                         </button>
