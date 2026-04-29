@@ -111,6 +111,7 @@ const getPerms = (role?: string | null) => PERMISSIONS[role ?? ""] ?? { tabs: ["
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const isOverdue = (dueDate: string, status: string) => {
   if (status === "Completed") return false;
+  if (status === "Pending") return false;
   if (!dueDate) return false;
   return new Date(dueDate) < new Date();
 };
@@ -479,6 +480,25 @@ export default function App() {
           type: "warn" as const,
           title: "Overdue Reason Submitted",
           body: `${t.assignee_name || "Employee"} · "${t.title}": ${t.overdue_reason}`,
+          at: Date.now(),
+          taskId: t.id
+        }]);
+      });
+  }, [tasks, isLoggedIn, currentUser, perms.canCreate]);
+
+  // Tasks moved to In Progress without due date → notify management once per task
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser || !perms.canCreate) return;
+    tasks
+      .filter(t => t.status === "In Progress" && !t.due_date)
+      .forEach(t => {
+        if (seenReasonTaskIdsRef.current.has(1000000 + t.id)) return;
+        seenReasonTaskIdsRef.current.add(1000000 + t.id);
+        setNotifications(prev => [...prev, {
+          id: Date.now() + t.id + 30000,
+          type: "warn" as const,
+          title: "Due Date Required",
+          body: `"${t.title}" is In Progress but has no due date — please set one`,
           at: Date.now(),
           taskId: t.id
         }]);
@@ -3755,7 +3775,7 @@ export default function App() {
                         </Field>
                       </div>
                       <Field label="Due Date & Time">
-                        <input name="due_date" type="datetime-local" required className="field-input" />
+                        <input name="due_date" type="datetime-local" className="field-input" />
                       </Field>
                     </div>
                     {/* Right column */}
@@ -3865,6 +3885,24 @@ export default function App() {
                 </div>
               )}
 
+              {/* Due date required warning for In Progress tasks */}
+              {selectedTaskDetail.status === "In Progress" && !selectedTaskDetail.due_date && perms.canCreate && (
+                <div className="p-3" style={{ background: "rgba(255,193,7,0.04)", border: "1px solid rgba(255,193,7,0.15)", borderLeft: "3px solid #ffc107" }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "#ffc107", marginBottom: 5 }}>Due Date Required</div>
+                  <div className="text-[0.78rem]" style={{ color: "rgba(18,38,32,0.65)", marginBottom: 8 }}>This task is In Progress but has no due date. Please set one.</div>
+                  <button
+                    onClick={() => {
+                      setDeadlineEditTask({ ...selectedTaskDetail });
+                      setDeadlineEditValue(toDatetimeLocal(selectedTaskDetail.due_date));
+                    }}
+                    className="text-[0.65rem] font-semibold px-2 py-1"
+                    style={{ color: "#ffc107", background: "rgba(255,193,7,0.1)", border: "1px solid rgba(255,193,7,0.35)", cursor: "pointer" }}
+                  >
+                    Set Due Date
+                  </button>
+                </div>
+              )}
+
               {/* Subtasks Section */}
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -3895,7 +3933,7 @@ export default function App() {
                         if (!newSubtaskTitle.trim()) return;
                         await fetch(`/api/tasks/${selectedTaskDetail.id}/subtasks`, {
                           method: "POST",
-                          headers: { "Content-Type": "application/json" },
+                          headers: { "Content-Type": "application/json", "x-user-id": String(currentUser?.id), "x-user-role": currentUser?.role || "" },
                           body: JSON.stringify({ title: newSubtaskTitle, due_date: newSubtaskDueDate || null })
                         });
                         setNewSubtaskTitle("");
@@ -3938,7 +3976,7 @@ export default function App() {
                               }
                               await fetch(`/api/subtasks/${subtask.id}`, {
                                 method: "PATCH",
-                                headers: { "Content-Type": "application/json" },
+                                headers: { "Content-Type": "application/json", "x-user-id": String(currentUser?.id), "x-user-role": currentUser?.role || "" },
                                 body: JSON.stringify({ status: newStatus })
                               });
                               fetchData();
@@ -3955,7 +3993,10 @@ export default function App() {
                             <button
                               onClick={async () => {
                                 if (confirm("Delete this subtask?")) {
-                                  await fetch(`/api/subtasks/${subtask.id}`, { method: "DELETE" });
+                                  await fetch(`/api/subtasks/${subtask.id}`, {
+                                    method: "DELETE",
+                                    headers: { "x-user-id": String(currentUser?.id), "x-user-role": currentUser?.role || "" }
+                                  });
                                   fetchData();
                                 }
                               }}
@@ -3973,7 +4014,7 @@ export default function App() {
                             onClick={async () => {
                               await fetch(`/api/subtasks/${subtask.id}`, {
                                 method: "PATCH",
-                                headers: { "Content-Type": "application/json" },
+                                headers: { "Content-Type": "application/json", "x-user-id": String(currentUser?.id), "x-user-role": currentUser?.role || "" },
                                 body: JSON.stringify({ status: "Completed", rejection_reason: null })
                               });
                               fetchData();
@@ -4340,7 +4381,7 @@ export default function App() {
                   const endpoint = isSubtask ? `/api/subtasks/${rejectingTask.id}` : `/api/tasks/${rejectingTask.id}`;
                   await fetch(endpoint, {
                     method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json", "x-user-id": String(currentUser?.id), "x-user-role": currentUser?.role || "" },
                     body: JSON.stringify({ status: "In Progress", rejection_reason: rejectionReason.trim() })
                   });
                   setRejectingTask(null);

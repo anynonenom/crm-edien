@@ -561,7 +561,22 @@ async function startServer() {
     const { title, description, assignee_id, related_deal_id, workspace_id, due_date, status, priority } = req.body;
     if (!title) return res.status(400).json({ error: "Title is required" });
     try {
-      const { data, error } = await supabase.from("tasks").insert({ title, description, assignee_id: assignee_id || null, related_deal_id: related_deal_id || null, workspace_id: workspace_id || null, due_date, status: status || "Pending", priority: priority || "Medium" }).select().single();
+      const effectiveDueDate = due_date || null;
+      const effectiveStatus = !effectiveDueDate ? "Pending" : (status || "Pending");
+      const { data, error } = await supabase
+        .from("tasks")
+        .insert({
+          title,
+          description,
+          assignee_id: assignee_id || null,
+          related_deal_id: related_deal_id || null,
+          workspace_id: workspace_id || null,
+          due_date: effectiveDueDate,
+          status: effectiveStatus,
+          priority: priority || "Medium",
+        })
+        .select()
+        .single();
       if (error) { console.error("Task insert error:", error); return res.status(500).json({ error: error.message }); }
       await logActivity(assignee_id || 1, `Created task: ${title}`, title, "task");
       res.json({ id: data?.id });
