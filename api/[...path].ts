@@ -823,6 +823,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
       if (r1) {
+        if (r2 === "subtasks") {
+          // GET /api/tasks/:id/subtasks
+          if (method === "GET") {
+            const { data, error } = await supabase
+              .from("task_subtasks")
+              .select("*")
+              .eq("task_id", r1)
+              .order("created_at", { ascending: true });
+            if (error) return res.status(500).json({ error: error.message });
+            return res.json(data || []);
+          }
+
+          // POST /api/tasks/:id/subtasks (management only)
+          if (method === "POST") {
+            const { title, due_date, status } = req.body || {};
+            if (!title) return res.status(400).json({ error: "Title is required" });
+
+            const actorId = parseActorId(req);
+            const { data: actor, error: actorErr } = await supabase
+              .from("users")
+              .select("role")
+              .eq("id", actorId)
+              .maybeSingle();
+            if (actorErr) return res.status(500).json({ error: actorErr.message });
+
+            const isManagement = !!(actor?.role && canManage(String(actor.role)));
+            if (!isManagement) {
+              return res.status(403).json({ error: "Only management can add subtasks" });
+            }
+
+            const { data, error } = await supabase
+              .from("task_subtasks")
+              .insert({
+                task_id: Number(r1),
+                title: String(title),
+                due_date: due_date || null,
+                status: status || "Pending",
+              })
+              .select()
+              .single();
+            if (error) return res.status(500).json({ error: error.message });
+            return res.json({ id: data?.id });
+          }
+        }
+
         if (r2 === "comments") {
           // GET /api/tasks/:id/comments
           if (method === "GET") {
@@ -893,6 +938,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           await supabase.from("tasks").delete().eq("id", r1);
           return res.json({ success: true });
         }
+      }
+    }
+
+    // ─── Subtasks (update/delete) ─────────────────────────────────────────────
+    if (r0 === "subtasks" && r1) {
+      if (method === "PATCH") {
+        const updates: any = {};
+        for (const f of ["title", "due_date", "status", "rejection_reason"]) {
+          if (Object.prototype.hasOwnProperty.call(req.body || {}, f)) updates[f] = (req.body as any)[f] ?? null;
+        }
+        const { error } = await supabase.from("task_subtasks").update(updates).eq("id", r1);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.json({ success: true });
+      }
+      if (method === "DELETE") {
+        const actorId = parseActorId(req);
+        const { data: actor, error: actorErr } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", actorId)
+          .maybeSingle();
+        if (actorErr) return res.status(500).json({ error: actorErr.message });
+
+        const isManagement = !!(actor?.role && canManage(String(actor.role)));
+        if (!isManagement) {
+          return res.status(403).json({ error: "Only management can delete subtasks" });
+        }
+
+        const { error } = await supabase.from("task_subtasks").delete().eq("id", r1);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.json({ success: true });
       }
     }
 
