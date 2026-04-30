@@ -990,6 +990,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // Get current task before update
           const { data: currentTask } = await supabase.from("tasks").select("*").eq("id", r1).maybeSingle();
           
+          // Enforce workflow: tasks can only be marked as Completed if they are in Review
+          if (status === "Completed" && currentTask?.status !== "Review") {
+            return res.status(400).json({ error: "Tasks must be in Review status before being marked as Completed" });
+          }
+          
           // Only update fields that were explicitly provided (prevents undefined from nullifying existing values)
           const updates: any = {};
           if (title !== undefined) updates.title = title;

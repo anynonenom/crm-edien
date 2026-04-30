@@ -16,6 +16,12 @@ let app: FirebaseApp | null = null;
 let messaging: Messaging | null = null;
 
 export const initializeFirebase = async () => {
+  // Check if Firebase is properly configured
+  if (!firebaseConfig.projectId || !firebaseConfig.apiKey) {
+    console.warn("Firebase is not configured. Missing VITE_FIREBASE_PROJECT_ID or VITE_FIREBASE_API_KEY environment variables.");
+    return { app: null, messaging: null };
+  }
+  
   if (!getApps().length) {
     app = initializeApp(firebaseConfig);
   }

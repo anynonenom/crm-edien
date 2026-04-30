@@ -622,6 +622,12 @@ async function startServer() {
       for (const f of ["title","description","assignee_id","related_deal_id","due_date","status","priority","overdue_reason","client_id","rejection_reason"]) {
         if (Object.prototype.hasOwnProperty.call(req.body, f)) updates[f] = req.body[f] ?? null;
       }
+      
+      // Enforce workflow: tasks can only be marked as Completed if they are in Review
+      if (updates.status === "Completed" && currentTask?.status !== "Review") {
+        return res.status(400).json({ error: "Tasks must be in Review status before being marked as Completed" });
+      }
+      
       const { error } = await supabase.from("tasks").update(updates).eq("id", id);
       if (error) { console.error("Task update error:", error); return res.status(500).json({ error: error.message }); }
       
