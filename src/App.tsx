@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "./lib/supabase";
 import { useAiChatStore } from "./stores/aiChatStore";
 import type { AiMessage } from "./stores/aiChatStore";
+import { initializeFirebase, requestNotificationPermission, onMessageListener } from "./lib/firebase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Stats {
@@ -599,37 +600,71 @@ export default function App() {
     return () => { supabase.removeChannel(channel); };
   }, [isLoggedIn, currentWorkspace?.id, currentUser?.name]);
 
-  // ─── Push notification subscription (on login) ─────────────────────────────
+  // ─── Service Worker Registration ───────────────────────────────────────────
   useEffect(() => {
-    if (!isLoggedIn || !currentUser || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
-    const subscribe = async () => {
+    if (!('serviceWorker' in navigator)) return;
+    
+    const registerServiceWorker = async () => {
       try {
-        // Request permission first — required before subscribe()
-        const permission = await Notification.requestPermission();
-        if (permission !== "granted") return;
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+          scope: '/'
+        });
+        console.log('Service Worker registered:', registration);
+      } catch (error) {
+        console.error('Service Worker registration failed:', error);
+      }
+    };
+    
+    registerServiceWorker();
+  }, []);
 
-        const reg = await navigator.serviceWorker.ready;
-        const vapidRes = await fetch("/api/push/vapid-key");
-        const { publicKey } = await vapidRes.json();
-        if (!publicKey) return;
-
-        const existing = await reg.pushManager.getSubscription();
-        let sub = existing;
-        if (!sub) {
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicKey),
+  // ─── Firebase Cloud Messaging initialization (on login) ─────────────────────
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser) return;
+    
+    const initFirebase = async () => {
+      try {
+        await initializeFirebase();
+        const token = await requestNotificationPermission();
+        if (token && currentUser) {
+          // Save FCM token to server
+          await fetch("/api/push/fcm-token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: currentUser.id, token })
           });
         }
-        await fetch("/api/push/subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: currentUser.id, subscription: sub.toJSON() }),
-        });
-      } catch { /* Push not supported or blocked */ }
+      } catch (error) {
+        console.error("Firebase initialization error:", error);
+      }
     };
-    subscribe();
+    
+    initFirebase();
+    
+    // Listen for foreground messages
+    const unsubscribe = onMessageListener();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [isLoggedIn, currentUser?.id]);
+
+  // Handle message from service worker (notification click)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "OPEN_TASK_MODAL" && event.data?.taskId) {
+        const task = tasks.find(t => t.id === event.data.taskId);
+        if (task) {
+          setSelectedTaskDetail(task);
+          setShowTaskDetailModal(true);
+        }
+      }
+    };
+    
+    navigator.serviceWorker?.addEventListener("message", handleMessage);
+    return () => {
+      navigator.serviceWorker?.removeEventListener("message", handleMessage);
+    };
+  }, [tasks]);
 
   // ─── Meeting alert via Supabase realtime ────────────────────────────────────
   useEffect(() => {
@@ -1102,7 +1137,7 @@ export default function App() {
 
   const handleUpdateTask = async () => {
     if (!editTask) return;
-    await fetch(`/api/tasks/${editTask.id}`, {
+    const res = await fetch(`/api/tasks/${editTask.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1111,9 +1146,11 @@ export default function App() {
         status: editTask.status, assignee_id: editTask.assignee_id
       })
     });
+    if (res.ok) {
+      setTasks(tasks.map(t => t.id === editTask.id ? { ...t, ...editTask, due_date: editTask.due_date ? new Date(editTask.due_date).toISOString() : null } : t));
+    }
     setShowEditTaskModal(false);
     setEditTask(null);
-    fetchData();
   };
 
   // ─── Deal Actions ────────────────────────────────────────────────────────────
@@ -3931,15 +3968,21 @@ export default function App() {
                     <button
                       onClick={async () => {
                         if (!newSubtaskTitle.trim()) return;
-                        await fetch(`/api/tasks/${selectedTaskDetail.id}/subtasks`, {
+                        const res = await fetch(`/api/tasks/${selectedTaskDetail.id}/subtasks`, {
                           method: "POST",
                           headers: { "Content-Type": "application/json", "x-user-id": String(currentUser?.id), "x-user-role": currentUser?.role || "" },
                           body: JSON.stringify({ title: newSubtaskTitle, due_date: newSubtaskDueDate || null })
                         });
+                        if (res.ok) {
+                          const newSubtask = await res.json();
+                          setSelectedTaskDetail({
+                            ...selectedTaskDetail,
+                            subtasks: [...(selectedTaskDetail.subtasks || []), { id: newSubtask.id, task_id: selectedTaskDetail.id, title: newSubtaskTitle, due_date: newSubtaskDueDate || undefined, status: "Pending" }]
+                          });
+                        }
                         setNewSubtaskTitle("");
                         setNewSubtaskDueDate("");
                         setShowSubtaskForm(false);
-                        fetchData();
                       }}
                       className="flash-button mb-0"
                     >
@@ -3974,12 +4017,17 @@ export default function App() {
                                 alert("Admin approval required to move from Review to Completed");
                                 return;
                               }
-                              await fetch(`/api/subtasks/${subtask.id}`, {
+                              const res = await fetch(`/api/subtasks/${subtask.id}`, {
                                 method: "PATCH",
                                 headers: { "Content-Type": "application/json", "x-user-id": String(currentUser?.id), "x-user-role": currentUser?.role || "" },
                                 body: JSON.stringify({ status: newStatus })
                               });
-                              fetchData();
+                              if (res.ok) {
+                                setSelectedTaskDetail({
+                                  ...selectedTaskDetail,
+                                  subtasks: (selectedTaskDetail.subtasks || []).map(s => s.id === subtask.id ? { ...s, status: newStatus } : s)
+                                });
+                              }
                             }}
                             className="text-[0.6rem] px-1.5 py-0.5 border"
                             style={{ fontFamily: "'JetBrains Mono', monospace", background: "transparent", cursor: "pointer" }}
@@ -3993,11 +4041,16 @@ export default function App() {
                             <button
                               onClick={async () => {
                                 if (confirm("Delete this subtask?")) {
-                                  await fetch(`/api/subtasks/${subtask.id}`, {
+                                  const res = await fetch(`/api/subtasks/${subtask.id}`, {
                                     method: "DELETE",
                                     headers: { "x-user-id": String(currentUser?.id), "x-user-role": currentUser?.role || "" }
                                   });
-                                  fetchData();
+                                  if (res.ok) {
+                                    setSelectedTaskDetail({
+                                      ...selectedTaskDetail,
+                                      subtasks: (selectedTaskDetail.subtasks || []).filter(s => s.id !== subtask.id)
+                                    });
+                                  }
                                 }
                               }}
                               style={{ color: "var(--danger)", background: "none", border: "none", cursor: "pointer", padding: 2 }}
@@ -4012,12 +4065,17 @@ export default function App() {
                         <div className="flex gap-2 mt-2 pt-2" style={{ borderTop: "1px solid rgba(18,38,32,0.06)" }}>
                           <button
                             onClick={async () => {
-                              await fetch(`/api/subtasks/${subtask.id}`, {
+                              const res = await fetch(`/api/subtasks/${subtask.id}`, {
                                 method: "PATCH",
                                 headers: { "Content-Type": "application/json", "x-user-id": String(currentUser?.id), "x-user-role": currentUser?.role || "" },
                                 body: JSON.stringify({ status: "Completed", rejection_reason: null })
                               });
-                              fetchData();
+                              if (res.ok) {
+                                setSelectedTaskDetail({
+                                  ...selectedTaskDetail,
+                                  subtasks: (selectedTaskDetail.subtasks || []).map(s => s.id === subtask.id ? { ...s, status: "Completed", rejection_reason: undefined } : s)
+                                });
+                              }
                             }}
                             className="text-[0.6rem] px-2 py-1"
                             style={{ color: "var(--success)", border: "1px solid var(--success)", background: "transparent", cursor: "pointer" }}
@@ -4068,7 +4126,7 @@ export default function App() {
                                 method: "DELETE",
                                 headers: {
                                   "x-user-id": String(currentUser.id),
-                                  "x-user-role": String(currentUser.role || ""),
+                                  "x-user-role": currentUser.role || "",
                                 },
                               });
                               if (!res.ok) {
@@ -4076,7 +4134,10 @@ export default function App() {
                                 alert(err.error || "Failed to delete comment");
                                 return;
                               }
-                              fetchData();
+                              setSelectedTaskDetail({
+                                ...selectedTaskDetail,
+                                comments: (selectedTaskDetail.comments || []).filter(c => c.id !== comment.id)
+                              });
                             }
                           }}
                           className="text-[0.62rem] font-semibold mt-2 px-2 py-1"
@@ -4115,8 +4176,12 @@ export default function App() {
                         alert(error.error || "Failed to add comment");
                         return;
                       }
+                      const newComment = await res.json();
+                      setSelectedTaskDetail({
+                        ...selectedTaskDetail,
+                        comments: [{ id: newComment.id, task_id: selectedTaskDetail.id, user_id: currentUser?.id || 0, user_name: currentUser?.name || "", content: newCommentContent, created_at: new Date().toISOString() }, ...(selectedTaskDetail.comments || [])]
+                      });
                       setNewCommentContent("");
-                      fetchData();
                     }}
                     className="flash-button mb-0"
                     style={{ padding: "8px 12px", fontSize: "0.8rem", width: "auto", minWidth: "60px" }}
@@ -4133,12 +4198,18 @@ export default function App() {
                   <div className="flex gap-2">
                     <button
                       onClick={async () => {
-                        await fetch(`/api/tasks/${selectedTaskDetail.id}`, {
+                        const res = await fetch(`/api/tasks/${selectedTaskDetail.id}`, {
                           method: "PATCH",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ status: "Completed", rejection_reason: null })
                         });
-                        fetchData();
+                        if (res.ok) {
+                          setSelectedTaskDetail({
+                            ...selectedTaskDetail,
+                            status: "Completed",
+                            rejection_reason: undefined
+                          });
+                        }
                       }}
                       className="flash-button mb-0"
                       style={{ borderColor: "var(--success)", color: "var(--success)" }}
@@ -4379,14 +4450,27 @@ export default function App() {
                   if (!rejectionReason.trim()) return;
                   const isSubtask = "task_id" in rejectingTask;
                   const endpoint = isSubtask ? `/api/subtasks/${rejectingTask.id}` : `/api/tasks/${rejectingTask.id}`;
-                  await fetch(endpoint, {
+                  const res = await fetch(endpoint, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json", "x-user-id": String(currentUser?.id), "x-user-role": currentUser?.role || "" },
                     body: JSON.stringify({ status: "In Progress", rejection_reason: rejectionReason.trim() })
                   });
+                  if (res.ok) {
+                    if (isSubtask) {
+                      setSelectedTaskDetail({
+                        ...selectedTaskDetail,
+                        subtasks: (selectedTaskDetail.subtasks || []).map(s => s.id === rejectingTask.id ? { ...s, status: "In Progress", rejection_reason: rejectionReason.trim() } : s)
+                      });
+                    } else {
+                      setSelectedTaskDetail({
+                        ...selectedTaskDetail,
+                        status: "In Progress",
+                        rejection_reason: rejectionReason.trim()
+                      });
+                    }
+                  }
                   setRejectingTask(null);
                   setRejectionReason("");
-                  fetchData();
                 }}
                 disabled={!rejectionReason.trim()}
                 className="flash-button mb-0"

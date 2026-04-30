@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { createHmac, randomUUID, timingSafeEqual } from "crypto";
 import webpush from "web-push";
 import { Resend } from "resend";
+import admin from "firebase-admin";
 import supabase from "./_lib/supabase";
 import { sendToAI } from "./_lib/ai";
 import { getZoomAccessToken } from "./_lib/zoom";
@@ -48,6 +49,52 @@ const BILLING_ROLES = new Set([
   "operational manager",
   "admin coordinator",
 ]);
+
+// ─── Firebase Admin initialization ───────────────────────────────────────────────
+let firebaseApp: admin.app.App | null = null;
+
+// Try to load from file first, fallback to env var
+try {
+  const fs = require('fs');
+  const path = require('path');
+  const serviceAccountPath = path.join(__dirname, 'firebase-service-account.json');
+  
+  if (fs.existsSync(serviceAccountPath)) {
+    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+    firebaseApp = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log("Firebase Admin initialized from file");
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    firebaseApp = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log("Firebase Admin initialized from env");
+  }
+} catch (error) {
+  console.error("Firebase Admin initialization error:", error);
+}
+
+// Send FCM notification to a specific user
+async function sendFCMNotification(userId: number, title: string, body: string, data?: any) {
+  if (!firebaseApp) return;
+  
+  try {
+    const { data: tokens } = await supabase.from("fcm_tokens").select("token").eq("user_id", userId);
+    if (!tokens || tokens.length === 0) return;
+    
+    const message = {
+      notification: { title, body },
+      data: data || {},
+      tokens: tokens.map((t: any) => t.token)
+    };
+    
+    await admin.messaging().sendMulticast(message);
+  } catch (error) {
+    console.error("FCM send error:", error);
+  }
+}
 
 const firstValue = (value: any): any => (Array.isArray(value) ? value[0] : value);
 
@@ -821,6 +868,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const { data, error } = await supabase.from("tasks").insert({ title, description, assignee_id: assignee_id || null, client_id: client_id || null, workspace_id: workspace_id || null, due_date: effectiveDueDate, status: effectiveStatus, priority: priority || "Medium" }).select().single();
           if (error) return res.status(500).json({ error: error.message });
           await logActivity(assignee_id || 1, `Created task: ${title}`, title, "task");
+          
+          // Send FCM notification to assignee
+          if (assignee_id && data?.id) {
+            await sendFCMNotification(
+              Number(assignee_id),
+              "New Task Assigned",
+              `You have been assigned to: ${title}`,
+              { taskId: data.id, action: "open_task" }
+            );
+          }
+          
           return res.json({ id: data?.id });
         }
       }
@@ -895,8 +953,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             const actorId = parseActorId(req);
             const [{ data: task, error: taskErr }, { data: actor, error: actorErr }] = await Promise.all([
-              supabase.from("tasks").select("assignee_id").eq("id", r1).maybeSingle(),
-              supabase.from("users").select("role").eq("id", actorId).maybeSingle(),
+              supabase.from("tasks").select("assignee_id, title").eq("id", r1).maybeSingle(),
+              supabase.from("users").select("role, name").eq("id", actorId).maybeSingle(),
             ]);
             if (taskErr) return res.status(500).json({ error: taskErr.message });
             if (actorErr) return res.status(500).json({ error: actorErr.message });
@@ -914,12 +972,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               .select()
               .single();
             if (error) return res.status(500).json({ error: error.message });
+            
+            // Send FCM notification to management users
+            if (task && actor) {
+              const managementRoles = ["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Admin Coordinator", "Brand Manager", "Branding and Strategy Manager", "Solution Architect"];
+              const { data: managers } = await supabase.from("users").select("id").in("role", managementRoles);
+              if (managers) {
+                for (const manager of managers) {
+                  await sendFCMNotification(
+                    manager.id,
+                    "New Comment Added",
+                    `${actor.name} commented on: ${task.title}`,
+                    { taskId: Number(r1), action: "open_task" }
+                  );
+                }
+              }
+            }
+            
             return res.json({ id: data?.id });
           }
         }
 
         if (method === "PATCH") {
           const { title, description, assignee_id, related_deal_id, client_id, due_date, status, priority, overdue_reason, overdue_reason_at, rejection_reason } = req.body;
+          
+          // Get current task before update
+          const { data: currentTask } = await supabase.from("tasks").select("*").eq("id", r1).maybeSingle();
+          
           // Only update fields that were explicitly provided (prevents undefined from nullifying existing values)
           const updates: any = {};
           if (title !== undefined) updates.title = title;
@@ -934,6 +1013,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (overdue_reason_at !== undefined) updates.overdue_reason_at = overdue_reason_at;
           if (rejection_reason !== undefined) updates.rejection_reason = rejection_reason;
           await supabase.from("tasks").update(updates).eq("id", r1);
+          
+          // Send FCM notifications based on status changes
+          if (currentTask && updates.status) {
+            const managementRoles = ["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Admin Coordinator", "Brand Manager", "Branding and Strategy Manager", "Solution Architect"];
+            
+            // Task moved to Review - notify management
+            if (updates.status === "Review" && currentTask.status !== "Review") {
+              const { data: managers } = await supabase.from("users").select("id").in("role", managementRoles);
+              if (managers) {
+                for (const manager of managers) {
+                  await sendFCMNotification(
+                    manager.id,
+                    "Task Ready for Review",
+                    `${currentTask.title} is now in Review`,
+                    { taskId: Number(r1), action: "open_task" }
+                  );
+                }
+              }
+            }
+            
+            // Task rejected (moved to In Progress with rejection_reason) - notify assignee
+            if (updates.status === "In Progress" && updates.rejection_reason && currentTask.status === "Review") {
+              if (currentTask.assignee_id) {
+                await sendFCMNotification(
+                  currentTask.assignee_id,
+                  "Task Rejected",
+                  `${currentTask.title} was rejected. Reason: ${updates.rejection_reason}`,
+                  { taskId: Number(r1), action: "open_task" }
+                );
+              }
+            }
+            
+            // Task moved to In Progress without due date - notify management
+            if (updates.status === "In Progress" && !updates.due_date && !currentTask.due_date) {
+              const { data: managers } = await supabase.from("users").select("id").in("role", managementRoles);
+              if (managers) {
+                for (const manager of managers) {
+                  await sendFCMNotification(
+                    manager.id,
+                    "Due Date Required",
+                    `${currentTask.title} is In Progress but has no due date. Please set one.`,
+                    { taskId: Number(r1), action: "open_task" }
+                  );
+                }
+              }
+            }
+          }
+          
           return res.json({ success: true });
         }
         if (method === "DELETE") {
@@ -1680,6 +1807,21 @@ Delete contact: {"action":"delete_contact","data":{"id":123}}
           }
         }
         return res.json({ success: true, pushed: sent });
+      }
+      // POST /api/push/fcm-token
+      if (r1 === "fcm-token" && method === "POST") {
+        const { userId, token } = req.body;
+        if (!userId || !token) return res.status(400).json({ error: "Missing userId or token" });
+        try {
+          await supabase.from("fcm_tokens").upsert({
+            user_id: Number(userId),
+            token,
+            updated_at: new Date().toISOString()
+          }, { onConflict: "user_id,token" });
+          return res.json({ success: true });
+        } catch (err: any) {
+          return res.status(500).json({ error: err.message });
+        }
       }
     }
 

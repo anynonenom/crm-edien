@@ -9,6 +9,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
+import admin from "firebase-admin";
 
 dotenv.config();
 
@@ -35,6 +36,32 @@ const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// ─── Firebase Admin initialization ───────────────────────────────────────────────
+let firebaseApp: admin.app.App | null = null;
+
+// Try to load from file first, fallback to env var
+try {
+  const fs = require('fs');
+  const path = require('path');
+  const serviceAccountPath = path.join(__dirname, 'firebase-service-account.json');
+  
+  if (fs.existsSync(serviceAccountPath)) {
+    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+    firebaseApp = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log("Firebase Admin initialized from file");
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    firebaseApp = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log("Firebase Admin initialized from env");
+  }
+} catch (error) {
+  console.error("Firebase Admin initialization error:", error);
+}
 
 // ─── AI Provider ──────────────────────────────────────────────────────────────
 let aiProvider: string = process.env.AI_PROVIDER || "groq";
@@ -579,6 +606,17 @@ async function startServer() {
         .single();
       if (error) { console.error("Task insert error:", error); return res.status(500).json({ error: error.message }); }
       await logActivity(assignee_id || 1, `Created task: ${title}`, title, "task");
+      
+      // Send FCM notification to assignee
+      if (assignee_id && data?.id) {
+        await sendFCMNotification(
+          Number(assignee_id),
+          "New Task Assigned",
+          `You have been assigned to: ${title}`,
+          { taskId: data.id, action: "open_task" }
+        );
+      }
+      
       res.json({ id: data?.id });
     } catch (e: any) { console.error("Task POST error:", e); res.status(500).json({ error: "Server error" }); }
   });
@@ -586,12 +624,63 @@ async function startServer() {
   app.patch("/api/tasks/:id", async (req, res) => {
     const { id } = req.params;
     try {
+      // Get current task before update
+      const { data: currentTask } = await supabase.from("tasks").select("*").eq("id", id).single();
+      
       const updates: any = {};
       for (const f of ["title","description","assignee_id","related_deal_id","due_date","status","priority","overdue_reason","client_id","rejection_reason"]) {
         if (Object.prototype.hasOwnProperty.call(req.body, f)) updates[f] = req.body[f] ?? null;
       }
       const { error } = await supabase.from("tasks").update(updates).eq("id", id);
       if (error) { console.error("Task update error:", error); return res.status(500).json({ error: error.message }); }
+      
+      // Send FCM notifications based on status changes
+      if (currentTask && updates.status) {
+        const managementRoles = ["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Admin Coordinator", "Brand Manager", "Branding and Strategy Manager", "Solution Architect"];
+        
+        // Task moved to Review - notify management
+        if (updates.status === "Review" && currentTask.status !== "Review") {
+          const { data: managers } = await supabase.from("users").select("id").in("role", managementRoles);
+          if (managers) {
+            for (const manager of managers) {
+              await sendFCMNotification(
+                manager.id,
+                "Task Ready for Review",
+                `${currentTask.title} is now in Review`,
+                { taskId: Number(id), action: "open_task" }
+              );
+            }
+          }
+        }
+        
+        // Task rejected (moved to In Progress with rejection_reason) - notify assignee
+        if (updates.status === "In Progress" && updates.rejection_reason && currentTask.status === "Review") {
+          if (currentTask.assignee_id) {
+            await sendFCMNotification(
+              currentTask.assignee_id,
+              "Task Rejected",
+              `${currentTask.title} was rejected. Reason: ${updates.rejection_reason}`,
+              { taskId: Number(id), action: "open_task" }
+            );
+          }
+        }
+        
+        // Task moved to In Progress without due date - notify management
+        if (updates.status === "In Progress" && !updates.due_date && !currentTask.due_date) {
+          const { data: managers } = await supabase.from("users").select("id").in("role", managementRoles);
+          if (managers) {
+            for (const manager of managers) {
+              await sendFCMNotification(
+                manager.id,
+                "Due Date Required",
+                `${currentTask.title} is In Progress but has no due date. Please set one.`,
+                { taskId: Number(id), action: "open_task" }
+              );
+            }
+          }
+        }
+      }
+      
       res.json({ success: true });
     } catch { res.status(500).json({ error: "Server error" }); }
   });
@@ -685,8 +774,8 @@ async function startServer() {
     try {
       // Permission check: user can only comment on tasks they're assigned to (unless admin or manager)
       const actorId = parseActorId(req);
-      const { data: task } = await supabase.from("tasks").select("assignee_id").eq("id", id).single();
-      const { data: actor } = await supabase.from("users").select("role").eq("id", actorId).single();
+      const { data: task } = await supabase.from("tasks").select("assignee_id, title").eq("id", id).single();
+      const { data: actor } = await supabase.from("users").select("role, name").eq("id", actorId).single();
 
       // Management roles that can comment on any task
       const managementRoles = ["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Admin Coordinator", "Brand Manager", "Branding and Strategy Manager", "Solution Architect"];
@@ -703,6 +792,22 @@ async function startServer() {
         content
       }).select().single();
       if (error) { console.error("Comment insert error:", error); return res.status(500).json({ error: error.message }); }
+      
+      // Send FCM notification to management users
+      if (task && actor) {
+        const { data: managers } = await supabase.from("users").select("id").in("role", managementRoles);
+        if (managers) {
+          for (const manager of managers) {
+            await sendFCMNotification(
+              manager.id,
+              "New Comment Added",
+              `${actor.name} commented on: ${task.title}`,
+              { taskId: Number(id), action: "open_task" }
+            );
+          }
+        }
+      }
+      
       res.json({ id: data?.id });
     } catch (err) {
       console.error("Comment insert error:", err);
@@ -1586,6 +1691,40 @@ async function startServer() {
       res.json({ success: true, pushed: sent });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
+
+  // ─── Firebase Cloud Messaging ───────────────────────────────────────────────────
+  app.post("/api/push/fcm-token", async (req, res) => {
+    const { userId, token } = req.body;
+    if (!userId || !token) return res.status(400).json({ error: "Missing userId or token" });
+    try {
+      await supabase.from("fcm_tokens").upsert({
+        user_id: Number(userId),
+        token,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "user_id,token" });
+      res.json({ success: true });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // Send FCM notification to a specific user
+  async function sendFCMNotification(userId: number, title: string, body: string, data?: any) {
+    if (!firebaseApp) return;
+    
+    try {
+      const { data: tokens } = await supabase.from("fcm_tokens").select("token").eq("user_id", userId);
+      if (!tokens || tokens.length === 0) return;
+      
+      const message = {
+        notification: { title, body },
+        data: data || {},
+        tokens: tokens.map((t: any) => t.token)
+      };
+      
+      await admin.messaging().sendMulticast(message);
+    } catch (error) {
+      console.error("FCM send error:", error);
+    }
+  }
 
   // ─── AI Provider switcher ─────────────────────────────────────────────────────
   app.get("/api/ai/providers", (_req, res) => {
