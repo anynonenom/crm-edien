@@ -19,41 +19,43 @@ export default defineConfig(() => {
 importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js");
 
-let firebaseConfig = null;
 let messaging = null;
 
-// Fetch Firebase config from API
+// Fetch Firebase config from API and initialize
 fetch('/api/firebase-config')
-  .then(res => res.json())
+  .then(res => {
+    if (!res.ok) throw new Error('Failed to fetch Firebase config');
+    return res.json();
+  })
   .then(config => {
-    firebaseConfig = config;
     try {
-      firebase.initializeApp(firebaseConfig);
+      firebase.initializeApp(config);
       messaging = firebase.messaging();
+      
+      // Set up background message handler after initialization
+      messaging.onBackgroundMessage((payload) => {
+        console.log("Background message:", payload);
+
+        const title = payload.notification?.title || "Eiden BMS";
+
+        const options = {
+          body: payload.notification?.body || "",
+          icon: payload.notification?.icon || "/icon-192.png",
+          badge: "/badge-72.png",
+          data: payload.data || {},
+          tag: payload.data?.taskId || "notification",
+          requireInteraction: true
+        };
+
+        self.registration.showNotification(title, options);
+      });
     } catch (error) {
       console.error("Firebase SW initialization error:", error);
     }
   })
   .catch(error => {
-    console.error("Failed to fetch Firebase config in SW:", error);
+    console.error("Failed to initialize Firebase in SW:", error);
   });
-
-messaging.onBackgroundMessage((payload) => {
-  console.log("Background message:", payload);
-
-  const title = payload.notification?.title || "Eiden BMS";
-
-  const options = {
-    body: payload.notification?.body || "",
-    icon: payload.notification?.icon || "/icon-192.png",
-    badge: "/badge-72.png",
-    data: payload.data || {},
-    tag: payload.data?.taskId || "notification",
-    requireInteraction: true
-  };
-
-  self.registration.showNotification(title, options);
-});
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
