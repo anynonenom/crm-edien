@@ -4,17 +4,6 @@ import path from 'path';
 import { defineConfig } from 'vite';
 
 export default defineConfig(() => {
-  // Firebase config MUST come from import.meta.env in Vite builds
-  const firebaseConfig = {
-    apiKey: process.env.VITE_FIREBASE_API_KEY,
-    authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.VITE_FIREBASE_APP_ID,
-    measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID
-  };
-
   return {
     plugins: [
       react(),
@@ -30,10 +19,24 @@ export default defineConfig(() => {
 importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js");
 
-const firebaseConfig = ${JSON.stringify(firebaseConfig)};
+let firebaseConfig = null;
+let messaging = null;
 
-firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
+// Fetch Firebase config from API
+fetch('/api/firebase-config')
+  .then(res => res.json())
+  .then(config => {
+    firebaseConfig = config;
+    try {
+      firebase.initializeApp(firebaseConfig);
+      messaging = firebase.messaging();
+    } catch (error) {
+      console.error("Firebase SW initialization error:", error);
+    }
+  })
+  .catch(error => {
+    console.error("Failed to fetch Firebase config in SW:", error);
+  });
 
 messaging.onBackgroundMessage((payload) => {
   console.log("Background message:", payload);

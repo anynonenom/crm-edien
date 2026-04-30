@@ -1,62 +1,84 @@
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
-import { getMessaging, Messaging, getToken, onMessage, isSupported } from "firebase/messaging";
-
-// Firebase configuration - replace with your actual Firebase project credentials
-const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY || "",
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || "",
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID || "",
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: process.env.VITE_FIREBASE_APP_ID || "",
-  measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || ""
-};
+import {
+  getMessaging,
+  Messaging,
+  getToken,
+  onMessage,
+  isSupported
+} from "firebase/messaging";
 
 let app: FirebaseApp | null = null;
 let messaging: Messaging | null = null;
+let configPromise: Promise<any> | null = null;
+
+const fetchFirebaseConfig = async () => {
+  if (!configPromise) {
+    configPromise = fetch("/api/firebase-config")
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to load Firebase config");
+        return res.json();
+      })
+      .catch(err => {
+        configPromise = null;
+        throw err;
+      });
+  }
+
+  return configPromise;
+};
 
 export const initializeFirebase = async () => {
-  // Check if Firebase is properly configured
-  if (!firebaseConfig.projectId || !firebaseConfig.apiKey) {
-    console.warn("Firebase is not configured. Missing VITE_FIREBASE_PROJECT_ID or VITE_FIREBASE_API_KEY environment variables.");
-    return { app: null, messaging: null };
+  if (app) return { app, messaging };
+
+  const config = await fetchFirebaseConfig();
+
+  if (!config?.projectId || !config?.apiKey) {
+    throw new Error("Invalid Firebase config");
   }
-  
+
   if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
+    app = initializeApp(config);
   }
-  
-  const supported = await isSupported();
-  if (supported) {
-    messaging = getMessaging(app);
+
+  if (await isSupported()) {
+    messaging = getMessaging(app!);
   }
-  
+
   return { app, messaging };
 };
 
 export const requestNotificationPermission = async () => {
-  if (!messaging) return null;
-  
   try {
-    const permission = await Notification.requestPermission();
-    if (permission === "granted") {
-      const token = await getToken(messaging, {
-        vapidKey: process.env.VITE_FIREBASE_VAPID_KEY || ""
-      });
-      return token;
+    if (!messaging) {
+      await initializeFirebase();
     }
-  } catch (error) {
-    console.error("Error requesting notification permission:", error);
+
+    if (!messaging) return null;
+
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") return null;
+
+    const config = await fetchFirebaseConfig();
+
+    return await getToken(messaging, {
+      vapidKey: config.vapidKey
+    });
+  } catch (err) {
+    console.error(err);
+    return null;
   }
-  return null;
 };
 
-export const onMessageListener = () => {
+export const onMessageListener = async (callback?: (payload: any) => void) => {
+  await initializeFirebase();
+
   if (!messaging) return () => {};
-  
+
   return onMessage(messaging, (payload) => {
     console.log("Message received:", payload);
-    // Handle foreground messages
+
+    callback?.(payload);
+
     if (payload.notification) {
       new Notification(payload.notification.title || "Notification", {
         body: payload.notification.body,
