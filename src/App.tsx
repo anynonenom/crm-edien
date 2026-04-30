@@ -112,6 +112,7 @@ const getPerms = (role?: string | null) => PERMISSIONS[role ?? ""] ?? { tabs: ["
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const isOverdue = (dueDate: string, status: string) => {
   if (status === "Completed") return false;
+  if (status === "Review") return false;
   if (status === "Pending") return false;
   if (!dueDate) return false;
   return new Date(dueDate) < new Date();

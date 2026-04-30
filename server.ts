@@ -40,27 +40,18 @@ const supabase = createClient(
 // ─── Firebase Admin initialization ───────────────────────────────────────────────
 let firebaseApp: admin.app.App | null = null;
 
-// Try to load from file first, fallback to env var
-try {
-  const fs = require('fs');
-  const path = require('path');
-  const serviceAccountPath = path.join(__dirname, 'firebase-service-account.json');
-  
-  if (fs.existsSync(serviceAccountPath)) {
-    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-    firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-    console.log("Firebase Admin initialized from file");
-  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+  try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
     firebaseApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
-    console.log("Firebase Admin initialized from env");
+    console.log("Firebase Admin initialized from environment variables");
+  } catch (error) {
+    console.error("Firebase Admin initialization error:", error);
   }
-} catch (error) {
-  console.error("Firebase Admin initialization error:", error);
+} else {
+  console.warn("Firebase Admin not initialized - FIREBASE_SERVICE_ACCOUNT_KEY not found in environment");
 }
 
 // ─── AI Provider ──────────────────────────────────────────────────────────────
