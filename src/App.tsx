@@ -15,7 +15,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "./lib/supabase";
 import { useAiChatStore } from "./stores/aiChatStore";
 import type { AiMessage } from "./stores/aiChatStore";
-import { initializeFirebase, requestNotificationPermission, onMessageListener } from "./lib/firebase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Stats {
@@ -600,72 +599,6 @@ export default function App() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [isLoggedIn, currentWorkspace?.id, currentUser?.name]);
-
-  // ─── Service Worker Registration ───────────────────────────────────────────
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
-    
-    const registerServiceWorker = async () => {
-      try {
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-          scope: '/'
-        });
-        console.log('Service Worker registered:', registration);
-      } catch (error) {
-        console.error('Service Worker registration failed:', error);
-      }
-    };
-    
-    registerServiceWorker();
-  }, []);
-
-  // ─── Firebase Cloud Messaging initialization (on login) ─────────────────────
-  useEffect(() => {
-    if (!isLoggedIn || !currentUser) return;
-    
-    const initFirebase = async () => {
-      try {
-        await initializeFirebase();
-        const token = await requestNotificationPermission();
-        if (token && currentUser) {
-          // Save FCM token to server
-          await fetch("/api/push/fcm-token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: currentUser.id, token })
-          });
-        }
-      } catch (error) {
-        console.error("Firebase initialization error:", error);
-      }
-    };
-    
-    initFirebase();
-    
-    // Listen for foreground messages
-    const unsubscribe = onMessageListener();
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [isLoggedIn, currentUser?.id]);
-
-  // Handle message from service worker (notification click)
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "OPEN_TASK_MODAL" && event.data?.taskId) {
-        const task = tasks.find(t => t.id === event.data.taskId);
-        if (task) {
-          setSelectedTaskDetail(task);
-          setShowTaskDetailModal(true);
-        }
-      }
-    };
-    
-    navigator.serviceWorker?.addEventListener("message", handleMessage);
-    return () => {
-      navigator.serviceWorker?.removeEventListener("message", handleMessage);
-    };
-  }, [tasks]);
 
   // ─── Meeting alert via Supabase realtime ────────────────────────────────────
   useEffect(() => {

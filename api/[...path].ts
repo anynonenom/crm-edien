@@ -3,7 +3,6 @@ import bcrypt from "bcryptjs";
 import { createHmac, randomUUID, timingSafeEqual } from "crypto";
 import webpush from "web-push";
 import { Resend } from "resend";
-import admin from "firebase-admin";
 import supabase from "./_lib/supabase";
 import { sendToAI } from "./_lib/ai";
 import { getZoomAccessToken } from "./_lib/zoom";
@@ -49,43 +48,6 @@ const BILLING_ROLES = new Set([
   "operational manager",
   "admin coordinator",
 ]);
-
-// ─── Firebase Admin initialization ───────────────────────────────────────────────
-let firebaseApp: admin.app.App | null = null;
-
-if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-  try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-    firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-    console.log("Firebase Admin initialized from environment variables");
-  } catch (error) {
-    console.error("Firebase Admin initialization error:", error);
-  }
-} else {
-  console.warn("Firebase Admin not initialized - FIREBASE_SERVICE_ACCOUNT_KEY not found in environment");
-}
-
-// Send FCM notification to a specific user
-async function sendFCMNotification(userId: number, title: string, body: string, data?: any) {
-  if (!firebaseApp) return;
-  
-  try {
-    const { data: tokens } = await supabase.from("fcm_tokens").select("token").eq("user_id", userId);
-    if (!tokens || tokens.length === 0) return;
-    
-    const message = {
-      notification: { title, body },
-      data: data || {},
-      tokens: tokens.map((t: any) => t.token)
-    };
-    
-    await admin.messaging().sendEachForMulticast(message);
-  } catch (error) {
-    console.error("FCM send error:", error);
-  }
-}
 
 const firstValue = (value: any): any => (Array.isArray(value) ? value[0] : value);
 
@@ -743,36 +705,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // ─── Firebase Config ────────────────────────────────────────────────────────
-    if (r0 === "firebase-config" && method === "GET") {
-      console.log("=== Firebase Environment Variables (Vercel) ===");
-      console.log("FIREBASE_API_KEY:", process.env.FIREBASE_API_KEY ? "***" : "MISSING");
-      console.log("FIREBASE_AUTH_DOMAIN:", process.env.FIREBASE_AUTH_DOMAIN || "MISSING");
-      console.log("FIREBASE_PROJECT_ID:", process.env.FIREBASE_PROJECT_ID || "MISSING");
-      console.log("FIREBASE_STORAGE_BUCKET:", process.env.FIREBASE_STORAGE_BUCKET || "MISSING");
-      console.log("FIREBASE_MESSAGING_SENDER_ID:", process.env.FIREBASE_MESSAGING_SENDER_ID || "MISSING");
-      console.log("FIREBASE_APP_ID:", process.env.FIREBASE_APP_ID || "MISSING");
-      console.log("FIREBASE_MEASUREMENT_ID:", process.env.FIREBASE_MEASUREMENT_ID || "MISSING");
-      console.log("FIREBASE_VAPID_KEY:", process.env.FIREBASE_VAPID_KEY ? "***" : "MISSING");
-      
-      const config = {
-        apiKey: process.env.FIREBASE_API_KEY,
-        authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-        appId: process.env.FIREBASE_APP_ID,
-        measurementId: process.env.FIREBASE_MEASUREMENT_ID,
-        vapidKey: process.env.FIREBASE_VAPID_KEY
-      };
-      
-      if (!config.projectId || !config.apiKey) {
-        return res.status(500).json({ error: "Firebase configuration is incomplete on the server" });
-      }
-      
-      return res.json(config);
-    }
-
     // ─── Deals ────────────────────────────────────────────────────────────────
     if (r0 === "deals") {
       if (!r1) {
@@ -890,16 +822,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (error) return res.status(500).json({ error: error.message });
           await logActivity(assignee_id || 1, `Created task: ${title}`, title, "task");
           
-          // Send FCM notification to assignee
-          if (assignee_id && data?.id) {
-            await sendFCMNotification(
-              Number(assignee_id),
-              "New Task Assigned",
-              `You have been assigned to: ${title}`,
-              { taskId: data.id, action: "open_task" }
-            );
-          }
-          
           return res.json({ id: data?.id });
         }
       }
@@ -949,71 +871,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
 
-        if (r2 === "comments") {
-          // GET /api/tasks/:id/comments
-          if (method === "GET") {
-            const { data, error } = await supabase
-              .from("task_comments")
-              .select("*, users(name)")
-              .eq("task_id", r1)
-              .order("created_at", { ascending: false });
-            if (error) return res.status(500).json({ error: error.message });
-            return res.json(
-              (data || []).map((c: any) => ({
-                ...c,
-                user_name: c.users?.name || "",
-              }))
-            );
-          }
-
-          // POST /api/tasks/:id/comments
-          if (method === "POST") {
-            const { content, user_id } = req.body || {};
-            if (!content) return res.status(400).json({ error: "Content is required" });
-            if (!user_id) return res.status(400).json({ error: "User ID is required" });
-
-            const actorId = parseActorId(req);
-            const [{ data: task, error: taskErr }, { data: actor, error: actorErr }] = await Promise.all([
-              supabase.from("tasks").select("assignee_id, title").eq("id", r1).maybeSingle(),
-              supabase.from("users").select("role, name").eq("id", actorId).maybeSingle(),
-            ]);
-            if (taskErr) return res.status(500).json({ error: taskErr.message });
-            if (actorErr) return res.status(500).json({ error: actorErr.message });
-            if (!task) return res.status(404).json({ error: "Task not found" });
-
-            const isManagement = !!(actor?.role && canManage(String(actor.role)));
-            const isAssignee = Number(task.assignee_id || 0) === Number(actorId || 0);
-            if (!isManagement && !isAssignee) {
-              return res.status(403).json({ error: "You can only comment on tasks assigned to you" });
-            }
-
-            const { data, error } = await supabase
-              .from("task_comments")
-              .insert({ task_id: Number(r1), user_id: Number(user_id), content: String(content) })
-              .select()
-              .single();
-            if (error) return res.status(500).json({ error: error.message });
-            
-            // Send FCM notification to management users
-            if (task && actor) {
-              const managementRoles = ["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Admin Coordinator", "Brand Manager", "Branding and Strategy Manager", "Solution Architect"];
-              const { data: managers } = await supabase.from("users").select("id").in("role", managementRoles);
-              if (managers) {
-                for (const manager of managers) {
-                  await sendFCMNotification(
-                    manager.id,
-                    "New Comment Added",
-                    `${actor.name} commented on: ${task.title}`,
-                    { taskId: Number(r1), action: "open_task" }
-                  );
-                }
-              }
-            }
-            
-            return res.json({ id: data?.id });
-          }
-        }
-
         if (method === "PATCH") {
           const { title, description, assignee_id, related_deal_id, client_id, due_date, status, priority, overdue_reason, overdue_reason_at, rejection_reason } = req.body;
           
@@ -1025,7 +882,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: "Tasks must be in Review status before being marked as Completed" });
           }
           
-          // Only update fields that were explicitly provided (prevents undefined from nullifying existing values)
+          // Only update fields that were explicitly provided
           const updates: any = {};
           if (title !== undefined) updates.title = title;
           if (description !== undefined) updates.description = description;
@@ -1039,53 +896,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (overdue_reason_at !== undefined) updates.overdue_reason_at = overdue_reason_at;
           if (rejection_reason !== undefined) updates.rejection_reason = rejection_reason;
           await supabase.from("tasks").update(updates).eq("id", r1);
-          
-          // Send FCM notifications based on status changes
-          if (currentTask && updates.status) {
-            const managementRoles = ["Admin", "Eiden HQ", "Eiden Global", "Operational Manager", "Admin Coordinator", "Brand Manager", "Branding and Strategy Manager", "Solution Architect"];
-            
-            // Task moved to Review - notify management
-            if (updates.status === "Review" && currentTask.status !== "Review") {
-              const { data: managers } = await supabase.from("users").select("id").in("role", managementRoles);
-              if (managers) {
-                for (const manager of managers) {
-                  await sendFCMNotification(
-                    manager.id,
-                    "Task Ready for Review",
-                    `${currentTask.title} is now in Review`,
-                    { taskId: Number(r1), action: "open_task" }
-                  );
-                }
-              }
-            }
-            
-            // Task rejected (moved to In Progress with rejection_reason) - notify assignee
-            if (updates.status === "In Progress" && updates.rejection_reason && currentTask.status === "Review") {
-              if (currentTask.assignee_id) {
-                await sendFCMNotification(
-                  currentTask.assignee_id,
-                  "Task Rejected",
-                  `${currentTask.title} was rejected. Reason: ${updates.rejection_reason}`,
-                  { taskId: Number(r1), action: "open_task" }
-                );
-              }
-            }
-            
-            // Task moved to In Progress without due date - notify management
-            if (updates.status === "In Progress" && !updates.due_date && !currentTask.due_date) {
-              const { data: managers } = await supabase.from("users").select("id").in("role", managementRoles);
-              if (managers) {
-                for (const manager of managers) {
-                  await sendFCMNotification(
-                    manager.id,
-                    "Due Date Required",
-                    `${currentTask.title} is In Progress but has no due date. Please set one.`,
-                    { taskId: Number(r1), action: "open_task" }
-                  );
-                }
-              }
-            }
-          }
           
           return res.json({ success: true });
         }
@@ -1833,21 +1643,6 @@ Delete contact: {"action":"delete_contact","data":{"id":123}}
           }
         }
         return res.json({ success: true, pushed: sent });
-      }
-      // POST /api/push/fcm-token
-      if (r1 === "fcm-token" && method === "POST") {
-        const { userId, token } = req.body;
-        if (!userId || !token) return res.status(400).json({ error: "Missing userId or token" });
-        try {
-          await supabase.from("fcm_tokens").upsert({
-            user_id: Number(userId),
-            token,
-            updated_at: new Date().toISOString()
-          }, { onConflict: "user_id,token" });
-          return res.json({ success: true });
-        } catch (err: any) {
-          return res.status(500).json({ error: err.message });
-        }
       }
     }
 
