@@ -16,47 +16,7 @@ export default defineConfig(() => {
             type: 'asset',
             fileName: 'firebase-messaging-sw.js',
             source: `
-importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js");
-
-let messaging = null;
-
-// Fetch Firebase config from API and initialize
-fetch('/api/firebase-config')
-  .then(res => {
-    if (!res.ok) throw new Error('Failed to fetch Firebase config');
-    return res.json();
-  })
-  .then(config => {
-    try {
-      firebase.initializeApp(config);
-      messaging = firebase.messaging();
-      
-      // Set up background message handler after initialization
-      messaging.onBackgroundMessage((payload) => {
-        console.log("Background message:", payload);
-
-        const title = payload.notification?.title || "Eiden BMS";
-
-        const options = {
-          body: payload.notification?.body || "",
-          icon: payload.notification?.icon || "/icon-192.png",
-          badge: "/badge-72.png",
-          data: payload.data || {},
-          tag: payload.data?.taskId || "notification",
-          requireInteraction: true
-        };
-
-        self.registration.showNotification(title, options);
-      });
-    } catch (error) {
-      console.error("Firebase SW initialization error:", error);
-    }
-  })
-  .catch(error => {
-    console.error("Failed to initialize Firebase in SW:", error);
-  });
-
+// Notification click handler - must be at top level
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
@@ -92,6 +52,45 @@ self.addEventListener("notificationclick", (event) => {
       })
   );
 });
+
+importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js");
+
+// Fetch Firebase config from API and initialize
+fetch('/api/firebase-config')
+  .then(res => {
+    if (!res.ok) throw new Error('Failed to fetch Firebase config');
+    return res.json();
+  })
+  .then(config => {
+    try {
+      firebase.initializeApp(config);
+      const messaging = firebase.messaging();
+      
+      // Set up background message handler after initialization
+      messaging.onBackgroundMessage((payload) => {
+        console.log("Background message:", payload);
+
+        const title = payload.notification?.title || "Eiden BMS";
+
+        const options = {
+          body: payload.notification?.body || "",
+          icon: payload.notification?.icon || "/icon-192.png",
+          badge: "/badge-72.png",
+          data: payload.data || {},
+          tag: payload.data?.taskId || "notification",
+          requireInteraction: true
+        };
+
+        self.registration.showNotification(title, options);
+      });
+    } catch (error) {
+      console.error("Firebase SW initialization error:", error);
+    }
+  })
+  .catch(error => {
+    console.error("Failed to initialize Firebase in SW:", error);
+  });
 `
           });
         }
