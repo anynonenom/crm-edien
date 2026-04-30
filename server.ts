@@ -309,6 +309,16 @@ async function startServer() {
 
   // ─── Firebase Config ───────────────────────────────────────────────────────────
   app.get("/api/firebase-config", async (_req, res) => {
+    console.log("=== Firebase Environment Variables ===");
+    console.log("FIREBASE_API_KEY:", process.env.FIREBASE_API_KEY ? "***" : "MISSING");
+    console.log("FIREBASE_AUTH_DOMAIN:", process.env.FIREBASE_AUTH_DOMAIN || "MISSING");
+    console.log("FIREBASE_PROJECT_ID:", process.env.FIREBASE_PROJECT_ID || "MISSING");
+    console.log("FIREBASE_STORAGE_BUCKET:", process.env.FIREBASE_STORAGE_BUCKET || "MISSING");
+    console.log("FIREBASE_MESSAGING_SENDER_ID:", process.env.FIREBASE_MESSAGING_SENDER_ID || "MISSING");
+    console.log("FIREBASE_APP_ID:", process.env.FIREBASE_APP_ID || "MISSING");
+    console.log("FIREBASE_MEASUREMENT_ID:", process.env.FIREBASE_MEASUREMENT_ID || "MISSING");
+    console.log("FIREBASE_VAPID_KEY:", process.env.FIREBASE_VAPID_KEY ? "***" : "MISSING");
+    
     const config = {
       apiKey: process.env.FIREBASE_API_KEY,
       authDomain: process.env.FIREBASE_AUTH_DOMAIN,
