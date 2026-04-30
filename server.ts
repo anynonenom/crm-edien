@@ -1711,7 +1711,7 @@ async function startServer() {
         tokens: tokens.map((t: any) => t.token)
       };
       
-      await admin.messaging().sendMulticast(message);
+      await admin.messaging().sendEachForMulticast(message);
     } catch (error) {
       console.error("FCM send error:", error);
     }
