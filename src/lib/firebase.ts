@@ -61,7 +61,7 @@ export const requestNotificationPermission = async () => {
     const config = await fetchFirebaseConfig();
 
     return await getToken(messaging, {
-      vapidKey: config.vapidKey
+      vapidKey: "BHY9keUh59svJhrFDyLC5_SMkLNY8GdD9KvTIcSD_qpLBA2oufxxSz4nqj3PLViECGpSI-5wOPQUBwGNk-Y6g"
     });
   } catch (err) {
     console.error(err);
